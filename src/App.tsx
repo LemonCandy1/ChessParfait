@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Chess } from 'chess.js';
 import { Chessboard } from 'react-chessboard';
 import { Target, Trophy, BarChart3, Mail } from 'lucide-react';
+import logo from './assets/CrownLogo.png';
 
 export default function App() {
   // Initialize a game state - you can put a FEN string in Chess() 
@@ -28,8 +29,23 @@ export default function App() {
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 font-sans">
       <nav className="p-6 flex justify-between items-center bg-white shadow-sm border-b border-slate-100">
-        <h1 className="text-2xl font-bold tracking-tight text-indigo-600">Chess Parfait</h1>
-        <button className="bg-indigo-600 text-white px-5 py-2 rounded-full font-medium hover:bg-indigo-700 transition">
+        {/* Logo as a Home Link */}
+        <a
+          href="/"
+          className="transition-transform hover:scale-105 active:scale-95"
+          onClick={(e) => {
+            e.preventDefault(); 
+            setGame(new Chess()); 
+          }}
+        >
+          <img
+            src={logo}
+            alt="Chess Parfait Logo"
+            className="h-20 w-auto md:h-24" // Increased size: h-20 (80px), md:h-24 (96px)
+          />
+        </a>
+
+        <button className="bg-indigo-600 text-white px-6 py-2 rounded-full font-bold hover:bg-indigo-700 shadow-md transition">
           Book a Lesson
         </button>
       </nav>

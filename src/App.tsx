@@ -7,7 +7,7 @@ import logo from './assets/CrownLogo.png';
 export default function App() {
   // Initialize a game state - you can put a FEN string in Chess() 
   // to start at a specific position!
-  const [game, setGame] = useState(new Chess());
+  const [game, setGame] = useState(new Chess('7k / p6p / 1p6 / 2pbb2q / 8 / 1P5P / PB3QP1 / 6K1 w - - 0 1'));
 
   function makeAMove(move: any) {
     const gameCopy = new Chess(game.fen());
@@ -57,11 +57,10 @@ export default function App() {
             FIDE Master | 7+ years coaching experience
           </div>
           <h2 className="text-5xl font-extrabold mb-6 leading-tight">
-            Elevate Your Game with <span className="text-indigo-600">Data-Driven</span> Coaching
+            Elevate Your Game with <span className="text-indigo-600">Engaging and Instructive</span> Coaching
           </h2>
           <p className="text-xl text-slate-600 mb-8">
-            Personalized training for ambitious players. Stop guessing and start 
-            calculating with FM-level insights.
+            Personalized training for ambitious players. 
           </p>
           <div className="flex gap-4">
             <button className="bg-indigo-600 text-white px-8 py-3 rounded-lg font-bold hover:bg-indigo-700">Get Started</button>
@@ -94,7 +93,7 @@ export default function App() {
 
       <footer className="py-20 text-center bg-slate-900 text-white px-6">
         <h3 className="text-3xl font-bold mb-6">Ready to reach the next level?</h3>
-        <a href="mailto:hello@chessparfait.com" className="inline-flex items-center gap-2 bg-indigo-500 hover:bg-indigo-400 px-8 py-3 rounded-lg font-bold transition">
+        <a href="mailto:luischanchess@gmail.com" className="inline-flex items-center gap-2 bg-indigo-500 hover:bg-indigo-400 px-8 py-3 rounded-lg font-bold transition">
           <Mail size={20} /> Contact for Availability
         </a>
       </footer>

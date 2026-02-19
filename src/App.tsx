@@ -7,7 +7,8 @@ import logo from './assets/CrownLogo.png';
 export default function App() {
   // Initialize a game state - you can put a FEN string in Chess() 
   // to start at a specific position!
-  const [game, setGame] = useState(new Chess('7k / p6p / 1p6 / 2pbb2q / 8 / 1P5P / PB3QP1 / 6K1 w - - 0 1'));
+  const fen = '7k/p6p/1p6/2pbb2q/8/1P5P/PB3QP1/6K1 w - - 0 1'
+  const [game, setGame] = useState(new Chess(fen));
 
   function makeAMove(move: any) {
     const gameCopy = new Chess(game.fen());

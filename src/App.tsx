@@ -1,15 +1,16 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Chess } from 'chess.js';
 import { Chessboard } from 'react-chessboard';
 import { Target, Trophy, BarChart3, Mail } from 'lucide-react';
-import logo from './assets/CrownLogo.png';
+import logo from './assets/Chess Parfait AI Logo.png';
 
 export default function App() {
-  // Initialize a game state - you can put a FEN string in Chess() 
-  // to start at a specific position!
-  const fen = '7k/p6p/1p6/2pbb2q/8/1P5P/PB3QP1/6K1 w - - 0 1'
+  const fen = "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1";
   const [game, setGame] = useState(new Chess(fen));
-
+  useEffect(() => {
+    const newGame = new Chess(fen);
+    setGame(newGame);
+  }, []);
   function makeAMove(move: any) {
     const gameCopy = new Chess(game.fen());
     const result = gameCopy.move(move);
@@ -21,32 +22,33 @@ export default function App() {
     const move = makeAMove({
       from: sourceSquare,
       to: targetSquare,
-      promotion: 'q', // always promote to queen for simplicity
+      promotion: 'q',
     });
     if (move === null) return false;
     return true;
   }
 
   return (
+
     <div className="min-h-screen bg-slate-50 text-slate-900 font-sans">
-      <nav className="p-6 flex justify-between items-center bg-white shadow-sm border-b border-slate-100">
-        {/* Logo as a Home Link */}
+      <nav className="py-2 px-6 flex justify-between items-start bg-white shadow-sm border-b border-slate-100">
         <a
           href="/"
           className="transition-transform hover:scale-105 active:scale-95"
           onClick={(e) => {
-            e.preventDefault(); 
-            setGame(new Chess()); 
+            e.preventDefault();
+            setGame(new Chess(fen));
           }}
         >
           <img
             src={logo}
             alt="Chess Parfait Logo"
-            className="h-20 w-auto md:h-24" // Increased size: h-20 (80px), md:h-24 (96px)
+            className="h-24 w-auto md:h-32 -mt-2" // Reduced image height and added negative top margin
           />
         </a>
 
-        <button className="bg-indigo-600 text-white px-6 py-2 rounded-full font-bold hover:bg-indigo-700 shadow-md transition">
+        {/* Button stays on the right, aligned with the top of the bar */}
+        <button className="mt-2 bg-indigo-600 text-white px-6 py-2 rounded-full font-bold hover:bg-indigo-700 shadow-md transition">
           Book a Lesson
         </button>
       </nav>
@@ -65,19 +67,21 @@ export default function App() {
           </p>
           <div className="flex gap-4">
             <button className="bg-indigo-600 text-white px-8 py-3 rounded-lg font-bold hover:bg-indigo-700">Get Started</button>
-            <button onClick={() => setGame(new Chess())} className="border border-slate-300 px-8 py-3 rounded-lg font-bold hover:bg-slate-100">Reset Board</button>
+            <button onClick={() => setGame(new Chess(fen))} className="border border-slate-300 px-8 py-3 rounded-lg font-bold hover:bg-indigo-700">Reset Board</button>
           </div>
         </div>
 
         {/* Chessboard Side */}
         <div className="flex-1 w-full max-w-[500px] shadow-2xl rounded-lg overflow-hidden border-8 border-white bg-white">
-          <Chessboard 
+          <Chessboard
+            id="BasicBoard"
+            position={game.fen()}
+            onPieceDrop={onDrop}
             {...({
-              position: game.fen(),
-              onPieceDrop: onDrop,
+
               boardOrientation: "white",
-              customDarkSquareStyle: { backgroundColor: '#818cf8' },
-              customLightSquareStyle: { backgroundColor: '#e2e8f0' }
+              customDarkSquareStyle: { backgroundColor: '#6673eeff' },
+              customLightSquareStyle: { backgroundColor: '#5a5a5aff' }
             } as any)}
           />
         </div>

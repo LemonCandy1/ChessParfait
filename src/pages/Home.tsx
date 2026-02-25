@@ -2,9 +2,7 @@ import { useState } from 'react';
 import { Chess } from 'chess.js';
 import { Chessboard } from 'react-chessboard';
 import { Target, Trophy, BarChart3, Mail } from 'lucide-react';
-import { Link } from 'react-router-dom'; // Added for navigation
-import logo from '../assets/Logo.jpg'; // Adjusted path for pages folder
-import chessParfaitText from '../assets/Chess Parfait text.jpg'; // New asset for text logo
+import Navbar from '../components/Navbar/Navbar.tsx';
 
 export default function Home() {
     const fen = "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1";
@@ -28,56 +26,8 @@ export default function Home() {
     }
 
     return (
-        <div className="min-h-screen bg-slate-50 text-slate-900 font-sans">
-            <nav className="py-1 px-2 bg-white shadow-sm border-b border-slate-100">
-                <div className="max-w-7xl mx-auto grid grid-cols-3 items-center">
-
-                    {/* 1. Left Column: Logo */}
-                    <div className="flex justify-start">
-                        <Link
-                            to="/"
-                            className="flex flex-col items-center group transition-transform hover:scale-105 active:scale-95"
-                            onClick={() => setGame(new Chess(fen))}
-                        >
-                            <img src={logo} alt="Chess Parfait Logo" className="h-12 w-auto md:h-16" />
-                        </Link>
-                        <Link
-                            to="/"
-                            className="hidden md:inline-flex items-center gap-2 text-indigo-600 font-semibold hover:text-indigo-700 transition ml-4"
-                            onClick={() => setGame(new Chess(fen))}
-                        >
-                            <img
-                                src={chessParfaitText} // Ensure this is imported at the top of your file
-                                alt="Chess Parfait"
-                                className="h-12 w-auto md:h-14 ml-3 object-contain"
-                            />
-                        </Link>
-                    </div>
-
-                    {/* 2. Center Column: Navigation Links */}
-                    <div className="flex justify-center items-center gap-10">
-                        <Link to="/" className="text-slate-600 font-bold hover:text-indigo-600 transition text-xs md:text-sm uppercase tracking-widest">
-                            Home
-                        </Link>
-
-                        <Link to="/Challenge_Rulette" className="text-slate-600 font-bold hover:text-indigo-600 transition text-xs md:text-sm uppercase tracking-widest">
-                            Challenge Rulette
-                        </Link>
-
-                        <Link to="/about" className="text-slate-600 font-bold hover:text-indigo-600 transition text-xs md:text-sm uppercase tracking-widest">
-                            About Me
-                        </Link>
-                    </div>
-
-                    <div className="flex justify-end">
-                        <button className="bg-indigo-600 text-white px-6 py-2 rounded-full font-bold hover:bg-indigo-700 shadow-md transition text-xs md:text-sm">
-                            Book a Lesson
-                        </button>
-                    </div>
-
-                </div>
-            </nav>
-
+        <div className="min-h-screen bg-white flex flex-col">
+            <Navbar /> 
             <header className="max-w-6xl mx-auto px-6 py-16 flex flex-col md:flex-row items-center gap-12">
                 <div className="flex-1 text-left">
                     <div className="inline-block px-4 py-1.5 mb-6 text-sm font-semibold tracking-wide text-indigo-600 uppercase bg-indigo-50 rounded-full">

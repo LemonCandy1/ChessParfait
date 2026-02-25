@@ -1,22 +1,30 @@
 {
     "Piece of Cake": [
-        "You are not allowed to castle this game.",
-        "Your King must move on move 2 (Bongcloud).",
-        "You cannot capture any pawns for the first 10 moves."
+        {
+            "title": "The Gentle Opening",
+            "rule": "You cannot play 1. e4 or 1. d4 as your first move."
+        }
     ],
     "Doughnut Elo": [
-        "Start the game without your Queenside Knight.",
-        "You must play the entire game with exactly half the time on your clock as your opponent.",
-        "Every time your opponent checks you, you must drop a pawn."
+        {
+            "title": "Sugar Rush",
+            "rule": "You must move your Queen at least once every 5 moves."
+        },
+        {
+            "title": "I'm Committed",
+            "rule": "Once you move a piece onto your opponent's half of the board, that piece may not retreat back across the halfway line"
+        }
     ],
     "Pinned Down": [
-        "Start the game without your Queen.",
-        "You are not allowed to move your pawns past the 4th rank.",
-        "If you move a piece backward, you automatically lose your turn."
+        {
+            "title": "Watch Your Back",
+            "rule": "Every 4 moves, you have to make a backwards move."
+        }
     ],
     "Challenge": [
-        "Start the game without your Queen AND your Kingside Rook.",
-        "You must play blindfolded while your opponent plays normally.",
-        "You must announce checkmate 5 moves in advance. If you miss it, you resign."
+        {
+            "title": "Grandmaster's Burden",
+            "rule": "You must play the entire game using only one hand and never touch the board with the other."
+        }
     ]
 }

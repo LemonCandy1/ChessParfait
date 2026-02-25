@@ -39,15 +39,6 @@ export default function Home() {
                     <p className="text-xl text-slate-600 mb-8">
                         Personalised training for ambitious players.
                     </p>
-                    <div className="flex gap-4">
-                        <button className="bg-indigo-600 text-white px-8 py-3 rounded-lg font-bold hover:bg-indigo-700 shadow-lg">Get Started</button>
-                        <button
-                            onClick={() => setGame(new Chess(fen))}
-                            className="border border-slate-300 px-8 py-3 rounded-lg font-bold hover:bg-white transition"
-                        >
-                            Reset Board
-                        </button>
-                    </div>
                 </div>
 
                 <div className="flex-1 w-full max-w-[500px] shadow-2xl rounded-lg overflow-hidden border-8 border-white bg-white">
@@ -66,7 +57,7 @@ export default function Home() {
 
             <section className="bg-white py-20 px-6 border-t border-slate-100">
                 <div className="max-w-6xl mx-auto grid md:grid-cols-3 gap-12">
-                    <ServiceCard icon={<Target />} title="Custom Repertoires" desc="Build a robust opening suite tailored to your style." />
+                    <ServiceCard icon={<Target />} title="Custom Repertoires" desc="Build an opening repertoire according to your style." />
                     <ServiceCard icon={<BarChart3 />} title="Game Analysis" desc="Deep-dive sessions to identify and fix your tactical leaks." />
                     <ServiceCard icon={<Trophy />} title="Tournament Prep" desc="Preparation strategies for your next big rating milestone." />
                 </div>

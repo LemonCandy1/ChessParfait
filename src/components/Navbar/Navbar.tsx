@@ -31,12 +31,6 @@ const Navbar = () => {
                     <NavLink to="/Challenge_Rulette" label="Challenge Rulette" />
                     <NavLink to="/about" label="About Me" />
                 </div>
-
-                <div className="flex justify-end">
-                    <button className="bg-indigo-600 text-white px-6 py-2 rounded-full font-bold hover:bg-indigo-700 shadow-md transition text-xs md:text-sm">
-                        Book a Lesson
-                    </button>
-                </div>
             </div>
         </nav>
     );

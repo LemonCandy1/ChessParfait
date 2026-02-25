@@ -13,8 +13,10 @@ export default function About() {
                             About Me
                         </h1>
                         <p className="text-xl text-slate-600 leading-relaxed">
-                            Hey! My name is Luis and I am a FIDE Master based in Melbourne, Australia. I have over 7 years of coaching experience for students
-                            of all levels, from complete beginners to 2000+ FIDE rated players. 
+                            Hey! My name is Luis and I am a FIDE Master based in Melbourne, Australia. I started learning chess when I was 6 years old in primary school and have loved it ever since!
+                        </p>
+                        <p className="text-xl text-slate-600 leading-relaxed mt-4">
+                        I have over 7 years of coaching experience for students of all levels, from complete beginners to 2000+ FIDE rated players. 
                         </p>
                         <p className="text-xl text-slate-600 leading-relaxed mt-4">  
                             Please contact me via email at luischanchess@gmail.com if you have any questions about my coaching or want to book a session!
@@ -41,7 +43,7 @@ export default function About() {
                     </div>
                     <div className="p-8 bg-slate-50 rounded-2xl border border-slate-100">
                         <Brain className="text-indigo-600 mb-4" size={32} />
-                        <h3 className="font-bold text-lg mb-2">Psychology</h3>
+                        <h3 className="font-bold text-lg mb-2">Idk Broskis</h3>
                         <p className="text-sm text-slate-600">Testing 123.</p>
                     </div>
                 </section>

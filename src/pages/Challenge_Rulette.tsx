@@ -75,7 +75,7 @@ export default function EloStealo() {
                     <span>Suggest a Rule</span>
                 </button>
             </div>          
-            <main className="flex-1 flex flex-col items-center justify-center max-w-4xl mx-auto w-full gap-8 -mt-12">
+            <main className="flex-1 flex flex-col items-center justify-center max-w-4xl mx-auto w-full gap-6 -mt-12">
                 {/* Header */}
                 <div className="text-center space-y-7">
                     <h1 className="text-5xl md:text-7xl font-black tracking-tight text-black">

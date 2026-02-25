@@ -69,12 +69,12 @@ export default function EloStealo() {
 
                 {/* Header */}
                 <div className="text-center space-y-7">
-                    <h1 className="text-5xl md:text-7xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-red-500 to-purple-500">
+                    <h1 className="text-5xl md:text-7xl font-black tracking-tight text-white">
                         Challenge Rulette
                     </h1>
                     <p className="text-xl text-slate-400">A fun page to give yourself an extra challenge! Rules are created by either me or my students.
                     </p>
-                    <p className="text-xl text-slate-600 italic">
+                    <p className="text-xl text-slate-400 italic">
                         You must follow the rule or resign.
                     </p>
                 </div>

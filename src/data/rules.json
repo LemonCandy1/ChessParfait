@@ -1,9 +1,48 @@
 {
     "Piece of Cake": [
         {
-            "title": "The Gentle Opening",
-            "rule": "You cannot play 1. e4 or 1. d4 as your first move."
+            "title": "Lucky You!",
+            "rule": "There is no bad rule for you! However, if your opponent laughs during your game, you must resign."
+        },
+        {
+            "title": "Rooks on Rails",
+            "rule": "Your rooks cannot leave the a and h files."
+        },
+        {
+            "title": "Sweet Tooth",
+            "rule": "You must capture with a pawn on every turn if possible."
+        },
+        {
+            "title": "Crippled Calvary",
+            "rule": "Your knights have tripped, hurt their legs and can no longer move"
+        },
+        {
+            "title": "Frosting ",
+            "rule": "You cannot move any piece more than twice until every piece has been moved at least once."
+        },
+        {
+            "title": "Pacifist",
+            "rule": "Go 10 turns without capturing a piece or a pawn."
+        },
+        {
+            "title": "Sonic's Ring of Infinity",
+            "rule": "Once during your game, you have to move your king around a pawn in a full circle like a hula hoop."
+        },
+        {
+            "title": "Freeze Spell",
+            "rule": "Read this rule out loud. Your opponent can cast a freeze spell on one of your pieces at any point during the game. If your piece is frozen, it cannot move the next turn."
+        },
+        {
+            "title": "Fruit Master",
+            "rule": "Before every move, you have to say the name of a fruit. You cannot say the same fruit twice."
+        },
+        {
+            "title": "Left or Right?",
+            "rule": "Read this rule out loud. You must move pieces on black squares with your RIGHT hand and pieces on white squares with your LEFT hand. You must move your king with BOTH hands. If you move a piece with the wrong hand, you lose."
         }
+
+
+
     ],
     "Doughnut Elo": [
         {
@@ -11,20 +50,154 @@
             "rule": "You must move your Queen at least once every 5 moves."
         },
         {
-            "title": "I'm Committed",
+            "title": "OverCommitted",
             "rule": "Once you move a piece onto your opponent's half of the board, that piece may not retreat back across the halfway line"
+        },
+        {
+            "title": "Gotta Push Em All",
+            "rule": "You have to move every pawn once before you can move any pawn twice."
+        },
+        {
+            "title": "VIP Queen",
+            "rule": "If you lose your queen, you must resign."
+        },
+        {
+            "title": "Scaredy Pawns",
+            "rule": "Your pawns cannot go into your opponent's half of the board."
+        },
+        {
+            "title": "Crosshairs",
+            "rule": "You can't land a piece or pawn on the f-file or the 3rd rank."
+        },
+        {
+            "title": "The Knights' Tour",
+            "rule": "Make 10 knight moves at the start of the game."
+        },
+        {
+            "title": "Lazy Pawns",
+            "rule": "You can only move 4 pawns in the entire game. All other pawns are fast asleep."
+        },
+        {
+            "title": "Back Scratcher",
+            "rule": "If an opponent's piece lands in your back rank, you must resign. If you land a piece in your opponent's back rank, you must read this rule out loud."
+        },
+        {
+            "title": "Master of all Pieces",
+            "rule": "You have to move a difference piece ever turn. You cannot move the same piece twice in a row."
+        },
+        {
+            "title": "Minor Inconvenience",
+            "rule": "Every second move, you must move a minor piece (knight or bishop) or a pawn."
+        },
+        {
+            "title": "Bad Marriage",
+            "rule": "You must castle queenside and if your queen is captured, you must resign."
+        },
+        {
+            "title": "Jaden's Troll Opening",
+            "rule": "You must play g4/g5, h4/h5, b4/b5, a4/a5 and then play the bongcloud (move your king up to e2/e7)"
+        },
+        {
+            "title": "Whoops I Promoted to a Bishop",
+            "rule": "You need to promote a pawn to a bishop within 30 moves and must resign if you fail."
+        },
+        {
+            "title": "Dark Knight",
+            "rule": "Every 3 moves, you have to move a piece to a dark square."
         }
+
     ],
     "Pinned Down": [
         {
             "title": "Watch Your Back",
             "rule": "Every 4 moves, you have to make a backwards move."
+        },
+        {
+            "title": "Poisoned Pawns",
+            "rule": "Once you capture a pawn, you can no longer move that piece for the rest of the game."
+        },
+        {
+            "title": "The Dayman",
+            "rule": "You can only capture pieces on light coloured squares."
+        },
+        {
+            "title": "The Nightman",
+            "rule": "You can only capture pieces on dark coloured squares."
+        },
+        {
+            "title": "Rough Morning",
+            "rule": "Your first ten pawn moves must spell: 'BADBEDHEAD' (move the b pawn, then a pawn etc...). You can move your other pieces in between."
+        },
+        {
+            "title": "Oh No, My Everything!",
+            "rule": "Sacrifice a knight and a bishop for pawns, a rook for a knight or bishop and a queen for a knight, bishop or rook."
+        },
+        {
+            "title": "BEB the Hungry Monster",
+            "rule": "Your first 3 captures must spell 'BEB' (capture on the b file, then e file, then b file again)."
+        },
+        {
+            "title": "Emo Pawns",
+            "rule": "Your Pawns have turned emo and cannot move to a square that protects another pawn or piece. Pieces can move to squares protected by pawns."
+        },
+        {
+            "title": "The King's Bodyguard",
+            "rule": "Your king is very important and has a bodyguard of 3 pieces. You have to keep at least 3 pieces within one square of your king at all times or you lose."
+        },
+        {
+            "title": "The Queen's Bodyguard",
+            "rule": "Your queen is very important and has a bodyguard of 3 pieces. You have to keep at least 3 pieces within one square of your queen at all times or you lose."
+        },
+        {
+            "title": "Major Inconvenience",
+            "rule": "Every second move, you must move a major piece (rook or queen)."
+        },
+        {
+            "title": "For Once, You Hate Water",
+            "rule": "Every 10 moves, the water level rises one rank and the pieces in the water can't move. You cannot move any pieces in the water either. "
+        },
+        {
+            "title": "3 Lives!",
+            "rule": "If you lose 3 pawns in the game, you must resign."
         }
+
     ],
     "Challenge": [
         {
-            "title": "Grandmaster's Burden",
-            "rule": "You must play the entire game using only one hand and never touch the board with the other."
+            "title": "Pair of Pawns",
+            "rule": "You can only move two of your pawns."
+        },
+        {
+            "title": "Straight up AntiChess",
+            "rule": "If you can take any piece, you have to take that piece. If you have multiple pieces you can take, you can choose which one to take."
+        },
+        {
+            "title": "Double Trouble",
+            "rule": "If you move a piece, your next move must be a move with the same kind of piece. If not possible, you can move any other piece."
+        },
+        {
+            "title": "Ticking Time Bomb",
+            "rule": "Read this rule aloud. You only have 5 turns. For each capture you make, you get 3 more turns. If you run out of turns, you lose."
+        },
+        {
+            "title": "Piece Sniper",
+            "rule": "Your first 5 captures must be a pawn, then a knight, then a rook, then a bishop, then a queen. You may not make any other captures in between."
+        },
+        {
+            "title": "67!",
+            "rule": "You must move 6 pawns, then 7 pieces. When you finish, you must shout 67!!"
+        },
+        {
+            "title": "Yin and Yang",
+            "rule": "Every move, you have to move to a white square and then to a black square. You can choose which one to move to first."
+        },
+        {
+            "title": "Cannibalism",
+            "rule": "Pieces can only capture pieces of the same type. For example, a rook can only capture a rook, a knight can only capture a knight etc..."
+        },
+        {
+            "title": "We Stick Together",
+            "rule": "All your pieces must be next to at least one other piece."
         }
     ]
 }

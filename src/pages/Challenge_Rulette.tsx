@@ -13,23 +13,27 @@ export default function EloStealo() {
     const [currentRule, setCurrentRule] = useState<Rule>({
         title: "Select a difficulty to draw your handicap",
         rule: "",
-    });    const [isRevealing, setIsRevealing] = useState(false);
-
+    });
+    const BLOCK_REPEAT_VALUE = 3; // Number of recent rules to block from repeating
+    const [isRevealing, setIsRevealing] = useState(false);
+    const [history, setHistory] = useState<string[]>([]);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [showSuccess, setShowSuccess] = useState(false);
     const [formData, setFormData] = useState({ name: '', rule: "", level: 'Doughnut Elo' });
 
     const drawRule = (level: Difficulty) => {
-        // Add a tiny delay to create a "drawing" animation effect
         setIsRevealing(true);
         setDifficulty(level);
 
         setTimeout(() => {
             const rulesForLevel = rulesData[level];
-            const randomRule = rulesForLevel[Math.floor(Math.random() * rulesForLevel.length)];            setCurrentRule(randomRule);
-            setCurrentRule(randomRule);
+            const availableRules = rulesForLevel.filter(r => !history.includes(r.rule));
+            const pool = availableRules.length > 0 ? availableRules : rulesForLevel;
+            const nextRule = pool[Math.floor(Math.random() * pool.length)];
+            setHistory(prev => [nextRule.rule, ...prev].slice(0, BLOCK_REPEAT_VALUE));
+            setCurrentRule(nextRule);
             setIsRevealing(false);
-        }, 200); // delay for fade
+        }, 200);
     };
 
     const getIcon = (level: Difficulty) => {

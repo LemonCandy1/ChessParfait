@@ -22,7 +22,7 @@ export default function About() {
                     </div>
                     <div className="w-64 h-100 bg-indigo-100 rounded-3xl rotate-0 shadow-xl overflow-hidden border-4 border-white">
                         <div className="w-full h-full flex items-center justify-center text-indigo-300">
-                            <img src={profilePicture} className="w-full h-full object-cover" />
+                            <img src={profilePicture} fetchPriority= "high" className="w-full h-full object-cover" />
                         </div>
                     </div>
                 </section>

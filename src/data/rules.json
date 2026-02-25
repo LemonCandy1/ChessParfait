@@ -1,0 +1,22 @@
+{
+    "Piece of Cake": [
+        "You are not allowed to castle this game.",
+        "Your King must move on move 2 (Bongcloud).",
+        "You cannot capture any pawns for the first 10 moves."
+    ],
+    "Doughnut Elo": [
+        "Start the game without your Queenside Knight.",
+        "You must play the entire game with exactly half the time on your clock as your opponent.",
+        "Every time your opponent checks you, you must drop a pawn."
+    ],
+    "Pinned Down": [
+        "Start the game without your Queen.",
+        "You are not allowed to move your pawns past the 4th rank.",
+        "If you move a piece backward, you automatically lose your turn."
+    ],
+    "Challenge": [
+        "Start the game without your Queen AND your Kingside Rook.",
+        "You must play blindfolded while your opponent plays normally.",
+        "You must announce checkmate 5 moves in advance. If you miss it, you resign."
+    ]
+}

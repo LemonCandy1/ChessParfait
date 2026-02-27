@@ -78,6 +78,7 @@ export default function ChallengeRulette() {
             setTimeout(() => setShowSuccess(false), 2000);
         }
         setIsLoading(false);
+        return data;
     };
     return (
 

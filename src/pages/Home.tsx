@@ -37,7 +37,7 @@ export default function Home() {
                         Elevate Your Game with <span className="text-indigo-600">Instructive and Engaging</span> Coaching
                     </h2>
                     <p className="text-xl text-slate-600 mb-8">
-                        Personalised training for ambitious players.
+                        Personalised training for ambitious players. Currently running in-person session in Melbourne, Australia. Contact me for more information.
                     </p>
                 </div>
 

@@ -54,6 +54,17 @@ export default function About() {
                     <p className="mb-4">
                         In addition to my coaching, I have created this website to showcase the parts of chess that I really like. Chess puzzles, instructive games and other variants including fog of war chess and imposter chess is in the works!
                     </p>
+                    <p className="mb-4">
+                        My favourite variant is Fog of War Chess, a game of hidden information where you can only see the sqaures which your pieces can move to. In 2024, I became the first world champion after a gruelling 
+                        double knockout tournament against some of the best players in the world. You can check it out{" "}
+                        <a href="https://www.chess.com/news/view/2024-chesscom-fog-of-war-chess-championship-knockout-chan-wins"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="font-mono font-bold text-indigo-600 hover:text-indigo-800 underline decoration-indigo-300 underline-offset-4 transition-all"
+                        >
+                            here.
+                        </a>
+                    </p>
                     <p>
                         Whether you are a club player in Melbourne or an aspiring master overseas,
                         my aim is to provide the perfect blend of deep theory and practical

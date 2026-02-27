@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Cake, Donut, AlertTriangle, Skull, X, MessageSquarePlus, CheckCircle2 } from 'lucide-react';
 import rulesData from '../data/rules.json';
 import Navbar from '../components/Navbar/Navbar';
+import { supabase } from '../../lib/supabaseClient.ts';
 type Difficulty = 'Piece of Cake' | 'Doughnut Elo' | 'Pinned Down' | 'Challenge';
 
 export default function EloStealo() {
@@ -9,6 +10,7 @@ export default function EloStealo() {
         title: string;
         rule: string;
     }
+    const [isLoading, setIsLoading] = useState(false);
     const [difficulty, setDifficulty] = useState<Difficulty>('Piece of Cake');
     const [currentRule, setCurrentRule] = useState<Rule>({
         title: "Select a difficulty to draw your handicap",
@@ -45,18 +47,32 @@ export default function EloStealo() {
             default: return <Cake size={24} />;
         }
     };
-    const handleSendSuggestion = (e: React.FormEvent) => {
-        e.preventDefault(); // Prevents the page from refreshing
+    const handleSendSuggestion = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setIsLoading(true);
+        
+        // Insert new suggestion to Supabase
+        // data and error are returned. If save is successful, error will be null and data is an array of rules.
+        const { data, error } = await supabase
+            .from('Suggestions')
+            .insert([
+                {
+                    user_name: formData.name,
+                    difficulty: formData.level,
+                    rule_text: formData.rule
+                },
+            ]);
+        if (error) {
+            setIsModalOpen(false);
+            alert('There was an error sending your suggestion. Please try again later.');
+        }
 
-        // Here is where you would normally send the data to a database or email
-        console.log("New Suggestion:", formData);
-
-        setIsModalOpen(false); // Close the box
-        setFormData({ name: '', rule: '', level: 'Doughnut Elo' }); // Reset form
-
-        // Show the disappearing "Sent!" message
-        setShowSuccess(true);
-        setTimeout(() => setShowSuccess(false), 3000); // Disappears after 3 seconds
+        if (!error) {
+            setIsModalOpen(false);
+            setShowSuccess(true);
+            setFormData({ name: '', rule: '', level: 'Doughnut Elo' });
+        }
+        setIsLoading(false);
     };
     return (
 
@@ -229,9 +245,13 @@ export default function EloStealo() {
                                 </button>
                                 <button
                                     type="submit"
-                                    className="flex-1 py-4 px-4 rounded-2xl font-bold bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-200 transition-all active:scale-95"
+                                    disabled={isLoading} // lock the button to prevent double sending
+                                    className={`flex-1 py-4 rounded-2xl font-bold transition-all ${isLoading
+                                            ? 'bg-slate-300 cursor-not-allowed'
+                                            : 'bg-indigo-600 hover:bg-indigo-700 text-white'
+                                        }`}
                                 >
-                                    Submit
+                                    {isLoading ? 'Sending...' : 'Send Idea'}
                                 </button>
                             </div>
                         </form>

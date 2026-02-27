@@ -2,10 +2,10 @@ import { useState } from 'react';
 import { Cake, Donut, AlertTriangle, Skull, X, MessageSquarePlus, CheckCircle2 } from 'lucide-react';
 import rulesData from '../data/rules.json';
 import Navbar from '../components/Navbar/Navbar';
-import { supabase } from '../../lib/supabaseClient.ts';
+import { supabase } from '../lib/supabaseClient.ts';
 type Difficulty = 'Piece of Cake' | 'Doughnut Elo' | 'Pinned Down' | 'Challenge';
 
-export default function EloStealo() {
+export default function ChallengeRulette() {
     interface Rule {
         title: string;
         rule: string;
@@ -63,14 +63,19 @@ export default function EloStealo() {
                 },
             ]);
         if (error) {
+            console.error('Error inserting suggestion:', error);
             setIsModalOpen(false);
-            alert('There was an error sending your suggestion. Please try again later.');
+            alert(`Error: ${error.message}`);
+            setIsLoading(false);
+            return
         }
 
         if (!error) {
             setIsModalOpen(false);
             setShowSuccess(true);
             setFormData({ name: '', rule: '', level: 'Doughnut Elo' });
+            //only show success messsage for 2 secs
+            setTimeout(() => setShowSuccess(false), 2000);
         }
         setIsLoading(false);
     };
@@ -91,7 +96,7 @@ export default function EloStealo() {
                     <span>Suggest a Rule</span>
                 </button>
             </div>          
-            <main className="flex-1 flex flex-col items-center justify-center max-w-4xl mx-auto w-full gap-6 -mt-12">
+            <main className="flex-1 flex flex-col items-center justify-start max-w-4xl mx-auto w-full pt-20 gap-6 -mt-12">
                 {/* Header */}
                 <div className="text-center space-y-7">
                     <h1 className="text-5xl md:text-7xl font-black tracking-tight text-black">
@@ -122,7 +127,7 @@ export default function EloStealo() {
                         }`} />
 
                     <div className="relative z-10">
-                        <div className={`flex flex-col items-center gap-2 mb-6 transition-all duration-300 ${isRevealing ? 'opacity-0 -translate-y-4' : 'opacity-100 translate-y-0'}`}>
+                        <div className={`min-h-[120px] flex flex-col items-center gap-2 mb-6 transition-all duration-300 ${isRevealing ? 'opacity-0 -translate-y-4' : 'opacity-100 translate-y-0'}`}>
 
                             {/* UPDATED: Icon color now maps to difficulty */}
                             <div className={`mb-2 transition-colors duration-500 ${difficulty === 'Piece of Cake' ? 'text-blue-500' :

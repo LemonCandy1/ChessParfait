@@ -21,7 +21,7 @@ export default function ChallengeRulette() {
     const [history, setHistory] = useState<string[]>([]);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [showSuccess, setShowSuccess] = useState(false);
-    const [formData, setFormData] = useState({ name: '', rule: "", level: 'Doughnut Elo' });
+    const [formData, setFormData] = useState({ name: '', title: '', rule: "", level: 'Doughnut Elo' });
 
     const drawRule = (level: Difficulty) => {
         setIsRevealing(true);
@@ -59,6 +59,7 @@ export default function ChallengeRulette() {
                 {
                     user_name: formData.name,
                     difficulty: formData.level,
+                    rule_title: formData.title,
                     rule_text: formData.rule
                 },
             ]);
@@ -73,7 +74,7 @@ export default function ChallengeRulette() {
         if (!error) {
             setIsModalOpen(false);
             setShowSuccess(true);
-            setFormData({ name: '', rule: '', level: 'Doughnut Elo' });
+            setFormData({ name: '', title: '', rule: '', level: 'Doughnut Elo' });
             //only show success messsage for 2 secs
             setTimeout(() => setShowSuccess(false), 2000);
         }
@@ -229,7 +230,15 @@ export default function ChallengeRulette() {
                                     <option value="Challenge">Challenge</option>
                                 </select>
                             </div>
-
+                            <div>
+                                <label className="block text-xs font-black uppercase tracking-widest text-slate-400 mb-2">The Rule</label>
+                                <textarea
+                                    className="w-full bg-slate-50 border-2 border-slate-400 rounded-2xl px-4 py-3 text-slate-900 focus:outline-none focus:border-indigo-500 resize-none transition-all"
+                                    placeholder="e.g. You cannot castle this game..."
+                                    value={formData.title}
+                                    onChange={e => setFormData({ ...formData, title: e.target.value })}
+                                />
+                            </div>
                             <div>
                                 <label className="block text-xs font-black uppercase tracking-widest text-slate-400 mb-2">The Rule</label>
                                 <textarea

@@ -231,10 +231,10 @@ export default function ChallengeRulette() {
                                 </select>
                             </div>
                             <div>
-                                <label className="block text-xs font-black uppercase tracking-widest text-slate-400 mb-2">The Rule</label>
+                                <label className="block text-xs font-black uppercase tracking-widest text-slate-400 mb-2">Rule Name</label>
                                 <textarea
                                     className="w-full bg-slate-50 border-2 border-slate-400 rounded-2xl px-4 py-3 text-slate-900 focus:outline-none focus:border-indigo-500 resize-none transition-all"
-                                    placeholder="e.g. You cannot castle this game..."
+                                    placeholder="e.g. You shall not Castle..."
                                     value={formData.title}
                                     onChange={e => setFormData({ ...formData, title: e.target.value })}
                                 />

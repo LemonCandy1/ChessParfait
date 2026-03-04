@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
-import { Send, CheckCircle2, Skull, Donut, Cake, Loader2 } from 'lucide-react';
-import { Chess } from 'chess.js';
+import { Send, CheckCircle2, Trophy, Brain, Target, Loader2 } from 'lucide-react';
+import { Chessboard } from 'react-chessboard';
 import Navbar from '../components/Navbar/Navbar';
 import { supabase } from '../lib/supabaseClient';
 
@@ -34,64 +34,6 @@ const CHALLENGES: Challenge[] = [
         question: 'White to move. What is the most instructive strategic plan in this Catalan position?',
     }
 ];
-
-/**
- * Custom Static Chessboard Renderer
- * Uses Lichess Wikipedia piece set and Parfait theme gradients.
- */
-const StaticBoard = ({ fen }: { fen: string }) => {
-    const board = useMemo(() => {
-        try {
-            const game = new Chess(fen);
-            return game.board();
-        } catch (e) {
-            console.error("Invalid FEN:", fen);
-            return new Chess().board();
-        }
-    }, [fen]);
-
-    const getPieceImg = (type: string, color: string) => {
-        // Pieces on most servers are named color (lowercase) + type (uppercase)
-        // e.g., wP, bK, wQ
-        const piece = color + type.toUpperCase();
-        // Using Wikimedia Commons / Wikipedia style pieces via a reliable CDN
-        return `https://raw.githubusercontent.com/lichess-org/lila/master/public/piece/wikipedia/${piece}.svg`;
-    };
-
-    return (
-        <div className="grid grid-cols-8 grid-rows-8 w-full h-full border border-plum/10 rounded-lg overflow-hidden shadow-inner bg-white">
-            {board.map((row, rowIndex) => 
-                row.map((square, colIndex) => {
-                    const isDark = (rowIndex + colIndex) % 2 === 1;
-                    return (
-                        <div 
-                            key={`${rowIndex}-${colIndex}`}
-                            className="flex items-center justify-center relative aspect-square"
-                            style={{
-                                background: isDark 
-                                    ? 'linear-gradient(135deg, #D18B47 0%, #B58863 100%)' // Light Brown Theme
-                                    : 'linear-gradient(135deg, #F8F5F2 0%, #FFFDD0 100%)'
-                            }}
-                        >
-                            {square && (
-                                <img 
-                                    src={getPieceImg(square.type, square.color)} 
-                                    alt={`${square.color}${square.type}`}
-                                    className="w-[85%] h-[85%] select-none pointer-events-none drop-shadow-sm z-10"
-                                    onError={(e) => {
-                                        // Fallback to chessboardjs PNGs if SVG fails
-                                        const piece = square.color + square.type.toUpperCase();
-                                        e.currentTarget.src = `https://chessboardjs.com/img/chesspieces/wikipedia/${piece}.png`;
-                                    }}
-                                />
-                            )}
-                        </div>
-                    );
-                })
-            )}
-        </div>
-    );
-};
 
 export default function TrainingPuzzles() {
     const [submitting, setSubmitting] = useState<string | null>(null);
@@ -142,10 +84,15 @@ export default function TrainingPuzzles() {
         }
     };
 
+    const boardStyles = useMemo(() => ({
+        borderRadius: '8px',
+        boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)'
+    }), []);
+
     return (
         <div className="min-h-screen bg-cream flex flex-col relative overflow-x-hidden text-plum font-sans">
             {/* Background Decorative Elements */}
-            <div className="absolute top-0 left-0 w-[1000px] h-[1000px] bg-berry/5 rounded-full blur-3xl -z-10 -translate-x-1/2 -translate-y-1/2" />
+            <div className="absolute top-0 left-0 w-250 h-250 bg-berry/5 rounded-full blur-3xl -z-10 -translate-x-1/2 -translate-y-1/2" />
             
             <Navbar />
 
@@ -173,18 +120,27 @@ export default function TrainingPuzzles() {
                             }`}>
                                 <div className="flex items-center gap-3">
                                     <div className="p-2 rounded-xl bg-white shadow-sm">
-                                        {challenge.difficulty === 'Piece of Cake' ? <Cake size={20} className="text-emerald-600" /> :
-                                         challenge.difficulty === 'Doughnut Elo' ? <Donut size={20} className="text-amber-600" /> :
-                                         <Skull size={20} className="text-berry" />}
+                                        {challenge.difficulty === 'Piece of Cake' ? <Target size={20} className="text-emerald-600" /> :
+                                         challenge.difficulty === 'Doughnut Elo' ? <Brain size={20} className="text-amber-600" /> :
+                                         <Trophy size={20} className="text-berry" />}
                                     </div>
                                     <span className="font-black uppercase tracking-[0.2em] text-[10px] text-plum/40">{challenge.difficulty}</span>
                                 </div>
                             </div>
 
-                            {/* Chessboard Section - Using StaticBoard */}
+                            {/* Chessboard Section */}
                             <div className="p-8 bg-white/30 flex items-center justify-center">
                                 <div className="w-full aspect-square max-w-[320px] shadow-2xl rounded-2xl overflow-hidden border-8 border-white/50 relative">
-                                    <StaticBoard fen={challenge.fen} />
+                                    <Chessboard
+                                        {...({
+                                            id: `Challenge-${challenge.difficulty}`,
+                                            position: challenge.fen,
+                                            arePiecesDraggable: false,
+                                            customBoardStyle: boardStyles,
+                                            customDarkSquareStyle: { background: '#6B5B95' },
+                                            customLightSquareStyle: { background: '#F8F5F2' }
+                                        } as any)}
+                                    />
                                 </div>
                             </div>
 
@@ -242,7 +198,7 @@ export default function TrainingPuzzles() {
             </main>
 
             {/* Success Toast */}
-            <div className={`fixed bottom-12 left-1/2 -translate-x-1/2 bg-plum text-cream px-10 py-5 rounded-[2rem] font-black shadow-2xl flex items-center gap-4 z-[100] transition-all duration-700 border border-white/10 ${
+            <div className={`fixed bottom-12 left-1/2 -translate-x-1/2 bg-plum text-cream px-10 py-5 rounded-4xl font-black shadow-2xl flex items-center gap-4 z-100 transition-all duration-700 border border-white/10 ${
                 showSuccess ? 'opacity-100 translate-y-0 scale-100' : 'opacity-0 translate-y-12 scale-90 pointer-events-none'
             }`}>
                 <CheckCircle2 size={24} className="text-berry" />

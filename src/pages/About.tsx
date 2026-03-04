@@ -1,86 +1,103 @@
-import { Award, Star, Medal } from 'lucide-react';
+import { Award, Star, Medal, ExternalLink } from 'lucide-react';
 import profilePicture from '../assets/Profile Photo.jpeg'; 
 import Navbar from '../components/Navbar/Navbar.tsx';
 
 export default function About() {
     return (
-        <div className="min-h-screen bg-slate-50 text-slate-900 font-sans">
+        <div className="min-h-screen bg-cream text-plum font-sans">
             <Navbar />
-            <main className="max-w-4xl mx-auto px-6 py-12">
-                <section className="mb-20 text-center md:text-left flex flex-col md:flex-row items-center gap-12">
-                    <div className="flex-1">
-                        <h1 className="text-5xl font-black mb-6 leading-tight">
-                            About Me
+            
+            <main className="max-w-5xl mx-auto px-6 py-16">
+                <section className="mb-24 flex flex-col lg:flex-row items-center gap-16">
+                    <div className="flex-1 order-2 lg:order-1">
+                        <div className="inline-block px-4 py-1.5 mb-6 text-xs font-bold tracking-widest text-berry uppercase bg-berry/10 rounded-full">
+                            FIDE Master & Coach
+                        </div>
+                        <h1 className="text-6xl font-black mb-8 leading-tight tracking-tight">
+                            About <span className="text-berry">Me</span>
                         </h1>
-                        <p className="text-xl text-slate-600 leading-relaxed">
-                            Hey! My name is Luis and I am a FIDE Master based in Melbourne, Australia. I started learning chess when I was 6 years old in primary school and have loved it ever since!
-                        </p>
-                        <p className="text-xl text-slate-600 leading-relaxed mt-4">
-                        I have over 7 years of coaching experience for students of all levels, from complete beginners to 2000+ FIDE rated players. 
-                        </p>
-                        <p className="text-xl text-slate-600 leading-relaxed mt-4">  
-                            Please contact me via email at luischanchess@gmail.com if you have any questions about my coaching, my website or want to book a session!
-                        </p>
-                    </div>
-                    <div className="w-64 h-100 bg-indigo-100 rounded-3xl rotate-0 shadow-xl overflow-hidden border-4 border-white">
-                        <div className="w-full h-full flex items-center justify-center text-indigo-300">
-                            <img src={profilePicture} fetchPriority= "high" className="w-full h-full object-cover" />
+                        <div className="space-y-6 text-xl text-plum/70 leading-relaxed">
+                            <p>
+                                Hey! My name is Luis and I am a FIDE Master based in Melbourne, Australia. I started learning chess when I was 6 years old in primary school and have loved it ever since!
+                            </p>
+                            <p>
+                                I have over 7 years of coaching experience and have taught students from their first games to achieving 2000+ FIDE ratings.
+                            </p>
+                            <p>
+                                I'm always happy to hear any questions! Reach out at <a href="mailto:luischanchess@gmail.com" className="text-berry font-bold hover:underline">luischanchess@gmail.com</a>.
+                            </p>
                         </div>
                     </div>
-                </section>
-
-                {/* The Three Pillars */}
-                <section className="grid md:grid-cols-3 gap-10 mb-20">
-                    <div className="p-8 bg-slate-50 rounded-2xl border border-slate-100">
-                        <Award className="text-indigo-600 mb-4" size={32} />
-                        <h3 className="font-bold text-lg mb-2">FIDE Rating</h3>
-                        <p className="text-xl text-slate-600">2250</p>
-                    </div>
-                    <div className="p-8 bg-slate-50 rounded-2xl border border-slate-100">
-                        <Star className="text-indigo-600 mb-4" size={32} />
-                        <h3 className="font-bold text-lg mb-2">ACF Rating</h3>
-                        <p className="text-xl text-slate-600">2318</p>
-                    </div>
-                    <div className="p-8 bg-slate-50 rounded-2xl border border-slate-100">
-                        <Medal className="text-indigo-600 mb-4" size={32} />
-                        <h3 className="font-bold text-lg mb-2">Australia Rank</h3>
-                        <p className="text-xl text-slate-600">#14</p>
+                    
+                    <div className="relative order-1 lg:order-2">
+                        <div className="w-72 h-100 bg-plum/10 rounded-[3rem] shadow-2xl overflow-hidden border-8 border-white transform rotate-3 hover:rotate-0 transition-transform duration-500">
+                            <img src={profilePicture} fetchPriority="high" className="w-full h-full object-cover" alt="Luis Chan" />
+                        </div>
+                        <div className="absolute -bottom-6 -right-6 w-32 h-32 bg-berry/10 rounded-full blur-2xl -z-10" />
+                        <div className="absolute -top-6 -left-6 w-24 h-24 bg-plum/5 rounded-full blur-xl -z-10" />
                     </div>
                 </section>
 
-                {/* Personal Story */}
-                <section className="prose prose-slate lg:prose-xl">
-                    <h2 className="text-3xl font-bold mb-6">The Chess Parfait Story</h2>
-                    <p className="mb-4">
-                        In addition to my coaching, I have created this website to showcase the parts of chess that I really like. Chess puzzles, instructive games and other variants including fog of war chess and imposter chess is in the works!
-                    </p>
-                    <p className="mb-4">
-                        My favourite variant is Fog of War Chess, a game of hidden information where you can only see the sqaures which your pieces can move to. In 2024, I became the first world champion after a gruelling 
-                        double knockout tournament against some of the best players in the world. You can check it out{" "}
-                        <a href="https://www.chess.com/news/view/2024-chesscom-fog-of-war-chess-championship-knockout-chan-wins"
+                {/* Statistics Cards */}
+                <section className="grid md:grid-cols-3 gap-8 mb-24">
+                    <StatCard icon={<Award className="text-berry" />} label="FIDE Rating" value="2250" />
+                    <StatCard icon={<Star className="text-plum" />} label="ACF Rating" value="2318" />
+                    <StatCard icon={<Medal className="text-berry" />} label="Australia Rank*" value="#16" />
+                </section>
+
+                {/* The Story Section */}
+                <section className="grid lg:grid-cols-2 gap-16 mb-24 items-center">
+                    <div className="p-12 glass rounded-[3rem] relative overflow-hidden">
+                        <div className="absolute top-0 right-0 w-32 h-32 bg-berry/5 rounded-full -translate-y-1/2 translate-x-1/2" />
+                        <h2 className="text-4xl font-bold mb-8">Chess Parfait Story</h2>
+                        <div className="space-y-6 text-lg text-plum/70">
+                            <p>
+                                In addition to my coaching, I have created this website to showcase the parts of chess that I really like. Chess puzzles, instructive games and other variants including fog of war chess and imposter chess is in the works!                            </p>
+                            <p>
+                                From game analysis to variants like <span className="text-berry font-semibold">Fog of War</span>, this is where I share the parts of chess that sparked my love for the game.
+                            </p>
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <h3 className="text-3xl font-bold mb-6">Fog of War Journey</h3>
+                        <p className="text-lg text-plum/70 mb-8 leading-relaxed">
+                            My favourite variant is Fog of War Chess, a game of hidden information where you can only see the sqaures which your pieces can move to. In 2024, I became the first world champion after a gruelling
+                            double knockout tournament against some of the best players in the world.
+                        </p>
+                        <a 
+                            href="https://www.chess.com/news/view/2024-chesscom-fog-of-war-chess-championship-knockout-chan-wins"
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="font-mono font-bold text-indigo-600 hover:text-indigo-800 underline decoration-indigo-300 underline-offset-4 transition-all"
+                            className="inline-flex items-center gap-2 font-bold text-berry hover:text-plum transition-colors border-b-2 border-berry/20 pb-1"
                         >
-                            here.
+                            Read about the Championship <ExternalLink size={18} />
                         </a>
-                    </p>
-                    <p>
-                        Whether you are a club player in Melbourne or an aspiring master overseas,
-                        my aim is to provide the perfect blend of deep theory and practical
-                        results to help students reach their goals in chess.
-                    </p>
+                    </div>
                 </section>
 
                 {/* Call to Action */}
-                <footer className="mt-20 p-12 bg-indigo-600 rounded-3xl text-white text-center">
-                    <h2 className="text-3xl font-bold mb-4">Ready to optimise your game?</h2>
-                    <p className="mb-8 opacity-90">Booking limited sessions for the current tournament season.</p>
-                    <button className="bg-white text-indigo-600 px-8 py-3 rounded-full font-bold hover:bg-indigo-50 transition">
-                        Contact me at luischanchess@gmail.com
-                    </button>
-                </footer>
+                <section className="p-16 bg-plum rounded-[4rem] text-cream text-center relative overflow-hidden shadow-2xl shadow-plum/30">
+                    <div className="absolute top-0 right-0 w-64 h-64 bg-berry/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
+                    <h2 className="text-5xl font-bold mb-6">Ready to reach the next level?</h2>
+                    <p className="text-xl mb-12 opacity-80 max-w-2xl mx-auto font-medium">
+                        Booking limited sessions for the current tournament season.
+                    </p>
+                    <a href="mailto:luischanchess@gmail.com" className="inline-block bg-berry hover:bg-berry/90 text-white px-10 py-5 rounded-2xl font-bold transition-all transform hover:scale-105 shadow-xl shadow-berry/30">
+                        Secure Your Spot
+                    </a>
+                </section>
             </main>
+        </div>
+    );
+}
+
+function StatCard({ icon, label, value }: { icon: any, label: string, value: string }) {
+    return (
+        <div className="p-10 glass rounded-3xl group hover:bg-white/80 transition-all duration-500 border-plum/5">
+            <div className="mb-6 opacity-80 group-hover:scale-110 transition-transform duration-500">{icon}</div>
+            <h3 className="font-bold text-sm uppercase tracking-widest text-plum/40 mb-2">{label}</h3>
+            <p className="text-4xl font-serif font-black text-plum group-hover:text-berry transition-colors">{value}</p>
         </div>
     );
 }

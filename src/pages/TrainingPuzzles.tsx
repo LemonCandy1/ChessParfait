@@ -1,70 +1,127 @@
 import { useState, useMemo } from 'react';
-import { Send, CheckCircle2, Trophy, Brain, Target, Loader2 } from 'lucide-react';
-import { Chessboard } from 'react-chessboard';
+import { Send, CheckCircle2, Skull, Donut, Cake, Loader2, ChevronLeft, Calendar } from 'lucide-react';
+import { Chess } from 'chess.js';
 import Navbar from '../components/Navbar/Navbar';
 import { supabase } from '../lib/supabaseClient';
+import puzzlesData from '../data/puzzles.json';
 
 type Difficulty = 'Piece of Cake' | 'Doughnut Elo' | 'Challenge';
 
-interface Challenge {
-    difficulty: Difficulty;
+interface Puzzle {
     title: string;
     fen: string;
     question: string;
-    hint?: string;
 }
 
-const CHALLENGES: Challenge[] = [
-    {
-        difficulty: 'Piece of Cake',
-        title: 'Basic Mates',
-        fen: '4k3/4Q3/4K3/8/8/8/8/8 b - - 0 1',
-        question: 'White to move. Is this a checkmate?',
-    },
-    {
-        difficulty: 'Doughnut Elo',
-        title: 'Tactical Awareness',
-        fen: 'r1bqkb1r/pppp1ppp/2n2n2/4p2Q/2B1P3/8/PPPP1PPP/RNB1K1NR w KQkq - 0 1',
-        question: 'White to move. Find the quickest way to win the game.',
-    },
-    {
-        difficulty: 'Challenge',
-        title: 'Master Level Strategy',
-        fen: 'rnbq1rk1/pp2bppp/4pn2/2pp4/2PP4/2N2NP1/PP2PPBP/R1BQ1RK1 w - - 0 1',
-        question: 'White to move. What is the most instructive strategic plan in this Catalan position?',
-    }
-];
+const StaticBoard = ({ fen, size = "small" }: { fen: string, size?: "small" | "large" }) => {
+    const board = useMemo(() => {
+        try {
+            const game = new Chess(fen);
+            return game.board();
+        } catch (e) {
+            console.error("Invalid FEN:", fen);
+            return new Chess().board();
+        }
+    }, [fen]);
 
-export default function TrainingPuzzles() {
-    const [submitting, setSubmitting] = useState<string | null>(null);
-    const [showSuccess, setShowSuccess] = useState(false);
-    const [formData, setFormData] = useState<{ [key: string]: { name: string, answer: string } }>({
-        'Piece of Cake': { name: '', answer: '' },
-        'Doughnut Elo': { name: '', answer: '' },
-        'Challenge': { name: '', answer: '' }
-    });
-
-    const handleInputChange = (difficulty: Difficulty, field: 'name' | 'answer', value: string) => {
-        setFormData(prev => ({
-            ...prev,
-            [difficulty]: { ...prev[difficulty], [field]: value }
-        }));
+    const getPieceImg = (type: string, color: string) => {
+        const piece = color + type.toUpperCase();
+        return `https://raw.githubusercontent.com/lichess-org/lila/master/public/piece/wikipedia/${piece}.svg`;
     };
 
-    const handleSubmit = async (e: React.FormEvent, difficulty: Difficulty) => {
-        e.preventDefault();
-        setSubmitting(difficulty);
+    return (
+        <div className={`grid grid-cols-8 grid-rows-8 w-full h-full border border-plum/10 rounded-lg overflow-hidden shadow-inner bg-white ${size === 'large' ? 'shadow-2xl' : ''}`}>
+            {board.map((row, rowIndex) => 
+                row.map((square, colIndex) => {
+                    const isDark = (rowIndex + colIndex) % 2 === 1;
+                    return (
+                        <div 
+                            key={`${rowIndex}-${colIndex}`}
+                            className="flex items-center justify-center relative aspect-square"
+                            style={{
+                                background: isDark 
+                                    ? 'linear-gradient(135deg, #D18B47 0%, #B58863 100%)' 
+                                    : 'linear-gradient(135deg, #F8F5F2 0%, #FFFDD0 100%)'
+                            }}
+                        >
+                            {square && (
+                                <img 
+                                    src={getPieceImg(square.type, square.color)} 
+                                    alt={`${square.color}${square.type}`}
+                                    className="w-[85%] h-[85%] select-none pointer-events-none drop-shadow-sm z-10"
+                                    onError={(e) => {
+                                        const piece = square.color + square.type.toUpperCase();
+                                        e.currentTarget.src = `https://chessboardjs.com/img/chesspieces/wikipedia/${piece}.png`;
+                                    }}
+                                />
+                            )}
+                        </div>
+                    );
+                })
+            )}
+        </div>
+    );
+};
 
-        const { name, answer } = formData[difficulty];
+export default function TrainingPuzzles() {
+    const [selectedDifficulty, setSelectedDifficulty] = useState<Difficulty | null>(null);
+    const [submitting, setSubmitting] = useState<boolean>(false);
+    const [showSuccess, setShowSuccess] = useState(false);
+    const [formData, setFormData] = useState({ name: '', answer: '' });
+
+    /**
+     * Logic to determine the puzzle week.
+     * We use a reference Monday (March 2, 2026) as the start of "Week 1".
+     * Puzzles refresh every Monday at 12:00 AM.
+     */
+    const puzzleInfo = useMemo(() => {
+        const now = new Date();
+        
+        // Reference Monday: March 2nd, 2026
+        const referenceDate = new Date('2026-03-02T00:00:00');
+        
+        // Calculate the difference in milliseconds
+        const diffInMs = now.getTime() - referenceDate.getTime();
+        
+        // Convert to weeks (7 days * 24h * 60m * 60s * 1000ms)
+        const msInWeek = 1000 * 60 * 60 * 24 * 7;
+        
+        // Week number (1-indexed)
+        // If before reference date, default to 1
+        const weekIndex = diffInMs < 0 ? 0 : Math.floor(diffInMs / msInWeek);
+        const currentWeekNumber = weekIndex + 1;
+
+        const select = (diff: Difficulty) => {
+            const pool = (puzzlesData as any)[diff];
+            return pool[weekIndex % pool.length] as Puzzle;
+        };
+
+        return {
+            weekNumber: currentWeekNumber,
+            puzzles: {
+                'Piece of Cake': select('Piece of Cake'),
+                'Doughnut Elo': select('Doughnut Elo'),
+                'Challenge': select('Challenge')
+            }
+        };
+    }, []);
+
+    const weeklyPuzzles = puzzleInfo.puzzles;
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!selectedDifficulty) return;
+        setSubmitting(true);
 
         try {
             const { error } = await supabase
                 .from('ChallengeAnswers')
                 .insert([
                     {
-                        user_name: name,
-                        difficulty: difficulty,
-                        answer: answer,
+                        user_name: formData.name,
+                        difficulty: selectedDifficulty,
+                        answer: formData.answer,
+                        week: puzzleInfo.weekNumber, // Added week tracking
                         created_at: new Date().toISOString()
                     }
                 ]);
@@ -72,120 +129,143 @@ export default function TrainingPuzzles() {
             if (error) throw error;
 
             setShowSuccess(true);
-            setFormData(prev => ({
-                ...prev,
-                [difficulty]: { name: '', answer: '' }
-            }));
+            setFormData({ name: '', answer: '' });
             setTimeout(() => setShowSuccess(false), 3000);
         } catch (error: any) {
             alert(`Error submitting answer: ${error.message}`);
         } finally {
-            setSubmitting(null);
+            setSubmitting(false);
         }
     };
 
-    const boardStyles = useMemo(() => ({
-        borderRadius: '8px',
-        boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)'
-    }), []);
+    const themes = {
+        'Piece of Cake': { bg: 'bg-emerald-50/30', text: 'text-emerald-600', icon: <Cake size={32} /> },
+        'Doughnut Elo': { bg: 'bg-amber-50/30', text: 'text-amber-600', icon: <Donut size={32} /> },
+        'Challenge': { bg: 'bg-berry/5', text: 'text-berry', icon: <Skull size={32} /> }
+    };
 
     return (
-        <div className="min-h-screen bg-cream flex flex-col relative overflow-x-hidden text-plum font-sans">
-            {/* Background Decorative Elements */}
+        <div className="h-screen bg-cream flex flex-col relative overflow-hidden text-plum font-sans">
             <div className="absolute top-0 left-0 w-250 h-250 bg-berry/5 rounded-full blur-3xl -z-10 -translate-x-1/2 -translate-y-1/2" />
             
             <Navbar />
 
-            <main className="flex-1 max-w-7xl mx-auto w-full px-6 py-16 relative z-10">
-                <header className="text-center mb-20 max-w-3xl mx-auto">
-                    <div className="inline-block px-4 py-1.5 mb-6 text-xs font-bold tracking-widest text-berry uppercase bg-berry/10 rounded-full">
-                        Test Your Intuition
-                    </div>
-                    <h1 className="text-6xl md:text-7xl font-black text-plum mb-8 tracking-tight leading-tight">
-                        Training <span className="text-berry italic">Puzzles</span>
-                    </h1>
-                    <p className="text-xl text-plum/60 leading-relaxed">
-                        Curated positions from Master-level games. Solve them to build your strategic repertoire and earn your place on the leaderboard.
-                    </p>
-                </header>
-
-                <div className="grid lg:grid-cols-3 gap-10">
-                    {CHALLENGES.map((challenge) => (
-                        <div key={challenge.difficulty} className="glass rounded-[3rem] border-plum/5 shadow-2xl overflow-hidden flex flex-col hover:border-berry/20 transition-all duration-500 group relative">
-                            {/* Card Header */}
-                            <div className={`p-8 flex items-center justify-between border-b border-plum/5 ${
-                                challenge.difficulty === 'Piece of Cake' ? 'bg-emerald-50/30' :
-                                challenge.difficulty === 'Doughnut Elo' ? 'bg-amber-50/30' :
-                                'bg-berry/5'
-                            }`}>
-                                <div className="flex items-center gap-3">
-                                    <div className="p-2 rounded-xl bg-white shadow-sm">
-                                        {challenge.difficulty === 'Piece of Cake' ? <Target size={20} className="text-emerald-600" /> :
-                                         challenge.difficulty === 'Doughnut Elo' ? <Brain size={20} className="text-amber-600" /> :
-                                         <Trophy size={20} className="text-berry" />}
-                                    </div>
-                                    <span className="font-black uppercase tracking-[0.2em] text-[10px] text-plum/40">{challenge.difficulty}</span>
-                                </div>
+            <main className="flex-1 max-w-7xl mx-auto w-full px-6 flex flex-col justify-center relative z-10 py-8">
+                
+                {!selectedDifficulty ? (
+                    <>
+                        {/* Landing View Header */}
+                        <header className="text-center mb-12 max-w-3xl mx-auto">
+                            <div className="inline-flex items-center gap-2 px-4 py-1.5 mb-6 text-xs font-bold tracking-widest text-berry uppercase bg-berry/10 rounded-full">
+                                Puzzle Week {puzzleInfo.weekNumber}
                             </div>
-
-                            {/* Chessboard Section */}
-                            <div className="p-8 bg-white/30 flex items-center justify-center">
-                                <div className="w-full aspect-square max-w-[320px] shadow-2xl rounded-2xl overflow-hidden border-8 border-white/50 relative">
-                                    <Chessboard
-                                        {...({
-                                            id: `Challenge-${challenge.difficulty}`,
-                                            position: challenge.fen,
-                                            arePiecesDraggable: false,
-                                            customBoardStyle: boardStyles,
-                                            customDarkSquareStyle: { background: '#6B5B95' },
-                                            customLightSquareStyle: { background: '#F8F5F2' }
-                                        } as any)}
-                                    />
-                                </div>
-                            </div>
-
-                            {/* Question Section */}
-                            <div className="p-10 flex-1 flex flex-col">
-                                <h3 className="text-3xl font-serif font-black text-plum mb-4 tracking-tight">{challenge.title}</h3>
-                                <p className="text-plum/70 mb-10 leading-relaxed font-medium italic">
-                                    "{challenge.question}"
+                            <h1 className="text-5xl md:text-6xl font-black text-plum mb-6 tracking-tight leading-tight">
+                                Training <span className="text-berry italic">Puzzles</span>
+                            </h1>
+                            <div className="space-y-4">
+                                <p className="text-xl text-plum/60 leading-relaxed">
+                                    Select your desired intensity to begin this week's strategic challenge.
                                 </p>
+                                <div className="flex items-center justify-center gap-2 text-plum/40 text-sm font-bold uppercase tracking-widest">
+                                    <Calendar size={16} />
+                                    <span>Puzzles refresh every Monday</span>
+                                </div>
+                            </div>
+                        </header>
 
-                                <form onSubmit={(e) => handleSubmit(e, challenge.difficulty)} className="space-y-4 mt-auto">
-                                    <div className="relative">
+                        {/* Difficulty Selection View */}
+                        <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto w-full pb-12">
+                            {(['Piece of Cake', 'Doughnut Elo', 'Challenge'] as Difficulty[]).map((level) => (
+                                <button
+                                    key={level}
+                                    onClick={() => setSelectedDifficulty(level)}
+                                    className="glass rounded-[3rem] p-12 flex flex-col items-center gap-8 group hover:-translate-y-2 transition-all duration-500 border-plum/5 hover:border-berry/20 shadow-xl"
+                                >
+                                    <div className={`p-8 rounded-[2.5rem] bg-white shadow-sm group-hover:scale-110 transition-transform duration-500 ${themes[level].text}`}>
+                                        {themes[level].icon}
+                                    </div>
+                                    <div className="text-center">
+                                        <h3 className="text-3xl font-serif font-black tracking-tight mb-2">{level}</h3>
+                                        <span className="font-black uppercase tracking-[0.2em] text-[10px] text-plum/30">Difficulty</span>
+                                    </div>
+                                </button>
+                            ))}
+                        </div>
+                    </>
+                ) : (
+                    /* Puzzle Detail View */
+                    <div className="w-full max-w-6xl mx-auto animate-in fade-in zoom-in-95 duration-500">
+                        <div className="flex justify-between items-center mb-6">
+                            <button 
+                                onClick={() => setSelectedDifficulty(null)}
+                                className="inline-flex items-center gap-2 text-plum/40 hover:text-berry font-bold uppercase text-[10px] tracking-widest transition-colors"
+                            >
+                                <ChevronLeft size={16} /> Back to selection
+                            </button>
+                            <span className="text-[10px] font-black uppercase tracking-widest text-plum/30">
+                                Week {puzzleInfo.weekNumber} Challenge
+                            </span>
+                        </div>
+
+                        <div className="grid lg:grid-cols-2 gap-12 items-center">
+                            {/* Enlarged Board */}
+                            <div className="w-full aspect-square max-w-120 mx-auto relative group">
+                                <div className="absolute -inset-4 border-2 border-berry/10 rounded-[2.5rem] -z-10 group-hover:border-berry/20 transition-colors" />
+                                <div className="p-4 glass rounded-[2.5rem] shadow-2xl h-full">
+                                    <StaticBoard fen={weeklyPuzzles[selectedDifficulty].fen} size="large" />
+                                </div>
+                            </div>
+
+                            {/* Puzzle Info & Form */}
+                            <div className="space-y-6">
+                                <div className="space-y-3">
+                                    <div className={`inline-flex items-center gap-3 px-3 py-1.5 rounded-lg ${themes[selectedDifficulty].bg}`}>
+                                        <span className={themes[selectedDifficulty].text}>{themes[selectedDifficulty].icon}</span>
+                                        <span className="font-black uppercase tracking-widest text-[10px] text-plum/60">{selectedDifficulty}</span>
+                                    </div>
+                                    <h2 className="text-4xl font-serif font-black tracking-tight">{weeklyPuzzles[selectedDifficulty].title}</h2>
+                                    <p className="text-xl text-plum/70 italic leading-relaxed">
+                                        "{weeklyPuzzles[selectedDifficulty].question}"
+                                    </p>
+                                </div>
+
+                                <form onSubmit={handleSubmit} className="space-y-4 bg-white/30 p-6 rounded-[2.5rem] border border-plum/5 backdrop-blur-sm shadow-inner">
+                                    <div className="space-y-1">
+                                        <label className="block text-[9px] font-black uppercase tracking-widest text-plum/40 ml-4">Your Name</label>
                                         <input
                                             type="text"
                                             required
-                                            placeholder="Your Name"
-                                            value={formData[challenge.difficulty].name}
-                                            onChange={(e) => handleInputChange(challenge.difficulty, 'name', e.target.value)}
-                                            className="w-full bg-white/50 border-2 border-plum/5 rounded-2xl px-5 py-4 text-plum focus:outline-none focus:border-berry transition-all placeholder:text-plum/30 font-bold text-sm"
+                                            placeholder="Enter your name"
+                                            value={formData.name}
+                                            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                                            className="w-full bg-white/50 border border-plum/5 rounded-xl px-5 py-3 text-plum focus:outline-none focus:border-berry transition-all font-bold text-sm"
                                         />
                                     </div>
-                                    <div className="relative">
+                                    <div className="space-y-1">
+                                        <label className="block text-[9px] font-black uppercase tracking-widest text-plum/40 ml-4">Your Analysis</label>
                                         <textarea
                                             required
                                             rows={3}
-                                            placeholder="Explain your strategic plan..."
-                                            value={formData[challenge.difficulty].answer}
-                                            onChange={(e) => handleInputChange(challenge.difficulty, 'answer', e.target.value)}
-                                            className="w-full bg-white/50 border-2 border-plum/5 rounded-2xl px-5 py-4 text-plum focus:outline-none focus:border-berry transition-all placeholder:text-plum/30 font-bold text-sm resize-none"
+                                            placeholder="Your answer"
+                                            value={formData.answer}
+                                            onChange={(e) => setFormData({ ...formData, answer: e.target.value })}
+                                            className="w-full bg-white/50 border border-plum/5 rounded-xl px-5 py-3 text-plum focus:outline-none focus:border-berry transition-all font-bold text-sm resize-none"
                                         />
                                     </div>
                                     <button
                                         type="submit"
-                                        disabled={submitting === challenge.difficulty}
-                                        className={`w-full py-5 rounded-2xl font-black text-white transition-all flex items-center justify-center gap-3 shadow-xl ${
-                                            submitting === challenge.difficulty 
+                                        disabled={submitting}
+                                        className={`w-full py-4 rounded-xl font-black text-white transition-all flex items-center justify-center gap-3 shadow-xl ${
+                                            submitting 
                                             ? 'bg-plum/20 cursor-not-allowed text-plum/40' 
                                             : 'bg-berry hover:bg-berry/90 shadow-berry/30 hover:scale-[1.02] active:scale-95'
                                         }`}
                                     >
-                                        {submitting === challenge.difficulty ? (
-                                            <Loader2 size={22} className="animate-spin" />
+                                        {submitting ? (
+                                            <Loader2 size={20} className="animate-spin" />
                                         ) : (
                                             <>
-                                                <Send size={20} />
+                                                <Send size={18} />
                                                 Submit Analysis
                                             </>
                                         )}
@@ -193,8 +273,8 @@ export default function TrainingPuzzles() {
                                 </form>
                             </div>
                         </div>
-                    ))}
-                </div>
+                    </div>
+                )}
             </main>
 
             {/* Success Toast */}

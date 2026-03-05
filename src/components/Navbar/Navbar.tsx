@@ -27,7 +27,7 @@ const Navbar = () => {
                 <div className="hidden md:flex items-center gap-10">
                     <NavLink to="/" label="Home" />
                     <NavLink to="/Challenge_Rulette" label="Challenge Rulette" />
-                    <NavLink to="/TrainingPuzzles" label="Puzzles" />
+                    <NavLink to="/TrainingPuzzles" label="Weekly Puzzles" />
                     <NavLink to="/ImposterChess" label="Imposter Chess" />
                     <NavLink to="/about" label="About" />
                 </div>

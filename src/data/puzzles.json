@@ -1,0 +1,68 @@
+{
+  "Piece of Cake": [
+    {
+      "title": "Scholar's Mate",
+      "fen": "r1bqkb1r/pppp1ppp/2n2n2/4p2Q/2B1P3/8/PPPP1PPP/RNB1K1NR w KQkq - 4 4",
+      "question": "White to move. Find the quickest way to win."
+    },
+    {
+      "title": "Back Rank Weakness",
+      "fen": "6k1/5ppp/8/8/8/8/5PPP/1R4K1 w - - 0 1",
+      "question": "White to move and deliver mate."
+    },
+    {
+      "title": "Middle Game Tactics",
+      "fen": "r2qkb1r/pp2pppp/2p2n2/3p4/2PP4/2N1PN2/PP3PPP/R1BQK2R w KQkq - 0 1",
+      "question": "White to move. Improve your position."
+    },
+    {
+      "title": "Mate in 2",
+      "fen": "8/8/4q1pk/5p1p/3Qn3/6PP/5P2/6K1 w - - 2 44",
+      "question": "White to move and mate in 2"
+    }
+  ],
+  "Doughnut Elo": [
+    {
+      "title": "Discovered Attack",
+      "fen": "5rk1/B5pp/3bb3/3ppp2/8/2P2P2/PrB2RPP/4R1K1 w - - 1 0",
+      "question": "White to move. Find the winning continuation."
+    },
+    {
+      "title": "Pressure on the File",
+      "fen": "2r2rk1/3nqp1p/p3p1p1/np1p4/3P4/P1NBP3/1PQ2PPP/2R2RK1 w - - 0 18",
+      "question": "White to move. Win material or gain a decisive advantage."
+    },
+    {
+      "title": "Knight Maneuvers",
+      "fen": "r1bqk2r/ppp2ppp/2n5/4P3/2Bp2n1/5N1P/PP3PP1/RN1QR1K1 b kq - 0 11",
+      "question": "Black to move. How should black respond to the attack?"
+    },
+    {
+      "title": "Endgame Precision",
+      "fen": "8/8/4k3/3p1p2/3P1P2/4K3/8/8 w - - 10 55",
+      "question": "White to move. What is the drawing plan?"
+    },
+    {
+      "title": "Catalan Complexity",
+      "fen": "r2q1rk1/pp3ppp/2n2n2/b2pP3/3P4/P2B1N2/1P4PP/R2Q1RK1 w - - 1 16",
+      "question": "White to move. Find the best tactical or strategic plan."
+    }
+  ],
+  "Challenge": [
+    {
+      "title": "Grandmaster Calculation",
+      "fen": "6k1/1R5p/p2p4/3Pr1P1/P2Q1p1P/2q2r2/8/1K1R4 w - - 1 0",
+      "question": "White to move. Find the decisive mating net."
+    },
+    {
+      "title": "Positional Sacrifice",
+      "fen": "2r2rk1/1b3p2/p3p2p/1p1qB1bQ/8/8/PP3PPP/2R1R1K1 w - - 0 1",
+      "question": "White to move. How to maximize the attack?"
+    },
+    {
+      "title": "Elite Tactical Vision",
+      "fen": "r1b2rk1/pp3ppp/2n1p3/q2pP3/3P1P2/P1PB1N2/6PP/R2QK2R w KQ - 1 12",
+      "question": "White to move. Find the path to a winning advantage."
+    }
+  ]
+}

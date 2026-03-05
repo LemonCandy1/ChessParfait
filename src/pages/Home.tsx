@@ -117,10 +117,6 @@ export default function Home() {
                 <div className="max-w-7xl mx-auto flex flex-col lg:flex-row items-center gap-16 relative z-10">
                     <div className="flex-1 text-left">
                         <div className="inline-flex items-center gap-2 px-4 py-1.5 mb-8 text-xs font-bold tracking-widest text-berry uppercase bg-berry/10 rounded-full">
-                            <span className="relative flex h-2 w-2">
-                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-berry opacity-75"></span>
-                                <span className="relative inline-flex rounded-full h-2 w-2 bg-berry"></span>
-                            </span>
                             Luis Chan | FIDE Master 
                         </div>
                         <h1 className="text-6xl md:text-7xl font-black mb-8 leading-tight tracking-tight">
@@ -139,7 +135,7 @@ export default function Home() {
                         </div>
                     </div>
 
-                    <div className="flex-1 w-full max-w-150 relative">
+                    <div className="flex-1 w-full max-w-md relative">
                         {/* Board Container with Glassmorphism shadow */}
                         <div className="relative z-10 p-4 glass rounded-3xl">
                             <Chessboard

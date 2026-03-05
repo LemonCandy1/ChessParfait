@@ -83,14 +83,14 @@
         },
         {
             "title": "Master of all Pieces",
-            "rule": "You have to move a difference piece ever turn. You cannot move the same piece twice in a row."
+            "rule": "You have to move a different piece every turn. You cannot move the same piece twice in a row."
         },
         {
             "title": "Minor Inconvenience",
             "rule": "Every second move, you must move a minor piece (knight or bishop) or a pawn."
         },
         {
-            "title": "Bad Marriage",
+            "title": "Arranged Marriage",
             "rule": "You must castle queenside and if your queen is captured, you must resign."
         },
         {
@@ -98,7 +98,7 @@
             "rule": "You must play g4/g5, h4/h5, b4/b5, a4/a5 and then play the bongcloud (move your king up to e2/e7)"
         },
         {
-            "title": "Whoops I Promoted to a Bishop",
+            "title": "I Don't Want a Bishop!",
             "rule": "You need to promote a pawn to a bishop within 30 moves and must resign if you fail."
         },
         {
@@ -114,7 +114,7 @@
         },
         {
             "title": "Poisoned Pawns",
-            "rule": "Once you capture a pawn, you can no longer move that piece for the rest of the game."
+            "rule": "Once you capture a pawn with a piece, you can no longer move that piece for the rest of the game."
         },
         {
             "title": "The Dayman",
@@ -169,7 +169,7 @@
         },
         {
             "title": "Straight up AntiChess",
-            "rule": "If you can take any piece, you have to take that piece. If you have multiple pieces you can take, you can choose which one to take."
+            "rule": "If you can take any of your opponent's pieces, you have to take that piece. If you have multiple pieces you can take, you can choose which one to take."
         },
         {
             "title": "Double Trouble",
@@ -185,15 +185,15 @@
         },
         {
             "title": "67!",
-            "rule": "You must move 6 pawns, then 7 pieces. When you finish, you must shout 67!!"
+            "rule": "In the opening, you must move 6 pawns, then 7 pieces."
         },
         {
             "title": "Yin and Yang",
-            "rule": "Every move, you have to move to a white square and then to a black square. You can choose which one to move to first."
+            "rule": "Every move, you have to move to a white square and then to a black square. You can choose which square to move to first."
         },
         {
             "title": "Cannibalism",
-            "rule": "Pieces can only capture pieces of the same type. For example, a rook can only capture a rook, a knight can only capture a knight etc..."
+            "rule": "Pieces can only capture pieces of the same type. For example, a rook can only capture rooks, a knight can only capture knights etc..."
         },
         {
             "title": "We Stick Together",

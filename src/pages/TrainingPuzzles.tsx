@@ -5,7 +5,7 @@ import Navbar from '../components/Navbar/Navbar';
 import { supabase } from '../lib/supabaseClient';
 import puzzlesData from '../data/puzzles.json';
 
-type Difficulty = 'Piece of Cake' | 'Doughnut Elo' | 'Challenge';
+type Difficulty = 'Piece of Cake' | 'Hard Tart' | 'Challenge';
 
 interface Puzzle {
     title: string;
@@ -100,7 +100,7 @@ export default function TrainingPuzzles() {
             weekNumber: currentWeekNumber,
             puzzles: {
                 'Piece of Cake': select('Piece of Cake'),
-                'Doughnut Elo': select('Doughnut Elo'),
+                'Hard Tart': select('Hard Tart'),
                 'Challenge': select('Challenge')
             }
         };
@@ -140,7 +140,7 @@ export default function TrainingPuzzles() {
 
     const themes = {
         'Piece of Cake': { bg: 'bg-emerald-50/30', text: 'text-emerald-600', icon: <Cake size={32} /> },
-        'Doughnut Elo': { bg: 'bg-amber-50/30', text: 'text-amber-600', icon: <Donut size={32} /> },
+        'Hard Tart': { bg: 'bg-amber-50/30', text: 'text-amber-600', icon: <Donut size={32} /> },
         'Challenge': { bg: 'bg-berry/5', text: 'text-berry', icon: <Skull size={32} /> }
     };
 
@@ -175,7 +175,7 @@ export default function TrainingPuzzles() {
 
                         {/* Difficulty Selection View */}
                         <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto w-full pb-12">
-                            {(['Piece of Cake', 'Doughnut Elo', 'Challenge'] as Difficulty[]).map((level) => (
+                            {(['Piece of Cake', 'Hard Tart', 'Challenge'] as Difficulty[]).map((level) => (
                                 <button
                                     key={level}
                                     onClick={() => setSelectedDifficulty(level)}

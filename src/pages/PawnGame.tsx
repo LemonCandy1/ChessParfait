@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { Trophy, RotateCcw, ChevronLeft, Cpu, User, Info, Check } from 'lucide-react';
+import { Trophy, RotateCcw, ChevronLeft, Cpu, User, Info } from 'lucide-react';
 import Navbar from '../components/Navbar/Navbar';
 import { Link } from 'react-router-dom';
 
@@ -385,7 +385,7 @@ const PawnGame: React.FC = () => {
                         
                         {/* Game Info - Left */}
                         <div className="order-2 lg:order-1 space-y-6">
-                            <div className="glass p-6 rounded-[2rem] border-plum/5 shadow-xl space-y-4">
+                            <div className="glass p-6 rounded-4xl border-plum/5 shadow-xl space-y-4">
                                 <h3 className="font-serif text-2xl font-black flex items-center gap-2">
                                     <Info className="text-berry" size={20} />
                                     How to Play
@@ -426,25 +426,25 @@ const PawnGame: React.FC = () => {
 
                         {/* Board - Center */}
                         <div className="order-1 lg:order-2 flex flex-col items-center">
-                            <div className="mb-6 flex items-center justify-between w-full max-w-[450px] px-2">
-                                <div className={`flex items-center gap-3 px-6 py-3 rounded-xl min-w-[160px] justify-center border-2 transition-colors ${turn === userColor ? 'bg-berry border-berry text-white shadow-lg' : 'bg-white border-plum/5 text-plum/30'}`}>
+                            <div className="mb-6 flex items-center justify-between w-full max-w-112.5 px-2">
+                                <div className={`flex items-center gap-3 px-6 py-3 rounded-xl min-w-40 justify-center border-2 transition-colors ${turn === userColor ? 'bg-berry border-berry text-white shadow-lg' : 'bg-white border-plum/5 text-plum/30'}`}>
                                     <User size={18} />
                                     <span className="font-black text-sm uppercase tracking-widest">You ({userColor === WHITE ? 'White' : 'Black'})</span>
                                 </div>
-                                <div className={`flex items-center gap-3 px-6 py-3 rounded-xl min-w-[160px] justify-center border-2 transition-colors ${turn !== userColor ? 'bg-plum border-plum text-white shadow-lg' : 'bg-white border-plum/5 text-plum/30'}`}>
+                                <div className={`flex items-center gap-3 px-6 py-3 rounded-xl min-w-40 justify-center border-2 transition-colors ${turn !== userColor ? 'bg-plum border-plum text-white shadow-lg' : 'bg-white border-plum/5 text-plum/30'}`}>
                                     <Cpu size={18} />
                                     <span className="font-black text-sm uppercase tracking-widest">{isThinking ? 'Thinking...' : `AI (${userColor === WHITE ? 'Black' : 'White'})`}</span>
                                 </div>
                             </div>
 
-                            <div className="relative aspect-square w-full max-w-[450px] bg-plum p-2 rounded-2xl shadow-2xl border-4 border-plum/10">
+                            <div className="relative aspect-square w-full max-w-112.5 bg-plum p-2 rounded-2xl shadow-2xl border-4 border-plum/10">
                                 <div className="grid grid-cols-8 grid-rows-8 h-full w-full rounded-lg overflow-hidden border border-plum/20">
-                                    {board.map((row, ri) => {
+                                    {board.map((_row, ri) => {
                                         // If user is Black, we flip the rows (visual only)
                                         const displayRi = userColor === BLACK ? 7 - ri : ri;
                                         const currentRow = board[displayRi];
                                         
-                                        return currentRow.map((square, ci) => {
+                                        return currentRow.map((_square, ci) => {
                                             // If user is Black, we also flip the columns (visual only)
                                             const displayCi = userColor === BLACK ? 7 - ci : ci;
                                             const currentSquare = currentRow[displayCi];
@@ -531,7 +531,7 @@ const PawnGame: React.FC = () => {
 
                         {/* Stats/History - Right */}
                         <div className="order-3 space-y-6">
-                            <div className="glass p-6 rounded-[2rem] border-plum/5 shadow-xl">
+                            <div className="glass p-6 rounded-4xl border-plum/5 shadow-xl">
                                 <h3 className="font-serif text-2xl font-black mb-4">Board Stats</h3>
                                 <div className="grid grid-cols-2 gap-4">
                                     <div className="bg-white/50 p-4 rounded-2xl border border-plum/5 text-center">

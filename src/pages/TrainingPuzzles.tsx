@@ -46,14 +46,14 @@ const StaticBoard = ({ fen, size = "small" }: { fen: string, size?: "small" | "l
                         >
                             {/* Rank coordinate (1-8) on the left edge */}
                             {colIndex === 0 && (
-                                <span className={`absolute top-0.5 left-0.5 ${size === 'large' ? 'text-[12px]' : 'text-[8px]'} font-bold select-none ${isDark ? 'text-[#F8F5F2]' : 'text-[#B58863]'}`}>
+                                <span className={`absolute top-0.5 left-0.5 ${size === 'large' ? 'text-[12px]' : 'text-[8px]'} font-bold select-none ${isDark ? 'text-parfait-light' : 'text-[#B58863]'}`}>
                                     {8 - rowIndex}
                                 </span>
                             )}
                             
                             {/* File coordinate (a-h) on the bottom edge */}
                             {rowIndex === 7 && (
-                                <span className={`absolute bottom-0.5 right-0.5 ${size === 'large' ? 'text-[12px]' : 'text-[8px]'} font-bold select-none ${isDark ? 'text-[#F8F5F2]' : 'text-[#B58863]'}`}>
+                                <span className={`absolute bottom-0.5 right-0.5 ${size === 'large' ? 'text-[12px]' : 'text-[8px]'} font-bold select-none ${isDark ? 'text-parfait-light' : 'text-[#B58863]'}`}>
                                     {String.fromCharCode(97 + colIndex)}
                                 </span>
                             )}

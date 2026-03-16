@@ -28,6 +28,7 @@ const Navbar = () => {
                     <NavLink to="/" label="Home" />
                     <NavLink to="/Challenge_Rulette" label="Challenge Rulette" />
                     <NavLink to="/TrainingPuzzles" label="Weekly Puzzles" />
+                    <NavLink to="/PawnGame" label="Pawn Game" />
                     <NavLink to="/ImposterChess" label="Imposter Chess" />
                     <NavLink to="/about" label="About" />
                 </div>

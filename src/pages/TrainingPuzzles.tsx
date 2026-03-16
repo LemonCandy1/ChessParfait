@@ -44,11 +44,28 @@ const StaticBoard = ({ fen, size = "small" }: { fen: string, size?: "small" | "l
                                     : 'linear-gradient(135deg, #F8F5F2 0%, #FFFDD0 100%)'
                             }}
                         >
+                            {/* Rank coordinate (1-8) on the left edge */}
+                            {colIndex === 0 && (
+                                <span className={`absolute top-0.5 left-0.5 ${size === 'large' ? 'text-[12px]' : 'text-[8px]'} font-bold select-none ${isDark ? 'text-[#F8F5F2]' : 'text-[#B58863]'}`}>
+                                    {8 - rowIndex}
+                                </span>
+                            )}
+                            
+                            {/* File coordinate (a-h) on the bottom edge */}
+                            {rowIndex === 7 && (
+                                <span className={`absolute bottom-0.5 right-0.5 ${size === 'large' ? 'text-[12px]' : 'text-[8px]'} font-bold select-none ${isDark ? 'text-[#F8F5F2]' : 'text-[#B58863]'}`}>
+                                    {String.fromCharCode(97 + colIndex)}
+                                </span>
+                            )}
+
                             {square && (
                                 <img 
                                     src={getPieceImg(square.type, square.color)} 
-                                    alt={`${square.color}${square.type}`}
-                                    className="w-[85%] h-[85%] select-none pointer-events-none drop-shadow-sm z-10"
+                                    alt=""
+                                    aria-label={`${square.color === 'w' ? 'White' : 'Black'} ${square.type}`}
+                                    onLoad={(e) => e.currentTarget.style.opacity = '1'}
+                                    style={{ opacity: 0 }}
+                                    className="w-[85%] h-[85%] select-none pointer-events-none drop-shadow-sm z-10 transition-opacity duration-300"
                                     onError={(e) => {
                                         const piece = square.color + square.type.toUpperCase();
                                         e.currentTarget.src = `https://chessboardjs.com/img/chesspieces/wikipedia/${piece}.png`;

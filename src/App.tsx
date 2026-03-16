@@ -4,6 +4,7 @@ import About from './pages/About';
 import Challenge_Rulette from './pages/Challenge_Rulette';
 import TrainingPuzzles from './pages/TrainingPuzzles';
 import ImposterChess from './pages/ImposterChess';
+import PawnGame from './pages/PawnGame';
 
 export default function App() {
   return (
@@ -14,6 +15,7 @@ export default function App() {
         <Route path="/Challenge_Rulette" element={<Challenge_Rulette />} />
         <Route path="/TrainingPuzzles" element={<TrainingPuzzles />} />
         <Route path="/ImposterChess" element={<ImposterChess />} />
+        <Route path="/PawnGame" element={<PawnGame />} />
       </Routes>
     </BrowserRouter>
   );

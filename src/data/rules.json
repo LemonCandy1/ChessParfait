@@ -198,6 +198,15 @@
         {
             "title": "We Stick Together",
             "rule": "All your pieces must be next to at least one other piece."
+        },
+        {
+            "title": "Explosion",
+            "rule": "Read this out loud. Every 3 moves you make, your opponent can choose a new square that isn't occupied by one of your pieces. You cannot move to that square for the rest of the game."
+        },
+        {
+            "title": "There's levels to this",
+            "rule": "You have to have the same amount of points as your opponent. If you have more or less points for three turns, then you lose."
         }
+
     ]
 }

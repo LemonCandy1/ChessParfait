@@ -1,6 +1,3 @@
-import { useState, useMemo } from 'react';
-import { Chess } from 'chess.js';
-import { Chessboard } from 'react-chessboard';
 import { Target, Trophy, BarChart3, Mail, ChevronRight } from 'lucide-react';
 import Navbar from '../components/Navbar/Navbar.tsx';
 import ParfaitScrollSequence from '../components/ParfaitScrollSequence';

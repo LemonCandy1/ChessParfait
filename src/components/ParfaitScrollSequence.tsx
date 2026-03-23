@@ -7,7 +7,7 @@ const TOTAL_FRAMES = TOTAL_IMAGE_FRAMES + BLACK_FRAMES;
 
 const frameArray = Array.from({ length: TOTAL_IMAGE_FRAMES }, (_, i) => {
   const paddedIndex = (i + 1).toString().padStart(3, '0');
-  return `/video_frames_png/ffout${paddedIndex}.png`;
+  return `/video_frames_webp/ffout${paddedIndex}.webp`;
 });
 
 export default function ParfaitScrollSequence() {
@@ -25,8 +25,8 @@ export default function ParfaitScrollSequence() {
   const text1Opacity = useTransform(scrollYProgress, [0, 0.06, 0.10], [1, 1, 0]);
   const text1Y = useTransform(scrollYProgress, [0, 0.10], [0, -50]);
 
-  const text4Opacity = useTransform(scrollYProgress, [0.75, 0.85, 1], [0, 1, 1]);
-  const text4Y = useTransform(scrollYProgress, [0.75, 0.85], [50, 0]);
+  const text4Opacity = useTransform(scrollYProgress, [0.65, 0.8, 1], [0, 1, 1]);
+  const text4Y = useTransform(scrollYProgress, [0.65, 0.8], [50, 0]);
 
   // Preload images
   useEffect(() => {
@@ -71,19 +71,28 @@ export default function ParfaitScrollSequence() {
       }
 
       // Map progress to frame index
-      const currentProgress = scrollYProgress.get();
+      // Finish animation at 80% scroll to leave a "pause" at the end for reading
+      // and to prevent mobile browser bottom-bar issues cutting off the last frames
+      const currentProgress = Math.min(1, scrollYProgress.get() / 0.8);
       const frameIndex = Math.min(
         TOTAL_FRAMES - 1,
         Math.max(0, Math.floor(currentProgress * TOTAL_FRAMES))
       );
 
-      // Clear frame with physical dimensions (Natively solid black frame)
-      ctx.fillStyle = "#050505";
+      // Clear frame with physical dimensions
+      // Use cream background (#FAF2E1) for the first 10 frames instead of black
+      ctx.fillStyle = frameIndex < BLACK_FRAMES ? "#FAF2E1" : "#050505";
       ctx.fillRect(0, 0, physicalWidth, physicalHeight);
 
       if (frameIndex >= BLACK_FRAMES) {
-        const imageIndex = frameIndex - BLACK_FRAMES;
-        const img = images[imageIndex];
+        let imageIndex = frameIndex - BLACK_FRAMES;
+        let img = images[imageIndex];
+
+        // Progressive Preloading Fallback: If current frame isn't ready, scan backwards for the most recently loaded frame
+        while (imageIndex >= 0 && (!img || !img.complete)) {
+          imageIndex--;
+          img = images[imageIndex];
+        }
 
         if (img && img.complete) {
           // Calculate aspect ratios completely mathematically in Physical space
@@ -119,18 +128,20 @@ export default function ParfaitScrollSequence() {
     };
   }, [loadedCount, images, scrollYProgress]);
 
-  if (loadedCount < TOTAL_IMAGE_FRAMES) {
+  const MIN_FRAMES_TO_START = 10;
+  
+  if (loadedCount < MIN_FRAMES_TO_START) {
     return (
       <div className="h-screen w-full flex flex-col items-center justify-center bg-transparent">
         <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-plum"></div>
-        <p className="font-sans mt-4 text-plum font-semibold">Loading sequence {Math.floor((loadedCount / TOTAL_IMAGE_FRAMES) * 100)}%</p>
+        <p className="font-sans mt-4 text-plum font-semibold">Loading sequence {Math.floor((loadedCount / MIN_FRAMES_TO_START) * 100)}%</p>
       </div>
     );
   }
 
   return (
-    <div ref={containerRef} className="relative h-[400vh] w-full bg-[#050505]">
-      <div className="sticky top-0 h-screen w-full overflow-hidden">
+    <div ref={containerRef} className="relative h-[400vh] h-[400dvh] w-full bg-[#050505]">
+      <div className="sticky top-0 h-screen h-[100dvh] w-full overflow-hidden">
         {/* The Image Canvas */}
         <canvas
           ref={canvasRef}

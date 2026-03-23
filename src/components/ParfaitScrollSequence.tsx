@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
 import { motion, useScroll, useTransform } from 'framer-motion';
-import logo from '../assets/Logo-bg-removed.png';
 
 const TOTAL_IMAGE_FRAMES = 145;
 const BLACK_FRAMES = 10;

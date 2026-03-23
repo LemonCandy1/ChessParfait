@@ -9,7 +9,7 @@ const PawnGameStrategy: React.FC = () => {
             <Navbar />
 
             <main className="flex-1 max-w-4xl mx-auto w-full px-6 py-12 md:py-24">
-                <Link 
+                <Link
                     to="/PawnGame"
                     className="inline-flex items-center gap-2 text-plum/40 hover:text-berry font-bold uppercase text-xs tracking-widest transition-all mb-12 hover:translate-x-[-4px]"
                 >
@@ -21,12 +21,17 @@ const PawnGameStrategy: React.FC = () => {
                         Pawn Game <span className="text-berry italic">Strategy</span>
                     </h1>
                     <p className="text-xl text-plum/60 leading-relaxed font-medium">
-                        Mastering the simplest form of chess requires a deep understanding of pawn structures and endgame principles.
+                        This game has a special place in my chess journey. It was the first minigame introduced to me by my primary school chess teacher when I was just learning how to move the chess pieces.
+                        Interestingly, the simple looking chess game has great depth and teaches many of the fundamentals of pawn structure and strategy.
+                    </p>
+                    <p className="text-xl text-plum/60 leading-relaxed font-medium">
+                        After many years, I have come to the conclusion that White should be winning if they play either 1.b4, 1.c4, 1.f4 or 1.g4. All other moves result in the win for Black as Black ends up with a surperior structure and eventually a zugzwang.
+                        Test your strategy out against the AI using minimax and transposition lookups!
                     </p>
                 </header>
 
                 <div className="grid gap-12">
-                    <section className="glass p-8 md:p-12 rounded-[3rem] border-plum/5 shadow-xl">
+                    <section className="soft-card p-8 md:p-12 mb-12">
                         <div className="flex items-center gap-4 mb-6">
                             <div className="p-3 bg-berry/10 rounded-2xl text-berry">
                                 <Target size={28} />
@@ -41,28 +46,20 @@ const PawnGameStrategy: React.FC = () => {
                     <section className="space-y-8">
                         <h2 className="text-4xl font-serif font-black px-4">Key Principles</h2>
                         <div className="grid md:grid-cols-2 gap-6">
-                            <div className="glass p-8 rounded-[2.5rem] border-plum/5 shadow-lg">
+                            <div className="soft-card p-8">
                                 <Lightbulb className="text-berry mb-4" size={32} />
                                 <h3 className="text-xl font-black mb-3">Passed Pawns</h3>
                                 <p className="text-plum/60 text-sm leading-relaxed">
                                     Creating a passed pawn (one that has no opposing pawns in front or on adjacent files) is your primary path to victory.
                                 </p>
                             </div>
-                            <div className="glass p-8 rounded-[2.5rem] border-plum/5 shadow-lg">
+                            <div className="soft-card p-8">
                                 <BookOpen className="text-plum mb-4" size={32} />
-                                <h3 className="text-xl font-black mb-3">Opposition</h3>
+                                <h3 className="text-xl font-black mb-3">Zugzwang</h3>
                                 <p className="text-plum/60 text-sm leading-relaxed">
-                                    Just like in full chess endgames, the concept of opposition—placing pawns to block your opponent's progress—is crucial.
+                                    Just like in full chess endgames, when one player is forced to make the last bad move, they will lose the game. It is a fine line between having the last tempo to secure a zugzwang!
                                 </p>
                             </div>
-                        </div>
-                    </section>
-
-                    <section className="glass p-12 rounded-[3rem] border-plum/5 shadow-xl bg-plum text-cream">
-                        <h2 className="text-3xl font-serif font-black mb-8 text-white">Experience Notes</h2>
-                        <div className="space-y-6 opacity-80 italic text-lg leading-relaxed">
-                            <p>"I've found that moving first as White provides a slight tempo advantage, but Black's defensive resources are often underestimated if they can force a locked position."</p>
-                            <p>"Always calculate the 'Race to the Finish'. Sometimes it's better to ignore a capture if it means your pawn reaches the end one move sooner."</p>
                         </div>
                     </section>
                 </div>

@@ -3,6 +3,7 @@ import { Chess } from 'chess.js';
 import { Chessboard } from 'react-chessboard';
 import { Target, Trophy, BarChart3, Mail, ChevronRight } from 'lucide-react';
 import Navbar from '../components/Navbar/Navbar.tsx';
+import ParfaitScrollSequence from '../components/ParfaitScrollSequence';
 
 export default function Home() {
     const fen = "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1";
@@ -106,8 +107,12 @@ export default function Home() {
     }), []);
 
     return (
-        <div className="min-h-screen bg-cream flex flex-col font-sans text-plum">
-            <Navbar /> 
+        <div className="min-h-screen flex flex-col font-sans text-plum relative bg-cream">
+            <div className="relative z-50">
+                <Navbar /> 
+            </div>
+            
+            <ParfaitScrollSequence /> 
             
             <header className="relative overflow-hidden pt-12 pb-24 px-6">
                 {/* Decorative background elements */}

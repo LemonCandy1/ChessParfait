@@ -574,7 +574,7 @@ const PawnGame: React.FC = () => {
 
                 {!userColor ? (
                     /* Side Selection View */
-                    <div className="glass p-12 rounded-[3rem] border-plum/5 shadow-2xl max-w-3xl w-full flex flex-col items-center animate-in fade-in zoom-in-95 duration-500">
+                    <div className="soft-card p-12 rounded-[3rem] w-full max-w-3xl flex flex-col items-center animate-in fade-in zoom-in-95 duration-500">
                         <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-berry/10 text-berry text-[10px] font-bold uppercase tracking-widest mb-6">
                             <Trophy size={12} />
                             Classic Mini-Game
@@ -587,7 +587,7 @@ const PawnGame: React.FC = () => {
                             {/* White Side Option */}
                             <button 
                                 onClick={() => setUserColor(WHITE)}
-                                className="group flex flex-col items-center gap-8 p-12 rounded-[4rem] bg-white border-2 border-transparent hover:border-berry transition-all hover:-translate-y-2 shadow-xl"
+                                className="soft-card soft-card-hover group flex flex-col items-center gap-8 p-12 rounded-[4rem] bg-white border-2 border-transparent"
                             >
                                 <div className="h-44 w-44 rounded-[3rem] bg-cream flex items-center justify-center shadow-inner group-hover:scale-110 transition-transform">
                                     <svg viewBox="0 0 45 45" className="w-32 h-32 drop-shadow-2xl">
@@ -607,7 +607,7 @@ const PawnGame: React.FC = () => {
                             {/* Black Side Option */}
                             <button 
                                 onClick={() => setUserColor(BLACK)}
-                                className="group flex flex-col items-center gap-8 p-12 rounded-[4rem] bg-white border-2 border-transparent hover:border-plum transition-all hover:-translate-y-2 shadow-xl"
+                                className="soft-card soft-card-hover group flex flex-col items-center gap-8 p-12 rounded-[4rem] bg-white border-2 border-transparent"
                             >
                                 <div className="h-44 w-44 rounded-[3rem] bg-plum/5 flex items-center justify-center shadow-inner group-hover:scale-110 transition-transform">
                                     <svg viewBox="0 0 45 45" className="w-32 h-32 drop-shadow-2xl">
@@ -743,7 +743,7 @@ const PawnGame: React.FC = () => {
                                         <p className="text-white/60 font-bold mb-8 uppercase tracking-widest text-xs">Game Over</p>
                                         <button 
                                             onClick={handleReset}
-                                            className="bg-white text-plum px-10 py-4 rounded-2xl font-black hover:bg-berry hover:text-white transition-all shadow-xl active:scale-95"
+                                            className="bg-white text-plum px-10 py-4 rounded-2xl font-black hover:bg-berry hover:text-white transition-all shadow-[0_8px_30px_rgb(74,21,75,0.12)] hover:-translate-y-1 duration-300 active:scale-95"
                                         >
                                             Play Again
                                         </button>
@@ -754,7 +754,7 @@ const PawnGame: React.FC = () => {
 
                         {/* Sidebar - Right */}
                         <div className="order-2 space-y-8">
-                            <div className="glass p-8 rounded-[2.5rem] border-plum/5 shadow-xl space-y-6">
+                            <div className="soft-card p-8 space-y-6">
                                 <h3 className="font-serif text-2xl font-black flex items-center gap-3">
                                     <Info className="text-berry" size={24} />
                                     How to Play
@@ -778,14 +778,14 @@ const PawnGame: React.FC = () => {
                                     <button 
                                         onClick={undoMove}
                                         disabled={history.length === 0}
-                                        className="w-full flex items-center justify-center gap-2 bg-white border-2 border-plum/10 text-plum py-4 rounded-2xl font-black hover:border-berry hover:text-berry transition-all disabled:opacity-30 disabled:cursor-not-allowed active:scale-95"
+                                        className="w-full flex items-center justify-center gap-2 py-4 soft-button-outline disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:-translate-y-0 disabled:hover:shadow-sm"
                                     >
                                         <RotateCcw size={18} />
                                         Undo Last Move
                                     </button>
                                     <button 
                                         onClick={handleReset}
-                                        className="w-full flex items-center justify-center gap-2 bg-plum text-cream py-4 rounded-2xl font-black hover:bg-berry transition-all shadow-lg active:scale-95"
+                                        className="w-full flex items-center justify-center gap-2 py-4 soft-button"
                                     >
                                         Change Side
                                     </button>

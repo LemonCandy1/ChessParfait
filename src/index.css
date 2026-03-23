@@ -22,12 +22,24 @@
 }
 
 @layer utilities {
-  .glass {
-    @apply bg-white/10 backdrop-blur-md border border-white/20;
+  .soft-card {
+    @apply bg-parfait-light rounded-[2.5rem] shadow-[0_8px_30px_rgb(74,21,75,0.06)] border border-plum/5 transition-all duration-300;
   }
   
-  .glass-dark {
-    @apply bg-plum/40 backdrop-blur-md border border-white/10;
+  .soft-card-hover {
+    @apply hover:shadow-[0_20px_40px_rgb(74,21,75,0.12)] hover:-translate-y-1 cursor-pointer;
+  }
+
+  .soft-button {
+    @apply bg-plum text-cream font-bold rounded-xl shadow-[0_4px_15px_rgb(74,21,75,0.2)] hover:shadow-[0_8px_25px_rgb(74,21,75,0.3)] hover:-translate-y-0.5 transition-all duration-300 active:scale-95 active:translate-y-0;
+  }
+
+  .soft-button-berry {
+    @apply bg-berry text-white font-bold rounded-xl shadow-[0_4px_15px_rgb(210,49,87,0.2)] hover:shadow-[0_8px_25px_rgb(210,49,87,0.3)] hover:-translate-y-0.5 transition-all duration-300 active:scale-95 active:translate-y-0;
+  }
+
+  .soft-button-outline {
+    @apply bg-white border-2 border-plum/10 text-plum font-bold rounded-xl shadow-sm hover:border-berry hover:text-berry hover:shadow-[0_8px_25px_rgb(210,49,87,0.15)] hover:-translate-y-0.5 transition-all duration-300 active:scale-95 active:translate-y-0;
   }
 
   .pulse-dot {

@@ -1,6 +1,7 @@
-import { useState, useMemo } from 'react';
-import { Send, CheckCircle2, Skull, Donut, Cake, Loader2, ChevronLeft, Calendar } from 'lucide-react';
+import { useState, useMemo, useEffect } from 'react';
+import { Send, CheckCircle2, Skull, Donut, Cake, Loader2, ChevronLeft, Calendar, RotateCcw } from 'lucide-react';
 import { Chess } from 'chess.js';
+import { Chessboard } from 'react-chessboard';
 import Navbar from '../components/Navbar/Navbar';
 import { supabase } from '../lib/supabaseClient';
 import puzzlesData from '../data/puzzles.json';
@@ -13,78 +14,12 @@ interface Puzzle {
     question: string;
 }
 
-const StaticBoard = ({ fen, size = "small" }: { fen: string, size?: "small" | "large" }) => {
-    const board = useMemo(() => {
-        try {
-            const game = new Chess(fen);
-            return game.board();
-        } catch (e) {
-            console.error("Invalid FEN:", fen);
-            return new Chess().board();
-        }
-    }, [fen]);
-
-    const getPieceImg = (type: string, color: string) => {
-        const piece = color + type.toUpperCase();
-        return `https://raw.githubusercontent.com/lichess-org/lila/master/public/piece/wikipedia/${piece}.svg`;
-    };
-
-    return (
-        <div className={`grid grid-cols-8 grid-rows-8 w-full h-full border border-plum/10 rounded-lg overflow-hidden shadow-inner bg-white ${size === 'large' ? 'shadow-2xl' : ''}`}>
-            {board.map((row, rowIndex) => 
-                row.map((square, colIndex) => {
-                    const isDark = (rowIndex + colIndex) % 2 === 1;
-                    return (
-                        <div 
-                            key={`${rowIndex}-${colIndex}`}
-                            className="flex items-center justify-center relative aspect-square"
-                            style={{
-                                background: isDark 
-                                    ? 'linear-gradient(135deg, #D18B47 0%, #B58863 100%)' 
-                                    : 'linear-gradient(135deg, #F8F5F2 0%, #FFFDD0 100%)'
-                            }}
-                        >
-                            {/* Rank coordinate (1-8) on the left edge */}
-                            {colIndex === 0 && (
-                                <span className={`absolute top-0.5 left-0.5 ${size === 'large' ? 'text-[12px]' : 'text-[8px]'} font-bold select-none ${isDark ? 'text-parfait-light' : 'text-[#B58863]'}`}>
-                                    {8 - rowIndex}
-                                </span>
-                            )}
-                            
-                            {/* File coordinate (a-h) on the bottom edge */}
-                            {rowIndex === 7 && (
-                                <span className={`absolute bottom-0.5 right-0.5 ${size === 'large' ? 'text-[12px]' : 'text-[8px]'} font-bold select-none ${isDark ? 'text-parfait-light' : 'text-[#B58863]'}`}>
-                                    {String.fromCharCode(97 + colIndex)}
-                                </span>
-                            )}
-
-                            {square && (
-                                <img 
-                                    src={getPieceImg(square.type, square.color)} 
-                                    alt=""
-                                    aria-label={`${square.color === 'w' ? 'White' : 'Black'} ${square.type}`}
-                                    onLoad={(e) => e.currentTarget.style.opacity = '1'}
-                                    style={{ opacity: 0 }}
-                                    className="w-[85%] h-[85%] select-none pointer-events-none drop-shadow-sm z-10 transition-opacity duration-300"
-                                    onError={(e) => {
-                                        const piece = square.color + square.type.toUpperCase();
-                                        e.currentTarget.src = `https://chessboardjs.com/img/chesspieces/wikipedia/${piece}.png`;
-                                    }}
-                                />
-                            )}
-                        </div>
-                    );
-                })
-            )}
-        </div>
-    );
-};
-
 export default function TrainingPuzzles() {
     const [selectedDifficulty, setSelectedDifficulty] = useState<Difficulty | null>(null);
     const [submitting, setSubmitting] = useState<boolean>(false);
     const [showSuccess, setShowSuccess] = useState(false);
     const [formData, setFormData] = useState({ name: '', answer: '' });
+    const [game, setGame] = useState(new Chess());
 
     /**
      * Logic to determine the puzzle week.
@@ -124,6 +59,34 @@ export default function TrainingPuzzles() {
     }, []);
 
     const weeklyPuzzles = puzzleInfo.puzzles;
+    const activePuzzle = selectedDifficulty ? weeklyPuzzles[selectedDifficulty] : null;
+    const initialTurn = activePuzzle ? activePuzzle.fen.split(' ')[1] : 'w';
+    const puzzleOrientation = initialTurn === 'b' ? 'black' : 'white';
+
+    useEffect(() => {
+        if (selectedDifficulty) {
+            setGame(new Chess(weeklyPuzzles[selectedDifficulty].fen));
+        }
+    }, [selectedDifficulty, weeklyPuzzles]);
+
+    const onDrop = ({ sourceSquare, targetSquare }: { sourceSquare: string, targetSquare: string | null }) => {
+        if (!targetSquare) return false;
+        try {
+            const gameCopy = new Chess(game.fen());
+            const move = gameCopy.move({
+                from: sourceSquare,
+                to: targetSquare,
+                promotion: 'q',
+            });
+            
+            if (move === null) return false;
+            
+            setGame(gameCopy);
+            return true;
+        } catch(e) {
+            return false;
+        }
+    };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -162,12 +125,12 @@ export default function TrainingPuzzles() {
     };
 
     return (
-        <div className="h-screen bg-cream flex flex-col relative overflow-hidden text-plum font-sans">
+        <div className="min-h-screen bg-cream flex flex-col relative overflow-x-hidden text-plum font-sans">
             <div className="absolute top-0 left-0 w-250 h-250 bg-berry/5 rounded-full blur-3xl -z-10 -translate-x-1/2 -translate-y-1/2" />
             
             <Navbar />
 
-            <main className="flex-1 max-w-7xl mx-auto w-full px-6 flex flex-col justify-center relative z-10 py-8">
+            <main className={`flex-1 max-w-7xl mx-auto w-full px-6 flex flex-col relative z-10 py-4 ${!selectedDifficulty ? 'justify-center' : 'justify-start'}`}>
                 
                 {!selectedDifficulty ? (
                     <>
@@ -196,7 +159,7 @@ export default function TrainingPuzzles() {
                                 <button
                                     key={level}
                                     onClick={() => setSelectedDifficulty(level)}
-                                    className="glass rounded-[3rem] p-12 flex flex-col items-center gap-8 group hover:-translate-y-2 transition-all duration-500 border-plum/5 hover:border-berry/20 shadow-xl"
+                                    className="soft-card soft-card-hover rounded-[3rem] p-12 flex flex-col items-center gap-8 group"
                                 >
                                     <div className={`p-8 rounded-[2.5rem] bg-white shadow-sm group-hover:scale-110 transition-transform duration-500 ${themes[level].text}`}>
                                         {themes[level].icon}
@@ -212,7 +175,7 @@ export default function TrainingPuzzles() {
                 ) : (
                     /* Puzzle Detail View */
                     <div className="w-full max-w-6xl mx-auto animate-in fade-in zoom-in-95 duration-500">
-                        <div className="flex justify-between items-center mb-6">
+                        <div className="flex justify-between items-center mb-2">
                             <button 
                                 onClick={() => setSelectedDifficulty(null)}
                                 className="inline-flex items-center gap-2 text-plum/40 hover:text-berry font-bold uppercase text-[10px] tracking-widest transition-colors"
@@ -224,13 +187,37 @@ export default function TrainingPuzzles() {
                             </span>
                         </div>
 
-                        <div className="grid lg:grid-cols-2 gap-12 items-center">
-                            {/* Enlarged Board */}
-                            <div className="w-full aspect-square max-w-120 mx-auto relative group">
-                                <div className="absolute -inset-4 border-2 border-berry/10 rounded-[2.5rem] -z-10 group-hover:border-berry/20 transition-colors" />
-                                <div className="p-4 glass rounded-[2.5rem] shadow-2xl h-full">
-                                    <StaticBoard fen={weeklyPuzzles[selectedDifficulty].fen} size="large" />
+                        <div className="grid lg:grid-cols-2 gap-8 lg:gap-12 items-start mt-2">
+                            <div className="flex flex-col items-center w-full">
+                                <div className="flex items-center gap-3 mb-2 px-4 py-2 rounded-xl bg-white/70 backdrop-blur-sm border border-plum/5 shadow-sm">
+                                    <div className={`w-3 h-3 rounded-full ${initialTurn === 'w' ? 'bg-white border-[1.5px] border-plum/20 shadow-inner' : 'bg-plum shadow-inner'}`} />
+                                    <span className="font-black text-[10px] uppercase tracking-widest text-plum/70">
+                                        {initialTurn === 'w' ? 'White to move' : 'Black to move'}
+                                    </span>
                                 </div>
+                                <div className="w-full aspect-square max-w-[420px] mx-auto relative group">
+                                    <div className="p-4 soft-card shadow-2xl h-full flex flex-col">
+                                        <div className="w-full h-full rounded-2xl overflow-hidden shadow-inner border border-plum/10 bg-white translate-z-0">
+                                            <Chessboard 
+                                                options={{
+                                                    position: game.fen(),
+                                                    boardOrientation: puzzleOrientation,
+                                                    onPieceDrop: onDrop,
+                                                    darkSquareStyle: { backgroundColor: '#b58863' },
+                                                    lightSquareStyle: { backgroundColor: '#f0d9b5' },
+                                                    animationDurationInMs: 300
+                                                }}
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+                                <button 
+                                    onClick={() => setGame(new Chess(activePuzzle!.fen))}
+                                    className="mt-3 flex items-center justify-center gap-2 py-3 px-6 soft-button w-full max-w-[420px]"
+                                >
+                                    <RotateCcw size={16} />
+                                    Reset Puzzle
+                                </button>
                             </div>
 
                             {/* Puzzle Info & Form */}
@@ -272,10 +259,10 @@ export default function TrainingPuzzles() {
                                     <button
                                         type="submit"
                                         disabled={submitting}
-                                        className={`w-full py-4 rounded-xl font-black text-white transition-all flex items-center justify-center gap-3 shadow-xl ${
+                                        className={`w-full py-4 soft-button-berry flex items-center justify-center gap-3 ${
                                             submitting 
-                                            ? 'bg-plum/20 cursor-not-allowed text-plum/40' 
-                                            : 'bg-berry hover:bg-berry/90 shadow-berry/30 hover:scale-[1.02] active:scale-95'
+                                            ? 'opacity-50 pointer-events-none' 
+                                            : ''
                                         }`}
                                     >
                                         {submitting ? (

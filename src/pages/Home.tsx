@@ -24,10 +24,10 @@ export default function Home() {
                             Luis Chan | FIDE Master
                         </div>
                         <h1 className="text-6xl md:text-7xl font-black mb-8 leading-tight tracking-tight">
-                            Master the Art of <span className="text-berry">Chess Strategy</span>
+                            Perfect <span className="text-berry">Your Chess</span>
                         </h1>
                         <p className="text-xl text-plum/70 mb-10 leading-relaxed">
-                            Personalised coaching designed to refine your chess intuition through structured training and external support. Learn through instructive and engaging face-to-face sessions in Melbourne.
+                            Personalised coaching with FM Luis Chan. Designed to refine your chess intuition through structured training and external support. Learn through instructive and engaging face-to-face sessions in Melbourne!
                         </p>
                         <div className="flex flex-wrap gap-4">
                             <a href="#contact" className="px-8 py-4 bg-plum text-cream font-bold rounded-xl hover:bg-plum/90 transition-all shadow-lg shadow-plum/20 flex items-center gap-2">

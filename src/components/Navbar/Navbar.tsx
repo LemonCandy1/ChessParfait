@@ -10,7 +10,7 @@ const Navbar = () => {
     const closeMenu = () => setIsMobileMenuOpen(false);
 
     return (
-        <nav className="sticky top-0 z-50 bg-cream/80 backdrop-blur-lg border-b border-plum/5 py-3 px-6">
+        <nav className="sticky top-0 z-[9999] bg-cream/80 backdrop-blur-lg border-b border-plum/5 py-3 px-6">
             <div className="max-w-7xl mx-auto flex items-center justify-between">
 
                 {/* Left: Logo */}
@@ -58,7 +58,7 @@ const Navbar = () => {
 
             {/* Mobile Menu Dropdown */}
             {isMobileMenuOpen && (
-                <div className="md:hidden absolute top-full left-0 w-full bg-cream/95 backdrop-blur-xl border-b border-plum/10 shadow-2xl py-8 px-6 flex flex-col gap-6 animate-in slide-in-from-top-2 duration-300">
+                <div className="md:hidden absolute top-full left-0 w-full z-[9999] bg-cream/95 backdrop-blur-xl border-b border-plum/10 shadow-2xl py-8 px-6 flex flex-col gap-6 animate-in slide-in-from-top-2 duration-300">
                     <NavLink to="/" label="Home" onClick={closeMenu} />
                     <NavLink to="/Challenge_Rulette" label="Challenge Rulette" onClick={closeMenu} />
                     <NavLink to="/TrainingPuzzles" label="Weekly Puzzles" onClick={closeMenu} />

@@ -9,7 +9,9 @@ export default function Home() {
                 <Navbar />
             </div>
 
-            <ParfaitScrollSequence />
+            <div className="hidden md:block">
+                <ParfaitScrollSequence />
+            </div>
 
             <header className="relative overflow-hidden pt-12 pb-24 px-6">
                 {/* Decorative background elements */}

@@ -146,13 +146,7 @@ export default function ParfaitScrollSequence() {
             style={{ opacity: text1Opacity, y: text1Y }}
             className="absolute flex flex-col items-center text-center gap-6"
           >
-            <div className="h-28 w-28 md:h-36 md:w-36 rounded-3xl overflow-hidden shadow-2xl border border-plum/20">
-                <img
-                    src={logo}
-                    alt="ChessParfait Logo"
-                    className="h-full w-full object-cover"
-                />
-            </div>
+
             <h1 className="font-serif text-5xl md:text-7xl font-bold tracking-tight drop-shadow-xl">
               <span className="text-plum">Chess</span><span className="text-berry italic">Parfait</span>
             </h1>

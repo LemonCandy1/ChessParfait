@@ -38,9 +38,9 @@
       "question": "White to move. Find the winning sequence"
     },
     {
-      "title": "Endgame Precision",
-      "fen": "8/8/4k3/3p1p2/3P1P2/4K3/8/8 w - - 10 55",
-      "question": "White to move. What is the drawing plan?"
+      "title": "Defensive Precision",
+      "fen": "3rr1k1/3q1pp1/bB2p2p/1R2P3/4Q3/P7/5PPP/5RK1 w - - 0 28",
+      "question": "White to move. What is the only move that doesn't lose?"
     },
     {
       "title": "Catalan Complexity",

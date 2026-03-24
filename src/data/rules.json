@@ -40,9 +40,6 @@
             "title": "Left or Right?",
             "rule": "Read this rule out loud. You must move pieces on black squares with your RIGHT hand and pieces on white squares with your LEFT hand. You must move your king with BOTH hands. If you move a piece with the wrong hand, you lose."
         }
-
-
-
     ],
     "Hard Tart": [
         {
@@ -105,7 +102,6 @@
             "title": "Dark Knight",
             "rule": "Every 3 moves, you have to move a piece to a dark square."
         }
-
     ],
     "Brain Freeze": [
         {
@@ -160,7 +156,6 @@
             "title": "3 Lives!",
             "rule": "If you lose 3 pawns in the game, you must resign."
         }
-
     ],
     "Challenge": [
         {
@@ -200,13 +195,16 @@
             "rule": "All your pieces must be next to at least one other piece."
         },
         {
-            "title": "Explosion",
+            "title": "Black Hole",
             "rule": "Read this out loud. Every 3 moves you make, your opponent can choose a new square that isn't occupied by one of your pieces. You cannot move to that square for the rest of the game."
         },
         {
             "title": "There's levels to this",
             "rule": "You have to have the same amount of points as your opponent. If you have more or less points for three turns, then you lose."
+        },
+        {
+            "title": "Food Coma",
+            "rule": "Every time you capture a piece, the piece which captured that piece cannot be moved for the rest of the game. This rule does not include pawns, and your king cannot capture."
         }
-
     ]
 }

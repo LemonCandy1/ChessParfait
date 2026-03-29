@@ -19,6 +19,16 @@
       "title": "Mate in 2",
       "fen": "8/8/4q1pk/5p1p/3Qn3/6PP/5P2/6K1 w - - 2 44",
       "question": "White to move and mate in 2"
+    },
+    {
+      "title": "Looks like you're cornered!",
+      "fen": "2b2r1k/1pp3pp/7b/3B2N1/5p1P/1PqPQ3/n1P1KP2/2R3R1 w - - 2 28",
+      "question": "White to move. Find the winning variation."
+    },
+    {
+      "title": "Send it!",
+      "fen": "8/4bBkp/1q2pp2/3b4/7R/4P3/1p3PPP/3Q2K1 w - - 2 30",
+      "question": "There's no time to stop promotion. We gotta go all in! White to move."
     }
   ],
   "Hard Tart": [
@@ -43,9 +53,14 @@
       "question": "White to move. What is the only move that doesn't lose?"
     },
     {
-      "title": "Catalan Complexity",
-      "fen": "r2q1rk1/pp3ppp/2n2n2/b2pP3/3P4/P2B1N2/1P4PP/R2Q1RK1 w - - 1 16",
-      "question": "White to move. Find the best tactical or strategic plan."
+      "title": "Lion's Jaw",
+      "fen": "r1b1k2r/pp3pp1/1qpp3p/4n3/P3PP1b/2N5/1PPK2R1/R1BQ1B2 b kq - 1 14",
+      "question": "Black to move. Find the winning killer combo."
+    },
+    {
+      "title": "Grenade Bomb",
+      "fen": "r5k1/pbpppqbN/1pn1p1Q1/6N1/3P4/8/PPP2PP1/2KR4 w - - 0 1",
+      "question": "White to move. Find the winning variation."
     }
   ],
   "Challenge": [
@@ -68,6 +83,16 @@
       "title": "Elite Tactical Vision",
       "fen": "r1b2rk1/pp3ppp/2n1p3/q2pP3/3P1P2/P1PB1N2/6PP/R2QK2R w KQ - 1 12",
       "question": "White to move. Find the path to a winning advantage."
+    },
+    {
+      "title": "One More Step",
+      "fen": "r4rk1/p1p3pp/1bp2qn1/3pp2Q/3P4/2N1B2R/PP3P1P/2KR4 b - - 0 1",
+      "question": "White to move. Find the winning variation."
+    },
+    {
+      "title": "Endgame Masterclass",
+      "fen": "8/8/6pk/7p/8/5KP1/4B3/8 w - - 1 2",
+      "question": "White to move. Find the winning variation."
     }
   ]
 }

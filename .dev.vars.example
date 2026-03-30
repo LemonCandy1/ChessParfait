@@ -1,0 +1,5 @@
+# Copy this to .dev.vars for local `wrangler dev` / `wrangler pages dev`
+# These mirror the secrets you set in Cloudflare dashboard via `wrangler secret put`
+GOOGLE_SERVICE_ACCOUNT_EMAIL=my-service-account@my-project.iam.gserviceaccount.com
+GOOGLE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n"
+GOOGLE_SHEET_ID=your-spreadsheet-id-from-the-url

@@ -4,7 +4,6 @@ import { Chess } from 'chess.js';
 import { Chessboard } from 'react-chessboard';
 import Navbar from '../components/Navbar/Navbar';
 import { supabase } from '../lib/supabaseClient';
-import puzzlesData from '../data/puzzles.json';
 
 type Difficulty = 'Piece of Cake' | 'Hard Tart' | 'Challenge';
 
@@ -14,6 +13,8 @@ interface Puzzle {
     question: string;
 }
 
+type PuzzlesData = Record<Difficulty, Puzzle[]>;
+
 export default function TrainingPuzzles() {
     const [selectedDifficulty, setSelectedDifficulty] = useState<Difficulty | null>(null);
     const [submitting, setSubmitting] = useState<boolean>(false);
@@ -21,12 +22,35 @@ export default function TrainingPuzzles() {
     const [formData, setFormData] = useState({ name: '', answer: '' });
     const [game, setGame] = useState(new Chess());
 
+    // ── Puzzle data fetched from the Cloudflare Worker → Google Sheets ──
+    const [puzzlesData, setPuzzlesData] = useState<PuzzlesData | null>(null);
+    const [puzzlesLoading, setPuzzlesLoading] = useState(true);
+    const [puzzlesError, setPuzzlesError] = useState<string | null>(null);
+
+    useEffect(() => {
+        fetch('/api/puzzles')
+            .then((res) => {
+                if (!res.ok) throw new Error(`Failed to load puzzles (${res.status})`);
+                return res.json() as Promise<PuzzlesData>;
+            })
+            .then((data) => {
+                setPuzzlesData(data);
+                setPuzzlesLoading(false);
+            })
+            .catch((err: Error) => {
+                setPuzzlesError(err.message);
+                setPuzzlesLoading(false);
+            });
+    }, []);
+
     /**
      * Logic to determine the puzzle week.
      * We use a reference Monday (March 2, 2026) as the start of "Week 1".
      * Puzzles refresh every Monday at 12:00 AM.
      */
     const puzzleInfo = useMemo(() => {
+        if (!puzzlesData) return null;
+
         const now = new Date();
         
         // Reference Monday: March 2nd, 2026
@@ -44,8 +68,8 @@ export default function TrainingPuzzles() {
         const currentWeekNumber = weekIndex + 1;
 
         const select = (diff: Difficulty) => {
-            const pool = (puzzlesData as any)[diff];
-            return pool[weekIndex % pool.length] as Puzzle;
+            const pool = puzzlesData[diff];
+            return pool[weekIndex % pool.length];
         };
 
         return {
@@ -56,15 +80,15 @@ export default function TrainingPuzzles() {
                 'Challenge': select('Challenge')
             }
         };
-    }, []);
+    }, [puzzlesData]);
 
-    const weeklyPuzzles = puzzleInfo.puzzles;
-    const activePuzzle = selectedDifficulty ? weeklyPuzzles[selectedDifficulty] : null;
+    const weeklyPuzzles = puzzleInfo?.puzzles ?? null;
+    const activePuzzle = selectedDifficulty && weeklyPuzzles ? weeklyPuzzles[selectedDifficulty] : null;
     const initialTurn = activePuzzle ? activePuzzle.fen.split(' ')[1] : 'w';
     const puzzleOrientation = initialTurn === 'b' ? 'black' : 'white';
 
     useEffect(() => {
-        if (selectedDifficulty) {
+        if (selectedDifficulty && weeklyPuzzles) {
             setGame(new Chess(weeklyPuzzles[selectedDifficulty].fen));
         }
     }, [selectedDifficulty, weeklyPuzzles]);
@@ -101,7 +125,7 @@ export default function TrainingPuzzles() {
                         user_name: formData.name,
                         difficulty: selectedDifficulty,
                         answer: formData.answer,
-                        week: puzzleInfo.weekNumber, // Added week tracking
+                        week: puzzleInfo?.weekNumber,
                         created_at: new Date().toISOString()
                     }
                 ]);
@@ -117,6 +141,31 @@ export default function TrainingPuzzles() {
             setSubmitting(false);
         }
     };
+
+    // ── Early returns for loading / error state (also consumes puzzlesLoading / puzzlesError) ──
+    if (puzzlesLoading) {
+        return (
+            <div className="min-h-screen bg-cream flex items-center justify-center text-plum font-sans">
+                <Navbar />
+                <div className="flex flex-col items-center gap-4">
+                    <Loader2 size={40} className="animate-spin text-berry" />
+                    <p className="text-plum/50 font-bold uppercase tracking-widest text-xs">Loading puzzles…</p>
+                </div>
+            </div>
+        );
+    }
+
+    if (puzzlesError || !puzzleInfo) {
+        return (
+            <div className="min-h-screen bg-cream flex items-center justify-center text-plum font-sans">
+                <Navbar />
+                <div className="flex flex-col items-center gap-4 text-center">
+                    <p className="text-berry font-black text-lg">Failed to load puzzles</p>
+                    <p className="text-plum/50 text-sm">{puzzlesError ?? 'Unknown error'}</p>
+                </div>
+            </div>
+        );
+    }
 
     const themes = {
         'Piece of Cake': { bg: 'bg-emerald-50/30', text: 'text-emerald-600', icon: <Cake size={32} /> },
@@ -227,9 +276,9 @@ export default function TrainingPuzzles() {
                                         <span className={themes[selectedDifficulty].text}>{themes[selectedDifficulty].icon}</span>
                                         <span className="font-black uppercase tracking-widest text-[10px] text-plum/60">{selectedDifficulty}</span>
                                     </div>
-                                    <h2 className="text-4xl font-serif font-black tracking-tight">{weeklyPuzzles[selectedDifficulty].title}</h2>
+                                    <h2 className="text-4xl font-serif font-black tracking-tight">{weeklyPuzzles?.[selectedDifficulty]?.title}</h2>
                                     <p className="text-xl text-plum/70 italic leading-relaxed">
-                                        "{weeklyPuzzles[selectedDifficulty].question}"
+                                        "{weeklyPuzzles?.[selectedDifficulty]?.question}"
                                     </p>
                                 </div>
 

@@ -1,12 +1,14 @@
 {
   "name": "chessparfait",
   "compatibility_date": "2026-02-17",
+  "main": "./worker.ts",
   "assets": {
     "directory": "./dist",
-    "not_found_handling": "single-page-application"
+    "binding": "ASSETS"
   },
   "vars": {
     "VITE_SUPABASE_URL": "https://uqmxkokxiiaxjaskxerp.supabase.co",
     "VITE_SUPABASE_ANON_KEY": "sb_publishable_HyavN6k724twnI7GGH_ZQw_XOefjetM"
   }
 }
+

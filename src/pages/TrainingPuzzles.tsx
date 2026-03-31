@@ -29,8 +29,15 @@ export default function TrainingPuzzles() {
 
     useEffect(() => {
         fetch('/api/puzzles')
-            .then((res) => {
-                if (!res.ok) throw new Error(`Failed to load puzzles (${res.status})`);
+            .then(async (res) => {
+                if (!res.ok) {
+                    let errorMessage = `Failed to load puzzles (${res.status})`;
+                    try {
+                        const errData = await res.json();
+                        if (errData.error) errorMessage += `: ${errData.error}`;
+                    } catch (_) {}
+                    throw new Error(errorMessage);
+                }
                 return res.json() as Promise<PuzzlesData>;
             })
             .then((data) => {

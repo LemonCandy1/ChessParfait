@@ -1,17 +1,4 @@
-/**
- * Cloudflare Worker entry point for ChessParfait.
- *
- * Handles `/api/puzzles` by fetching from Google Sheets using a service
- * account JWT. All other requests are forwarded to the static SPA assets.
- *
- * Required secrets (set via `wrangler secret put` or in the CF dashboard):
- *   GOOGLE_SERVICE_ACCOUNT_EMAIL  – service account client_email
- *   GOOGLE_PRIVATE_KEY            – service account private_key (PEM)
- *   GOOGLE_SHEET_ID               – the spreadsheet ID from the sheet URL
- */
-
-interface Env {
-  ASSETS: { fetch(req: Request): Promise<Response> };
+export interface Env {
   GOOGLE_SERVICE_ACCOUNT_EMAIL: string;
   GOOGLE_PRIVATE_KEY: string;
   GOOGLE_SHEET_ID: string;
@@ -40,7 +27,6 @@ function base64url(data: ArrayBuffer | string): string {
 }
 
 async function importPrivateKey(pem: string): Promise<CryptoKey> {
-  // Google's JSON key escapes newlines as \n; restore them if present
   const normalised = pem.replace(/\\n/g, '\n');
   const pemBody = normalised
     .replace(/-----BEGIN PRIVATE KEY-----/, '')
@@ -110,7 +96,6 @@ async function fetchTab(
   tabName: string,
   token: string,
 ): Promise<Puzzle[]> {
-  // Columns: A = title, B = fen, C = question. Row 1 is the header.
   const range = encodeURIComponent(`${tabName}!A2:C`);
   const url = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${range}`;
 
@@ -165,33 +150,18 @@ async function handlePuzzles(env: Env): Promise<Response> {
   );
 }
 
-// ─── Worker export ────────────────────────────────────────────────────────────
+export async function onRequestOptions() {
+  return new Response(null, { headers: CORS_HEADERS });
+}
 
-export default {
-  async fetch(request: Request, env: Env): Promise<Response> {
-    const { pathname } = new URL(request.url);
-
-    if (request.method === 'OPTIONS') {
-      return new Response(null, { headers: CORS_HEADERS });
-    }
-
-    if (pathname === '/api/puzzles') {
-      try {
-        return await handlePuzzles(env);
-      } catch (err) {
-        const message = err instanceof Error ? err.message : String(err);
-        return new Response(JSON.stringify({ error: message }), {
-          status: 500,
-          headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
-        });
-      }
-    }
-
-    // Static SPA assets — fall back to index.html on 404 so deep-links work
-    const assetResponse = await env.ASSETS.fetch(request);
-    if (assetResponse.status === 404) {
-      return env.ASSETS.fetch(new Request(new URL('/index.html', request.url).toString()));
-    }
-    return assetResponse;
-  },
-};
+export async function onRequestGet(context: any) {
+  try {
+    return await handlePuzzles(context.env);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    return new Response(JSON.stringify({ error: message }), {
+      status: 500,
+      headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
+    });
+  }
+}

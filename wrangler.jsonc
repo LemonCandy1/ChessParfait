@@ -4,7 +4,9 @@
   "compatibility_date": "2026-02-17",
   "vars": {
     "VITE_SUPABASE_URL": "https://uqmxkokxiiaxjaskxerp.supabase.co",
-    "VITE_SUPABASE_ANON_KEY": "sb_publishable_HyavN6k724twnI7GGH_ZQw_XOefjetM"
+    "VITE_SUPABASE_ANON_KEY": "sb_publishable_HyavN6k724twnI7GGH_ZQw_XOefjetM",
+    "GOOGLE_SERVICE_ACCOUNT_EMAIL": "chessparfait-puzzles@sound-micron-491823-r1.iam.gserviceaccount.com",
+    "GOOGLE_SHEET_ID": "1wf22uVatxEMkfspr9HLVGepMsJqT-kOuSVXuttTNMQ0"
   }
 }
 

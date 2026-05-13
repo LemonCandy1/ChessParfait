@@ -36,14 +36,12 @@ const Navbar = () => {
                     <NavLink to="/TrainingPuzzles" label="Weekly Puzzles" />
                     <NavLink to="/PawnGame" label="Pawn Game" />
                     <NavLink to="/ImposterChess" label="Imposter Chess" />
+                    <NavLink to="/contact" label="Contact" />
                     <NavLink to="/about" label="About" />
                 </div>
 
-                {/* Right: CTA and Mobile Toggle */}
+                {/* Right: Mobile Toggle */}
                 <div className="flex items-center gap-4">
-                    <a href="#contact" className="hidden md:block px-6 py-2.5 soft-button text-sm">
-                        Get Started
-                    </a>
                     
                     {/* Mobile Menu Toggle Button */}
                     <button 
@@ -64,10 +62,8 @@ const Navbar = () => {
                     <NavLink to="/TrainingPuzzles" label="Weekly Puzzles" onClick={closeMenu} />
                     <NavLink to="/PawnGame" label="Pawn Game" onClick={closeMenu} />
                     <NavLink to="/ImposterChess" label="Imposter Chess" onClick={closeMenu} />
+                    <NavLink to="/contact" label="Contact" onClick={closeMenu} />
                     <NavLink to="/about" label="About" onClick={closeMenu} />
-                    <a href="#contact" onClick={closeMenu} className="text-center w-full px-5 py-4 mt-2 bg-plum text-cream text-sm font-bold rounded-xl hover:bg-berry transition-all shadow-sm active:scale-95">
-                        Get Started
-                    </a>
                 </div>
             )}
         </nav>

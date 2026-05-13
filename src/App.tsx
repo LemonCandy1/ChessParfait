@@ -6,6 +6,7 @@ import TrainingPuzzles from './pages/TrainingPuzzles';
 import ImposterChess from './pages/ImposterChess';
 import PawnGame from './pages/PawnGame';
 import PawnGameStrategy from './pages/PawnGameStrategy';
+import Contact from './pages/Contact';
 
 export default function App() {
   return (
@@ -18,6 +19,7 @@ export default function App() {
         <Route path="/ImposterChess" element={<ImposterChess />} />
         <Route path="/PawnGame" element={<PawnGame />} />
         <Route path="/PawnGameStrategy" element={<PawnGameStrategy />} />
+        <Route path="/contact" element={<Contact />} />
       </Routes>
     </BrowserRouter>
   );

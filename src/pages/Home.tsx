@@ -1,5 +1,6 @@
 import { Target, Trophy, BarChart3, Mail, ChevronRight } from 'lucide-react';
 import Navbar from '../components/Navbar/Navbar.tsx';
+import { Link } from 'react-router-dom';
 import ParfaitScrollSequence from '../components/ParfaitScrollSequence';
 
 export default function Home() {
@@ -30,9 +31,9 @@ export default function Home() {
                             Personalised coaching with FM Luis Chan. Designed to refine your chess intuition through structured training and external support. Learn through instructive and engaging face-to-face sessions in Melbourne!
                         </p>
                         <div className="flex flex-wrap gap-4">
-                            <a href="#contact" className="px-8 py-4 bg-plum text-cream font-bold rounded-xl hover:bg-plum/90 transition-all shadow-lg shadow-plum/20 flex items-center gap-2">
+                            <Link to="/contact" className="px-8 py-4 bg-plum text-cream font-bold rounded-xl hover:bg-plum/90 transition-all shadow-lg shadow-plum/20 flex items-center gap-2">
                                 Book a Session <ChevronRight size={18} />
-                            </a>
+                            </Link>
                             <a href="/about" className="px-8 py-4 bg-white/50 border border-plum/10 text-plum font-bold rounded-xl hover:bg-white transition-all">
                                 Learn More
                             </a>
@@ -82,9 +83,9 @@ export default function Home() {
                         Whether you're a beginner or a seasoned player, give me a message to we can discuss some game plans!
                     </p>
                     <div className="flex flex-col sm:flex-row items-center justify-center gap-6">
-                        <a href="mailto:luischanchess@gmail.com" className="inline-flex items-center gap-3 bg-berry hover:bg-berry/90 text-white px-10 py-5 rounded-2xl font-bold transition-all transform hover:scale-105 shadow-xl shadow-berry/30">
+                        <Link to="/contact" className="inline-flex items-center gap-3 bg-berry hover:bg-berry/90 text-white px-10 py-5 rounded-2xl font-bold transition-all transform hover:scale-105 shadow-xl shadow-berry/30">
                             <Mail size={22} /> Contact for Availability
-                        </a>
+                        </Link>
                         <div className="text-cream/60 font-medium">
                             Based in Melbourne, Australia
                         </div>

@@ -39,11 +39,16 @@ export default function About() {
                 </section>
 
                 {/* Statistics Cards */}
-                <section className="grid md:grid-cols-3 gap-8 mb-24">
-                    <StatCard icon={<Award className="text-berry" />} label="FIDE Rating" value="2250" />
-                    <StatCard icon={<Star className="text-plum" />} label="ACF Rating" value="2318" />
-                    <StatCard icon={<Medal className="text-berry" />} label="Australia Rank*" value="#16" />
-                </section>
+                <div className="mb-24">
+                    <section className="grid md:grid-cols-3 gap-8 mb-4">
+                        <StatCard icon={<Award className="text-berry" />} label="FIDE Rating" value="2280" />
+                        <StatCard icon={<Star className="text-plum" />} label="ACF Rating" value="2318" />
+                        <StatCard icon={<Medal className="text-berry" />} label="Australia Rank*" value="#16" />
+                    </section>
+                    <p className="text-sm text-plum/60 italic text-right px-4">
+                        *Based on Australian Chess Federation ranking among active players
+                    </p>
+                </div>
 
                 {/* The Story Section */}
                 <section className="grid lg:grid-cols-2 gap-16 mb-24 items-center">

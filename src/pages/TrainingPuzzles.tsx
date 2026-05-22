@@ -5,6 +5,7 @@ import { Chessboard } from 'react-chessboard';
 import Navbar from '../components/Navbar/Navbar';
 import { supabase } from '../lib/supabaseClient';
 import { ChessCakeSliceIcon, PieIcon, SkullIcon } from '../components/Icons';
+import { playMoveSound, playCaptureSound } from '../lib/soundEffects';
 
 type Difficulty = 'Piece of Cake' | 'Hard Tart' | 'Challenge';
 
@@ -112,6 +113,12 @@ export default function TrainingPuzzles() {
             });
             
             if (move === null) return false;
+            
+            if (move.captured) {
+                playCaptureSound();
+            } else {
+                playMoveSound();
+            }
             
             setGame(gameCopy);
             return true;

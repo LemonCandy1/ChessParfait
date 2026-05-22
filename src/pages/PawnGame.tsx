@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Trophy, RotateCcw, ChevronLeft, Cpu, User, Info } from 'lucide-react';
 import Navbar from '../components/Navbar/Navbar';
 import { Link } from 'react-router-dom';
+import { playMoveSound, playCaptureSound, playWinSound, playLoseSound } from '../lib/soundEffects';
 
 // Constants
 const BOARD_SIZE = 8;
@@ -482,6 +483,16 @@ const PawnGame: React.FC = () => {
 
     const executeMove = (move: Move) => {
         setHistory(prev => [...prev, { board: board.map(row => [...row]), turn, ep: enPassantTarget, lastMove }]);
+        
+        // Play move or capture sound
+        const [, , r2, c2] = move;
+        const isCapture = board[r2][c2] !== EMPTY || (enPassantTarget && r2 === enPassantTarget[0] && c2 === enPassantTarget[1]);
+        if (isCapture) {
+            playCaptureSound();
+        } else {
+            playMoveSound();
+        }
+
         const { board: nb, ep: nep } = makeMove(board, move, enPassantTarget);
         setBoard(nb);
         setEnPassantTarget(nep);
@@ -490,6 +501,11 @@ const PawnGame: React.FC = () => {
         const nextTurn = turn === WHITE ? BLACK : WHITE;
         if (checkWin(nb, turn)) {
             setWinner(turn === WHITE ? 'White' : 'Black');
+            if (turn === userColor) {
+                playWinSound();
+            } else {
+                playLoseSound();
+            }
         } else {
             setTurn(nextTurn);
         }
@@ -505,10 +521,23 @@ const PawnGame: React.FC = () => {
                     executeMove(move);
                 } else {
                     setWinner(userColor === WHITE ? 'White' : 'Black');
+                    // AI has no moves, meaning human user wins!
+                    playWinSound();
                 }
                 setIsThinking(false);
             }, 600);
             return () => clearTimeout(timer);
+        }
+    }, [turn, winner, board, enPassantTarget, userColor]);
+
+    // Check if human user has no legal moves (defeat)
+    useEffect(() => {
+        if (!winner && userColor && turn === userColor) {
+            const userMoves = getLegalMoves(board, userColor, enPassantTarget);
+            if (userMoves.length === 0) {
+                setWinner(userColor === WHITE ? 'Black' : 'White'); // AI wins
+                playLoseSound();
+            }
         }
     }, [turn, winner, board, enPassantTarget, userColor]);
 

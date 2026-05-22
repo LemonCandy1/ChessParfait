@@ -1,9 +1,10 @@
-import { useState, useMemo, useEffect } from 'react';
-import { Send, CheckCircle2, Skull, Donut, Cake, Loader2, ChevronLeft, Calendar, RotateCcw } from 'lucide-react';
+import React, { useState, useMemo, useEffect } from 'react';
+import { Send, CheckCircle2, Loader2, ChevronLeft, Calendar, RotateCcw } from 'lucide-react';
 import { Chess } from 'chess.js';
 import { Chessboard } from 'react-chessboard';
 import Navbar from '../components/Navbar/Navbar';
 import { supabase } from '../lib/supabaseClient';
+import { ChessCakeSliceIcon, PieIcon, SkullIcon } from '../components/Icons';
 
 type Difficulty = 'Piece of Cake' | 'Hard Tart' | 'Challenge';
 
@@ -175,9 +176,9 @@ export default function TrainingPuzzles() {
     }
 
     const themes = {
-        'Piece of Cake': { bg: 'bg-emerald-50/30', text: 'text-emerald-600', icon: <Cake size={32} /> },
-        'Hard Tart': { bg: 'bg-amber-50/30', text: 'text-amber-600', icon: <Donut size={32} /> },
-        'Challenge': { bg: 'bg-berry/5', text: 'text-berry', icon: <Skull size={32} /> }
+        'Piece of Cake': { bg: 'bg-emerald-50/30', text: 'text-emerald-600', icon: <ChessCakeSliceIcon /> },
+        'Hard Tart': { bg: 'bg-amber-50/30', text: 'text-amber-600', icon: <PieIcon /> },
+        'Challenge': { bg: 'bg-berry/5', text: 'text-berry', icon: <SkullIcon /> }
     };
 
     return (
@@ -217,8 +218,8 @@ export default function TrainingPuzzles() {
                                     onClick={() => setSelectedDifficulty(level)}
                                     className="soft-card soft-card-hover rounded-[3rem] p-12 flex flex-col items-center gap-8 group"
                                 >
-                                    <div className={`p-8 rounded-[2.5rem] bg-white shadow-sm group-hover:scale-110 transition-transform duration-500 ${themes[level].text}`}>
-                                        {themes[level].icon}
+                                    <div className={`p-5 rounded-[2.5rem] bg-white shadow-sm group-hover:scale-115 transition-transform duration-500 ${themes[level].text}`}>
+                                        {React.cloneElement(themes[level].icon, { size: 48 })}
                                     </div>
                                     <div className="text-center">
                                         <h3 className="text-3xl font-serif font-black tracking-tight mb-2">{level}</h3>
@@ -245,7 +246,7 @@ export default function TrainingPuzzles() {
 
                         <div className="grid lg:grid-cols-2 gap-8 lg:gap-12 items-start mt-2">
                             <div className="flex flex-col items-center w-full">
-                                <div className="flex items-center gap-3 mb-2 px-4 py-2 rounded-xl bg-white/70 backdrop-blur-sm border border-plum/5 shadow-sm">
+                                <div className="flex items-center gap-3 mb-2 px-4 py-2 rounded-xl bg-white/70 backdrop-blur-sm border-2 border-plum/15 shadow-sm">
                                     <div className={`w-3 h-3 rounded-full ${initialTurn === 'w' ? 'bg-white border-[1.5px] border-plum/20 shadow-inner' : 'bg-plum shadow-inner'}`} />
                                     <span className="font-black text-[10px] uppercase tracking-widest text-plum/70">
                                         {initialTurn === 'w' ? 'White to move' : 'Black to move'}
@@ -253,7 +254,7 @@ export default function TrainingPuzzles() {
                                 </div>
                                 <div className="w-full aspect-square max-w-[420px] mx-auto relative group">
                                     <div className="p-4 soft-card shadow-2xl h-full flex flex-col">
-                                        <div className="w-full h-full rounded-2xl overflow-hidden shadow-inner border border-plum/10 bg-white translate-z-0">
+                                        <div className="w-full h-full rounded-2xl overflow-hidden shadow-inner border-2 border-plum/15 bg-white translate-z-0">
                                             <Chessboard 
                                                 options={{
                                                     position: game.fen(),
@@ -280,7 +281,9 @@ export default function TrainingPuzzles() {
                             <div className="space-y-6">
                                 <div className="space-y-3">
                                     <div className={`inline-flex items-center gap-3 px-3 py-1.5 rounded-lg ${themes[selectedDifficulty].bg}`}>
-                                        <span className={themes[selectedDifficulty].text}>{themes[selectedDifficulty].icon}</span>
+                                        <span className={themes[selectedDifficulty].text}>
+                                            {React.cloneElement(themes[selectedDifficulty].icon, { size: 20 })}
+                                        </span>
                                         <span className="font-black uppercase tracking-widest text-[10px] text-plum/60">{selectedDifficulty}</span>
                                     </div>
                                     <h2 className="text-4xl font-serif font-black tracking-tight">{weeklyPuzzles?.[selectedDifficulty]?.title}</h2>
@@ -289,7 +292,7 @@ export default function TrainingPuzzles() {
                                     </p>
                                 </div>
 
-                                <form onSubmit={handleSubmit} className="space-y-4 bg-white/30 p-6 rounded-[2.5rem] border border-plum/5 backdrop-blur-sm shadow-inner">
+                                <form onSubmit={handleSubmit} className="space-y-4 bg-white/30 p-6 rounded-[2.5rem] border-2 border-plum/15 backdrop-blur-sm shadow-inner">
                                     <div className="space-y-1">
                                         <label className="block text-[9px] font-black uppercase tracking-widest text-plum/40 ml-4">Your Name</label>
                                         <input
@@ -298,7 +301,7 @@ export default function TrainingPuzzles() {
                                             placeholder="Enter your name"
                                             value={formData.name}
                                             onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                                            className="w-full bg-white/50 border border-plum/5 rounded-xl px-5 py-3 text-plum focus:outline-none focus:border-berry transition-all font-bold text-sm"
+                                            className="w-full bg-white/50 border-2 border-plum/15 rounded-xl px-5 py-3 text-plum focus:outline-none focus:border-berry transition-all font-bold text-sm"
                                         />
                                     </div>
                                     <div className="space-y-1">
@@ -309,7 +312,7 @@ export default function TrainingPuzzles() {
                                             placeholder="Your answer"
                                             value={formData.answer}
                                             onChange={(e) => setFormData({ ...formData, answer: e.target.value })}
-                                            className="w-full bg-white/50 border border-plum/5 rounded-xl px-5 py-3 text-plum focus:outline-none focus:border-berry transition-all font-bold text-sm resize-none"
+                                            className="w-full bg-white/50 border-2 border-plum/15 rounded-xl px-5 py-3 text-plum focus:outline-none focus:border-berry transition-all font-bold text-sm resize-none"
                                         />
                                     </div>
                                     <button

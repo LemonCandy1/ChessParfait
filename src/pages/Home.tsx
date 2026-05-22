@@ -28,7 +28,10 @@ export default function Home() {
                             Perfect <span className="text-berry">Your Chess</span>
                         </h1>
                         <p className="text-xl text-plum/70 mb-10 leading-relaxed">
-                            Personalised coaching with FM Luis Chan. Designed to refine your chess intuition through structured training and external support. Learn through instructive and engaging face-to-face sessions in Melbourne!
+                            Personalised coaching with FM Luis Chan. Designed to refine your chess intuition through structured training and external support.
+                        </p>
+                        <p className="text-xl text-plum/70 mb-10 leading-relaxed">
+                            Learn through instructive and engaging face-to-face sessions in Melbourne!
                         </p>
                         <div className="flex flex-wrap gap-4">
                             <Link to="/contact" className="px-8 py-4 bg-plum text-cream font-bold rounded-xl hover:bg-plum/90 transition-all shadow-lg shadow-plum/20 flex items-center gap-2">
@@ -53,17 +56,17 @@ export default function Home() {
 
                     <div className="grid md:grid-cols-3 gap-8">
                         <ServiceCard
-                            icon={<Target className="text-berry" />}
+                            icon={<Target className="text-berry" size={32} />}
                             title="Custom Repertoires"
                             desc="Learn from a collection of pre-prepared lines and ideas, tailored to your playstyle."
                         />
                         <ServiceCard
-                            icon={<BarChart3 className="text-plum" />}
+                            icon={<BarChart3 className="text-plum" size={32} />}
                             title="Game Analysis"
                             desc="Identify recurring mistakes and areas for improvement."
                         />
                         <ServiceCard
-                            icon={<Trophy className="text-berry" />}
+                            icon={<Trophy className="text-berry" size={32} />}
                             title="Tournament Strategy"
                             desc="Psychological preparation, time management and opening for upcoming opponents."
                         />
@@ -102,7 +105,7 @@ export default function Home() {
 
 function ServiceCard({ icon, title, desc }: { icon: any, title: string, desc: string }) {
     return (
-        <div className="p-10 glass rounded-3xl hover:bg-white/80 transition-all duration-500 group border-plum/5">
+        <div className="p-10 glass rounded-3xl hover:bg-white/80 transition-all duration-500 group border-2 border-plum/15">
             <div className="w-16 h-16 rounded-2xl flex items-center justify-center mb-8 bg-cream group-hover:scale-110 transition-transform duration-500 shadow-sm">
                 {icon}
             </div>

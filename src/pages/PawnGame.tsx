@@ -632,17 +632,17 @@ const PawnGame: React.FC = () => {
                         {/* Board - Left/Center */}
                         <div className="order-1 flex flex-col items-center w-full">
                             <div className="mb-4 flex items-center justify-between w-full max-w-[min(800px,calc(100vh-250px))] gap-4">
-                                <div className={`flex-1 flex items-center gap-3 px-4 py-3 rounded-xl justify-center border-2 transition-all ${turn === userColor ? 'bg-berry border-berry text-white shadow-lg scale-105' : 'bg-white border-plum/5 text-plum/30'}`}>
+                                <div className={`flex-1 flex items-center gap-3 px-4 py-3 rounded-xl justify-center border-2 transition-all ${turn === userColor ? 'bg-berry border-berry text-white shadow-lg scale-105' : 'bg-white border-plum/15 text-plum/30'}`}>
                                     <User size={18} />
                                     <span className="font-black text-xs uppercase tracking-widest whitespace-nowrap">You ({userColor === WHITE ? 'White' : 'Black'})</span>
                                 </div>
-                                <div className={`flex-1 flex items-center gap-3 px-4 py-3 rounded-xl justify-center border-2 transition-all ${turn !== userColor ? 'bg-plum border-plum text-white shadow-lg scale-105' : 'bg-white border-plum/5 text-plum/30'}`}>
+                                <div className={`flex-1 flex items-center gap-3 px-4 py-3 rounded-xl justify-center border-2 transition-all ${turn !== userColor ? 'bg-plum border-plum text-white shadow-lg scale-105' : 'bg-white border-plum/15 text-plum/30'}`}>
                                     <Cpu size={18} />
                                     <span className="font-black text-xs uppercase tracking-widest whitespace-nowrap">{isThinking ? 'Thinking...' : `AI (${userColor === WHITE ? 'Black' : 'White'})`}</span>
                                 </div>
                             </div>
 
-                            <div className="relative aspect-square w-full max-w-[min(800px,calc(100vh-250px))] shadow-2xl rounded-sm overflow-hidden border border-plum/10">
+                            <div className="relative aspect-square w-full max-w-[min(800px,calc(100vh-250px))] shadow-2xl rounded-sm overflow-hidden border-2 border-plum/15">
                                 <div className="grid grid-cols-8 grid-rows-8 h-full w-full">
                                     {board.map((_row, ri) => {
                                         // If user is Black, we flip the rows (visual only)

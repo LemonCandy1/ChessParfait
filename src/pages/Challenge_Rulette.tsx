@@ -1,8 +1,9 @@
 import { useState } from 'react';
-import { Cake, Donut, AlertTriangle, Skull, X, MessageSquarePlus, CheckCircle2 } from 'lucide-react';
+import { X, MessageSquarePlus, CheckCircle2 } from 'lucide-react';
 import rulesData from '../data/rules.json';
 import Navbar from '../components/Navbar/Navbar';
 import { supabase } from '../lib/supabaseClient.ts';
+import { ChessCakeSliceIcon, PieIcon, SnowflakeIcon, SkullIcon } from '../components/Icons';
 
 type Difficulty = 'Piece of Cake' | 'Hard Tart' | 'Brain Freeze' | 'Challenge';
 
@@ -39,13 +40,13 @@ export default function ChallengeRulette() {
         }, 300);
     };
 
-    const getIcon = (level: Difficulty) => {
+    const getIcon = (level: Difficulty, size = 20) => {
         switch (level) {
-            case 'Piece of Cake': return <Cake size={20} />;
-            case 'Hard Tart': return <Donut size={20} />;
-            case 'Brain Freeze': return <AlertTriangle size={20} />;
-            case 'Challenge': return <Skull size={20} />;
-            default: return <Cake size={20} />;
+            case 'Piece of Cake': return <ChessCakeSliceIcon size={size} />;
+            case 'Hard Tart': return <PieIcon size={size} />;
+            case 'Brain Freeze': return <SnowflakeIcon size={size} />;
+            case 'Challenge': return <SkullIcon size={size} />;
+            default: return <ChessCakeSliceIcon size={size} />;
         }
     };
 
@@ -98,7 +99,7 @@ export default function ChallengeRulette() {
             <div className="max-w-7xl mx-auto w-full relative px-6 mt-4">
                 <button
                     onClick={() => setIsModalOpen(true)}
-                    className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white/50 backdrop-blur-md text-plum font-bold hover:bg-berry hover:text-white transition-all active:scale-95 group shadow-sm border border-plum/10 text-sm"
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white/50 backdrop-blur-md text-plum font-bold hover:bg-berry hover:text-white transition-all active:scale-95 group shadow-sm border-2 border-plum/15 text-sm"
                 >
                     <MessageSquarePlus size={16} className="group-hover:scale-110 transition-transform" />
                     <span>Suggest a Rule</span>
@@ -123,8 +124,8 @@ export default function ChallengeRulette() {
 
                     <div className="relative z-10 w-full">
                         <div className={`flex flex-col items-center gap-3 mb-6 transition-all duration-500 ${isRevealing ? 'opacity-0 -translate-y-4 blur-lg' : 'opacity-100 translate-y-0'}`}>
-                            <div className={`p-3 rounded-xl bg-white shadow-sm mb-1 transition-colors duration-500 ${themes[difficulty].text}`}>
-                                {getIcon(difficulty)}
+                            <div className={`p-4 rounded-2xl bg-white shadow-md mb-1 transition-colors duration-500 ${themes[difficulty].text}`}>
+                                {getIcon(difficulty, 36)}
                             </div>
                             <span className="text-[10px] font-black tracking-[0.3em] uppercase text-plum/40">
                                 {difficulty}
@@ -135,7 +136,7 @@ export default function ChallengeRulette() {
                         </div>
 
                         {/* The Rule Text */}
-                        <div className={`bg-white/50 backdrop-blur-sm p-6 rounded-2xl border border-plum/5 transition-all duration-500 ${isRevealing ? 'opacity-0 scale-95 blur-md' : 'opacity-100 scale-100'}`}>
+                        <div className={`bg-white/50 backdrop-blur-sm p-6 rounded-2xl border-2 border-plum/15 transition-all duration-500 ${isRevealing ? 'opacity-0 scale-95 blur-md' : 'opacity-100 scale-100'}`}>
                             <p className="text-lg md:text-xl font-medium leading-relaxed text-plum/80 italic">
                                 {currentRule.rule}
                             </p>
@@ -159,7 +160,7 @@ export default function ChallengeRulette() {
                                     }`}
                             >
                                 <span className={`${isActive ? 'text-white' : theme.text} transition-transform group-hover:scale-125 duration-300`}>
-                                    {getIcon(level)}
+                                    {getIcon(level, 24)}
                                 </span>
                                 <span className="text-[9px] md:text-[10px] uppercase tracking-[0.2em] font-black">
                                     {level}
@@ -173,8 +174,8 @@ export default function ChallengeRulette() {
             {/* Modal */}
             {isModalOpen && (
                 <div className="fixed inset-0 bg-plum/60 backdrop-blur-xl flex items-center justify-center z-9999 p-4 animate-in fade-in duration-300">
-                    <div className="bg-cream border border-white/20 rounded-[2.5rem] w-full max-w-lg overflow-hidden shadow-2xl animate-in zoom-in-95 duration-300">
-                        <div className="flex justify-between items-center p-6 border-b border-plum/5 bg-white/30">
+                    <div className="bg-cream border-2 border-plum/15 rounded-[2.5rem] w-full max-w-lg overflow-hidden shadow-2xl animate-in zoom-in-95 duration-300">
+                        <div className="flex justify-between items-center p-6 border-b-2 border-plum/15 bg-white/30">
                             <h3 className="text-xl font-black flex items-center gap-3 text-plum">
                                 <MessageSquarePlus className="text-berry" />
                                 Suggest a Rule
@@ -193,7 +194,7 @@ export default function ChallengeRulette() {
                                     <label className="block text-[9px] font-black uppercase tracking-widest text-plum/40 mb-2 ml-1">Your Name</label>
                                     <input
                                         type="text" required
-                                        className="w-full bg-white/50 border border-plum/5 rounded-xl px-4 py-2 text-plum focus:outline-none focus:border-berry transition-all text-sm"
+                                        className="w-full bg-white/50 border-2 border-plum/15 rounded-xl px-4 py-2 text-plum focus:outline-none focus:border-berry transition-all text-sm"
                                         placeholder="Magnus C."
                                         value={formData.name}
                                         onChange={e => setFormData({ ...formData, name: e.target.value })}
@@ -202,7 +203,7 @@ export default function ChallengeRulette() {
                                 <div>
                                     <label className="block text-[9px] font-black uppercase tracking-widest text-plum/40 mb-2 ml-1">Difficulty</label>
                                     <select
-                                        className="w-full bg-white/50 border border-plum/5 rounded-xl px-4 py-2 text-plum focus:outline-none focus:border-berry appearance-none cursor-pointer transition-all text-sm"
+                                        className="w-full bg-white/50 border-2 border-plum/15 rounded-xl px-4 py-2 text-plum focus:outline-none focus:border-berry appearance-none cursor-pointer transition-all text-sm"
                                         value={formData.level}
                                         onChange={e => setFormData({ ...formData, level: e.target.value })}
                                     >
@@ -217,7 +218,7 @@ export default function ChallengeRulette() {
                             <div>
                                 <label className="block text-[9px] font-black uppercase tracking-widest text-plum/40 mb-2 ml-1">Rule Name</label>
                                 <input
-                                    className="w-full bg-white/50 border border-plum/5 rounded-xl px-4 py-2 text-plum focus:outline-none focus:border-berry transition-all text-sm"
+                                    className="w-full bg-white/50 border-2 border-plum/15 rounded-xl px-4 py-2 text-plum focus:outline-none focus:border-berry transition-all text-sm"
                                     placeholder="e.g. The Pacifist King"
                                     value={formData.title}
                                     onChange={e => setFormData({ ...formData, title: e.target.value })}
@@ -228,7 +229,7 @@ export default function ChallengeRulette() {
                                 <label className="block text-[9px] font-black uppercase tracking-widest text-plum/40 mb-2 ml-1">Rule Description</label>
                                 <textarea
                                     required rows={3}
-                                    className="w-full bg-white/50 border border-plum/5 rounded-xl px-4 py-3 text-plum focus:outline-none focus:border-berry resize-none transition-all text-sm"
+                                    className="w-full bg-white/50 border-2 border-plum/15 rounded-xl px-4 py-3 text-plum focus:outline-none focus:border-berry resize-none transition-all text-sm"
                                     placeholder="Explain the rule clearly..."
                                     value={formData.rule}
                                     onChange={e => setFormData({ ...formData, rule: e.target.value })}
@@ -239,7 +240,7 @@ export default function ChallengeRulette() {
                                 <button
                                     type="button"
                                     onClick={() => setIsModalOpen(false)}
-                                    className="flex-1 py-3 px-4 rounded-xl font-bold border border-plum/5 text-plum/50 hover:bg-white transition-all text-sm"
+                                    className="flex-1 py-3 px-4 rounded-xl font-bold border-2 border-plum/15 text-plum/50 hover:bg-white transition-all text-sm"
                                 >
                                     Cancel
                                 </button>

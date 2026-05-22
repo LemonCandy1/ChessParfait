@@ -23,7 +23,11 @@
 
 @layer utilities {
   .soft-card {
-    @apply bg-parfait-light rounded-[2.5rem] shadow-[0_8px_30px_rgb(74,21,75,0.06)] border border-plum/5 transition-all duration-300;
+    @apply bg-parfait-light rounded-[2.5rem] shadow-[0_8px_30px_rgb(74,21,75,0.06)] border-2 border-plum/15 transition-all duration-300;
+  }
+
+  .glass {
+    @apply bg-white/40 backdrop-blur-xl border-2 border-plum/15 shadow-[0_8px_30px_rgb(74,21,75,0.06)] transition-all duration-300;
   }
   
   .soft-card-hover {

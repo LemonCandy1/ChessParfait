@@ -27,7 +27,8 @@ function base64url(data: ArrayBuffer | string): string {
 }
 
 async function importPrivateKey(pem: string): Promise<CryptoKey> {
-  const normalised = pem.replace(/\\n/g, '\n');
+  const cleanPem = pem.replace(/^["']|["']$/g, '');
+  const normalised = cleanPem.replace(/\\n/g, '\n');
   const pemBody = normalised
     .replace(/-----BEGIN PRIVATE KEY-----/, '')
     .replace(/-----END PRIVATE KEY-----/, '')
@@ -126,6 +127,9 @@ const CORS_HEADERS = {
 };
 
 async function handlePuzzles(env: Env): Promise<Response> {
+  if (!env.GOOGLE_SERVICE_ACCOUNT_EMAIL || !env.GOOGLE_PRIVATE_KEY || !env.GOOGLE_SHEET_ID) {
+    throw new Error("Missing Google Sheets API environment variables (GOOGLE_SERVICE_ACCOUNT_EMAIL, GOOGLE_PRIVATE_KEY, or GOOGLE_SHEET_ID).");
+  }
   const token = await getAccessToken(env);
 
   const [pieceOfCake, hardTart, challenge] = await Promise.all([

@@ -53,7 +53,7 @@ export default function About() {
 
                 {/* The Story Section */}
                 <section className="grid lg:grid-cols-2 gap-16 mb-24 items-center">
-                    <div className="p-12 glass rounded-[3rem] relative overflow-hidden">
+                    <div className="p-12 glass rounded-[3rem] border-2 border-plum/15 relative overflow-hidden">
                         <div className="absolute top-0 right-0 w-32 h-32 bg-berry/5 rounded-full -translate-y-1/2 translate-x-1/2" />
                         <h2 className="text-4xl font-bold mb-8">Chess Parfait Story</h2>
                         <div className="space-y-6 text-lg text-plum/70">
@@ -100,7 +100,7 @@ export default function About() {
 
 function StatCard({ icon, label, value }: { icon: any, label: string, value: string }) {
     return (
-        <div className="p-10 glass rounded-3xl group hover:bg-white/80 transition-all duration-500 border-plum/5">
+        <div className="p-10 glass rounded-3xl group hover:bg-white/80 transition-all duration-500 border-2 border-plum/15">
             <div className="mb-6 opacity-80 group-hover:scale-110 transition-transform duration-500">{icon}</div>
             <h3 className="font-bold text-sm uppercase tracking-widest text-plum/40 mb-2">{label}</h3>
             <p className="text-4xl font-serif font-black text-plum group-hover:text-berry transition-colors">{value}</p>

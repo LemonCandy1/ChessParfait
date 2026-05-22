@@ -35,7 +35,7 @@ export default function Contact() {
                 <Navbar />
             </div>
             <div className="flex-1 max-w-3xl mx-auto w-full px-6 py-24 relative z-10">
-                <div className="glass p-10 rounded-3xl border-plum/5 shadow-xl shadow-plum/5">
+                <div className="glass p-10 rounded-3xl border-2 border-plum/15 shadow-xl shadow-plum/5">
                     <h1 className="text-4xl font-bold mb-6 text-center">Contact Me</h1>
                     <p className="text-plum/70 mb-8 text-center text-lg">
                         Have a question or want to book a session? Fill out the form below.
@@ -62,7 +62,7 @@ export default function Contact() {
                                 required
                                 value={name}
                                 onChange={(e) => setName(e.target.value)}
-                                className="w-full px-4 py-3 rounded-xl border border-plum/10 bg-white/50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-berry/50 transition-all"
+                                className="w-full px-4 py-3 rounded-xl border-2 border-plum/15 bg-white/50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-berry/50 transition-all"
                                 placeholder="Your name"
                             />
                         </div>
@@ -75,7 +75,7 @@ export default function Contact() {
                                 required
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
-                                className="w-full px-4 py-3 rounded-xl border border-plum/10 bg-white/50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-berry/50 transition-all"
+                                className="w-full px-4 py-3 rounded-xl border-2 border-plum/15 bg-white/50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-berry/50 transition-all"
                                 placeholder="your@email.com"
                             />
                         </div>
@@ -88,7 +88,7 @@ export default function Contact() {
                                 value={question}
                                 onChange={(e) => setQuestion(e.target.value)}
                                 rows={5}
-                                className="w-full px-4 py-3 rounded-xl border border-plum/10 bg-white/50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-berry/50 transition-all resize-none"
+                                className="w-full px-4 py-3 rounded-xl border-2 border-plum/15 bg-white/50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-berry/50 transition-all resize-none"
                                 placeholder="How can I help you?"
                             />
                         </div>

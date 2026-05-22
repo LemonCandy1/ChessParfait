@@ -32,10 +32,7 @@ const Navbar = () => {
                 {/* Center: Desktop Navigation Links */}
                 <div className="hidden md:flex items-center gap-10">
                     <NavLink to="/" label="Home" />
-                    <NavLink to="/Challenge_Rulette" label="Challenge Rulette" />
-                    <NavLink to="/TrainingPuzzles" label="Weekly Puzzles" />
-                    <NavLink to="/PawnGame" label="Pawn Game" />
-                    <NavLink to="/ImposterChess" label="Imposter Chess" />
+                    <NavLink to="/games" label="Play" />
                     <NavLink to="/contact" label="Contact" />
                     <NavLink to="/about" label="About" />
                 </div>
@@ -58,10 +55,7 @@ const Navbar = () => {
             {isMobileMenuOpen && (
                 <div className="md:hidden absolute top-full left-0 w-full z-[9999] bg-cream/95 backdrop-blur-xl border-b border-plum/10 shadow-2xl py-8 px-6 flex flex-col gap-6 animate-in slide-in-from-top-2 duration-300">
                     <NavLink to="/" label="Home" onClick={closeMenu} />
-                    <NavLink to="/Challenge_Rulette" label="Challenge Rulette" onClick={closeMenu} />
-                    <NavLink to="/TrainingPuzzles" label="Weekly Puzzles" onClick={closeMenu} />
-                    <NavLink to="/PawnGame" label="Pawn Game" onClick={closeMenu} />
-                    <NavLink to="/ImposterChess" label="Imposter Chess" onClick={closeMenu} />
+                    <NavLink to="/games" label="Play" onClick={closeMenu} />
                     <NavLink to="/contact" label="Contact" onClick={closeMenu} />
                     <NavLink to="/about" label="About" onClick={closeMenu} />
                 </div>

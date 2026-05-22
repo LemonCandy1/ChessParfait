@@ -1,6 +1,7 @@
 import { Award, Star, Medal, ExternalLink } from 'lucide-react';
 import profilePicture from '../assets/Profile Photo.jpeg'; 
 import Navbar from '../components/Navbar/Navbar.tsx';
+import { Link } from 'react-router-dom';
 
 export default function About() {
     return (
@@ -88,9 +89,9 @@ export default function About() {
                     <p className="text-xl mb-12 opacity-80 max-w-2xl mx-auto font-medium">
                         Booking limited sessions for the current tournament season.
                     </p>
-                    <a href="mailto:luischanchess@gmail.com" className="inline-block bg-berry hover:bg-berry/90 text-white px-10 py-5 rounded-2xl font-bold transition-all transform hover:scale-105 shadow-xl shadow-berry/30">
+                    <Link to="/contact" className="inline-block bg-berry hover:bg-berry/90 text-white px-10 py-5 rounded-2xl font-bold transition-all transform hover:scale-105 shadow-xl shadow-berry/30">
                         Secure Your Spot
-                    </a>
+                    </Link>
                 </section>
             </main>
         </div>

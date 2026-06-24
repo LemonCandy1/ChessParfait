@@ -6,7 +6,8 @@
     "VITE_SUPABASE_URL": "https://uqmxkokxiiaxjaskxerp.supabase.co",
     "VITE_SUPABASE_ANON_KEY": "sb_publishable_HyavN6k724twnI7GGH_ZQw_XOefjetM",
     "GOOGLE_SERVICE_ACCOUNT_EMAIL": "chessparfait-puzzles@sound-micron-491823-r1.iam.gserviceaccount.com",
-    "GOOGLE_SHEET_ID": "1wf22uVatxEMkfspr9HLVGepMsJqT-kOuSVXuttTNMQ0"
+    "GOOGLE_SHEET_ID": "1wf22uVatxEMkfspr9HLVGepMsJqT-kOuSVXuttTNMQ0",
+    "VITE_GOOGLE_CLIENT_ID": "622337360992-j0eefhih4riveju5hglfhd9r0q0tudnp.apps.googleusercontent.com"
   }
 }
 

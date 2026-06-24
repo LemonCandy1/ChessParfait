@@ -6,49 +6,9 @@ import { ChessPawnIcon, PuzzleIcon, RouletteIcon, GhostChefIcon } from '../Icons
 import { useAuth } from '../../context/AuthContext';
 
 const Navbar = () => {
-    const { user, remembered, login, logout } = useAuth();
+    const { user, logout } = useAuth();
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-    const [isLoginOpen, setIsLoginOpen] = useState(false);
     const [isProfileOpen, setIsProfileOpen] = useState(false);
-
-    const [username, setUsername] = useState('');
-    const [password, setPassword] = useState('');
-    const [rememberMe, setRememberMe] = useState(true);
-    const [errorMsg, setErrorMsg] = useState<string | null>(null);
-    const [successMsg, setSuccessMsg] = useState<string | null>(null);
-
-    useEffect(() => {
-        if (remembered) {
-            setUsername(remembered.username);
-            setPassword('');
-            setRememberMe(true);
-        } else {
-            setUsername('');
-            setPassword('');
-            setRememberMe(false);
-        }
-    }, [remembered, isLoginOpen]);
-
-    const handleLoginSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        setErrorMsg(null);
-        setSuccessMsg(null);
-
-        const res = await login(username, password, rememberMe);
-        if (res.success) {
-            setSuccessMsg(res.message);
-            setTimeout(() => {
-                setIsLoginOpen(false);
-                setSuccessMsg(null);
-                setPassword('');
-                if (!rememberMe) {
-                    setUsername('');
-                }
-            }, 1000);
-        } else {
-            setErrorMsg(res.message);
-        }
-    };
 
     const toggleMenu = () => setIsMobileMenuOpen(!isMobileMenuOpen);
     const closeMenu = () => setIsMobileMenuOpen(false);
@@ -132,18 +92,13 @@ const Navbar = () => {
                     {/* User Auth Section */}
                     <div className="relative">
                         {!user ? (
-                            <button
-                                onClick={() => {
-                                    setIsLoginOpen(!isLoginOpen);
-                                    setIsProfileOpen(false);
-                                    setErrorMsg(null);
-                                    setSuccessMsg(null);
-                                }}
+                            <Link
+                                to="/login"
                                 className="soft-button shadow-none hover:shadow-none flex items-center gap-2 py-2 px-4 text-[10px] font-black uppercase tracking-widest text-plum hover:text-berry transition-colors"
                             >
                                 <User size={14} />
                                 <span>Login</span>
-                            </button>
+                            </Link>
                         ) : (
                             <button
                                 onClick={() => {
@@ -162,109 +117,6 @@ const Navbar = () => {
                             </button>
                         )}
 
-                        {/* Login Dropdown Form (Desktop dropdown or Centered Modal on mobile) */}
-                        {isLoginOpen && (
-                            <>
-                                {/* Overlay for click-away */}
-                                <div 
-                                    className="fixed inset-0 z-[9998] bg-plum/10 md:bg-transparent backdrop-blur-sm md:backdrop-blur-none"
-                                    onClick={() => setIsLoginOpen(false)}
-                                />
-                                
-                                <div className="fixed md:absolute left-1/2 -translate-x-1/2 md:left-auto md:translate-x-0 top-1/4 md:top-full right-auto md:right-0 mt-2.5 w-[300px] sm:w-[320px] bg-white rounded-3xl shadow-2xl border-2 border-plum/15 p-6 z-[9999] animate-in fade-in slide-in-from-top-2 duration-300">
-                                    <div className="flex justify-between items-center mb-1">
-                                        <h3 className="font-serif font-black text-plum text-xl">ChessParfait Account</h3>
-                                        <button 
-                                            onClick={() => setIsLoginOpen(false)}
-                                            className="text-plum/30 hover:text-berry md:hidden"
-                                        >
-                                            <X size={18} />
-                                        </button>
-                                    </div>
-                                    <p className="text-[10px] text-plum/50 font-bold mb-4">Enter your credentials to sign in.</p>
-                                    
-                                    <form onSubmit={handleLoginSubmit} className="space-y-4">
-                                        {errorMsg && (
-                                            <div className="p-3 bg-red-50 text-red-600 rounded-xl border border-red-150 text-[10px] font-bold flex items-center gap-2">
-                                                <AlertCircle size={14} className="flex-shrink-0" />
-                                                <span>{errorMsg}</span>
-                                            </div>
-                                        )}
-                                        {successMsg && (
-                                            <div className="p-3 bg-emerald-50 text-emerald-600 rounded-xl border border-emerald-150 text-[10px] font-bold flex items-center gap-2">
-                                                <Check size={14} className="flex-shrink-0" />
-                                                <span>{successMsg}</span>
-                                            </div>
-                                        )}
-                                        <div className="space-y-1">
-                                            <label className="block text-[9px] font-black uppercase tracking-widest text-plum/40 ml-2">Username</label>
-                                            <div className="relative">
-                                                <User className="absolute left-3.5 top-1/2 -translate-y-1/2 text-plum/30" size={14} />
-                                                <input
-                                                    type="text"
-                                                    required
-                                                    placeholder="Enter username"
-                                                    value={username}
-                                                    onChange={(e) => setUsername(e.target.value)}
-                                                    className="w-full bg-cream/50 border-2 border-plum/10 rounded-xl pl-9 pr-4 py-2.5 text-plum focus:outline-none focus:border-berry transition-all font-bold text-xs"
-                                                />
-                                            </div>
-                                        </div>
-                                        <div className="space-y-1">
-                                            <label className="block text-[9px] font-black uppercase tracking-widest text-plum/40 ml-2">Password</label>
-                                            <div className="relative">
-                                                <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 text-plum/30" size={14} />
-                                                <input
-                                                    type="password"
-                                                    required
-                                                    placeholder="Enter password"
-                                                    value={password}
-                                                    onChange={(e) => setPassword(e.target.value)}
-                                                    className="w-full bg-cream/50 border-2 border-plum/10 rounded-xl pl-9 pr-4 py-2.5 text-plum focus:outline-none focus:border-berry transition-all font-bold text-xs"
-                                                />
-                                            </div>
-                                        </div>
-                                        <div className="flex items-center gap-2 ml-1">
-                                            <input
-                                                type="checkbox"
-                                                id="rememberMe"
-                                                checked={rememberMe}
-                                                onChange={(e) => setRememberMe(e.target.checked)}
-                                                className="h-4 w-4 rounded border-plum/20 text-berry focus:ring-berry cursor-pointer"
-                                            />
-                                            <label htmlFor="rememberMe" className="text-[10px] font-bold text-plum/60 select-none cursor-pointer">
-                                                Remember credentials
-                                            </label>
-                                        </div>
-                                        <button
-                                            type="submit"
-                                            className="w-full py-3 soft-button-berry shadow-none hover:shadow-none flex items-center justify-center gap-2 text-xs font-bold"
-                                        >
-                                            Sign In
-                                        </button>
-                                        <div className="text-center mt-4">
-                                            <span className="text-[10px] font-bold text-plum/40">Don't have an account? </span>
-                                            <Link 
-                                                to="/register" 
-                                                onClick={() => setIsLoginOpen(false)}
-                                                className="text-[10px] font-black text-berry hover:underline"
-                                            >
-                                                Register here
-                                            </Link>
-                                        </div>
-                                        <div className="text-center mt-1">
-                                            <Link 
-                                                to="/forgot-password"
-                                                onClick={() => setIsLoginOpen(false)}
-                                                className="text-[10px] font-bold text-plum/40 hover:text-berry hover:underline transition-colors"
-                                            >
-                                                Forgot password?
-                                            </Link>
-                                        </div>
-                                    </form>
-                                </div>
-                            </>
-                        )}
 
                         {/* Profile Dropdown */}
                         {isProfileOpen && (

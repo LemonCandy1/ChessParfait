@@ -12,12 +12,16 @@ import Register from './pages/Register';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
 import LinkEmail from './pages/LinkEmail';
+import Login from './pages/Login';
+import SetupProfile from './pages/SetupProfile';
 import { AuthProvider } from './context/AuthContext';
+import { GoogleOAuthProvider } from '@react-oauth/google';
 
 export default function App() {
   return (
-    <AuthProvider>
-      <BrowserRouter>
+    <GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID || ''}>
+      <AuthProvider>
+        <BrowserRouter>
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/about" element={<About />} />
@@ -28,6 +32,8 @@ export default function App() {
           <Route path="/PawnGameStrategy" element={<PawnGameStrategy />} />
           <Route path="/contact" element={<Contact />} />
           <Route path="/games" element={<Games />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/setup-profile" element={<SetupProfile />} />
           <Route path="/register" element={<Register />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/reset-password" element={<ResetPassword />} />
@@ -35,5 +41,6 @@ export default function App() {
         </Routes>
       </BrowserRouter>
     </AuthProvider>
+    </GoogleOAuthProvider>
   );
 }

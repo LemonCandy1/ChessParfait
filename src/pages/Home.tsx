@@ -12,6 +12,7 @@ import { Link } from 'react-router-dom';
 import profilePicture from '../assets/Profile Photo.jpeg';
 import { PuzzleIcon, RouletteIcon } from '../components/Icons';
 import ClientFeedback from '@/components/ui/testimonial';
+import ParallaxBackground from '@/components/ui/ParallaxBackground';
 
 
 export default function Home() {
@@ -48,6 +49,9 @@ export default function Home() {
             <div className="absolute top-[45%] right-0 translate-x-1/4 w-[600px] h-[600px] bg-amber-400/10 rounded-full blur-[120px] pointer-events-none" />
             <div className="absolute bottom-1/3 left-0 -translate-x-1/4 w-[650px] h-[650px] bg-orange-300/10 rounded-full blur-[130px] pointer-events-none" />
             <div className="absolute bottom-10 right-0 translate-x-1/3 w-[550px] h-[550px] bg-berry/5 rounded-full blur-[110px] pointer-events-none" />
+
+            {/* Floating Parallax Chess Elements */}
+            <ParallaxBackground />
 
             <div className="relative z-50">
                 <Navbar />

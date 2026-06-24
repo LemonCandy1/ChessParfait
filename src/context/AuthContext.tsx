@@ -19,6 +19,8 @@ interface AuthContextType {
     logout: () => Promise<void>;
     linkEmail: (email: string) => Promise<{ success: boolean; message: string }>;
     forgotPassword: (usernameOrEmail: string) => Promise<{ success: boolean; message: string }>;
+    loginWithGoogle: (credential: string) => Promise<{ success: boolean; message: string; needsProfileSetup?: boolean }>;
+    setupProfile: (username: string) => Promise<{ success: boolean; message: string }>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -204,8 +206,50 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
     };
 
+    const loginWithGoogle = async (credential: string) => {
+        try {
+            const res = await fetch('/api/auth/google', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ credential })
+            });
+            const data = await res.json();
+            
+            if (!res.ok) {
+                return { success: false, message: data.message || 'Google login failed.' };
+            }
+            
+            setUser(data.user);
+            return { success: true, message: data.message, needsProfileSetup: data.needsProfileSetup };
+        } catch (e: any) {
+            console.error('Google login error:', e);
+            return { success: false, message: 'Could not connect to authentication server.' };
+        }
+    };
+
+    const setupProfile = async (username: string) => {
+        try {
+            const res = await fetch('/api/auth/setup-profile', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username })
+            });
+            const data = await res.json();
+            
+            if (!res.ok) {
+                return { success: false, message: data.message || 'Profile setup failed.' };
+            }
+            
+            setUser(data.user);
+            return { success: true, message: data.message };
+        } catch (e: any) {
+            console.error('Setup profile error:', e);
+            return { success: false, message: 'Could not connect to authentication server.' };
+        }
+    };
+
     return (
-        <AuthContext.Provider value={{ user, loading, remembered, login, register, logout, linkEmail, forgotPassword }}>
+        <AuthContext.Provider value={{ user, loading, remembered, login, register, logout, linkEmail, forgotPassword, loginWithGoogle, setupProfile }}>
             {children}
         </AuthContext.Provider>
     );

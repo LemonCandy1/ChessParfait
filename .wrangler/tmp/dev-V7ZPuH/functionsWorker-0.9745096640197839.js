@@ -12128,6 +12128,79 @@ var CORS_HEADERS2 = {
   "Access-Control-Allow-Headers": "Content-Type",
   "Access-Control-Allow-Credentials": "true"
 };
+async function onRequestOptions2() {
+  return new Response(null, { headers: CORS_HEADERS2 });
+}
+__name(onRequestOptions2, "onRequestOptions2");
+__name2(onRequestOptions2, "onRequestOptions");
+async function onRequestPost2(context) {
+  const { request, env } = context;
+  try {
+    const { credential } = await request.json();
+    if (!credential) {
+      return new Response(JSON.stringify({ message: "Missing Google credential." }), {
+        status: 400,
+        headers: { ...CORS_HEADERS2, "Content-Type": "application/json" }
+      });
+    }
+    if (!env.VITE_SUPABASE_URL || !env.VITE_SUPABASE_ANON_KEY) {
+      throw new Error("Missing Supabase configurations in env.");
+    }
+    const supabase = createClient(env.VITE_SUPABASE_URL, env.VITE_SUPABASE_ANON_KEY);
+    const { data, error } = await supabase.auth.signInWithIdToken({
+      provider: "google",
+      token: credential
+    });
+    if (error) {
+      return new Response(JSON.stringify({ message: error.message }), {
+        status: 401,
+        headers: { ...CORS_HEADERS2, "Content-Type": "application/json" }
+      });
+    }
+    const session = data.session;
+    if (!session) {
+      return new Response(JSON.stringify({ message: "Authentication failed. Session could not be created." }), {
+        status: 500,
+        headers: { ...CORS_HEADERS2, "Content-Type": "application/json" }
+      });
+    }
+    const headers = new Headers();
+    for (const [key, val] of Object.entries(CORS_HEADERS2)) {
+      headers.set(key, val);
+    }
+    headers.set("Content-Type", "application/json");
+    headers.append("Set-Cookie", `auth_token=${session.access_token}; Path=/; HttpOnly; SameSite=Strict; Secure; Max-Age=86400`);
+    if (session.refresh_token) {
+      headers.append("Set-Cookie", `refresh_token=${session.refresh_token}; Path=/; HttpOnly; SameSite=Strict; Secure; Max-Age=86400`);
+    }
+    const username = data.user.user_metadata?.username;
+    const needsProfileSetup = !username;
+    return new Response(JSON.stringify({
+      message: "Logged in successfully.",
+      needsProfileSetup,
+      user: {
+        username: username || "",
+        email: data.user.email
+      }
+    }), {
+      status: 200,
+      headers
+    });
+  } catch (err) {
+    return new Response(JSON.stringify({ message: err.message || "An unexpected error occurred during Google login." }), {
+      status: 500,
+      headers: { ...CORS_HEADERS2, "Content-Type": "application/json" }
+    });
+  }
+}
+__name(onRequestPost2, "onRequestPost2");
+__name2(onRequestPost2, "onRequestPost");
+var CORS_HEADERS3 = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type",
+  "Access-Control-Allow-Credentials": "true"
+};
 function parseCookies(cookieHeader) {
   return Object.fromEntries(
     cookieHeader.split(";").map((c) => {
@@ -12138,32 +12211,32 @@ function parseCookies(cookieHeader) {
 }
 __name(parseCookies, "parseCookies");
 __name2(parseCookies, "parseCookies");
-async function onRequestOptions2() {
-  return new Response(null, { headers: CORS_HEADERS2 });
+async function onRequestOptions3() {
+  return new Response(null, { headers: CORS_HEADERS3 });
 }
-__name(onRequestOptions2, "onRequestOptions2");
-__name2(onRequestOptions2, "onRequestOptions");
-async function onRequestPost2(context) {
+__name(onRequestOptions3, "onRequestOptions3");
+__name2(onRequestOptions3, "onRequestOptions");
+async function onRequestPost3(context) {
   const { request, env } = context;
   try {
     const { email: newEmail } = await request.json();
     if (!newEmail || typeof newEmail !== "string") {
       return new Response(JSON.stringify({ message: "Email address is required." }), {
         status: 400,
-        headers: { ...CORS_HEADERS2, "Content-Type": "application/json" }
+        headers: { ...CORS_HEADERS3, "Content-Type": "application/json" }
       });
     }
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(newEmail.trim())) {
       return new Response(JSON.stringify({ message: "Please enter a valid email address." }), {
         status: 400,
-        headers: { ...CORS_HEADERS2, "Content-Type": "application/json" }
+        headers: { ...CORS_HEADERS3, "Content-Type": "application/json" }
       });
     }
     if (newEmail.trim().endsWith("@chessparfait.com")) {
       return new Response(JSON.stringify({ message: "Please use a real email address." }), {
         status: 400,
-        headers: { ...CORS_HEADERS2, "Content-Type": "application/json" }
+        headers: { ...CORS_HEADERS3, "Content-Type": "application/json" }
       });
     }
     const cookieHeader = request.headers.get("Cookie") || "";
@@ -12173,7 +12246,7 @@ async function onRequestPost2(context) {
     if (!token) {
       return new Response(JSON.stringify({ message: "You must be logged in to link an email." }), {
         status: 401,
-        headers: { ...CORS_HEADERS2, "Content-Type": "application/json" }
+        headers: { ...CORS_HEADERS3, "Content-Type": "application/json" }
       });
     }
     if (!env.VITE_SUPABASE_URL || !env.VITE_SUPABASE_ANON_KEY) {
@@ -12194,7 +12267,7 @@ async function onRequestPost2(context) {
     if (sessionError || !user) {
       return new Response(JSON.stringify({ message: "Invalid or expired session." }), {
         status: 401,
-        headers: { ...CORS_HEADERS2, "Content-Type": "application/json" }
+        headers: { ...CORS_HEADERS3, "Content-Type": "application/json" }
       });
     }
     const redirectTo = env.SITE_URL ? `${env.SITE_URL}` : "http://localhost:5173";
@@ -12203,7 +12276,7 @@ async function onRequestPost2(context) {
       { emailRedirectTo: redirectTo }
     );
     const headers = new Headers();
-    for (const [key, val] of Object.entries(CORS_HEADERS2)) {
+    for (const [key, val] of Object.entries(CORS_HEADERS3)) {
       headers.set(key, val);
     }
     headers.set("Content-Type", "application/json");
@@ -12238,31 +12311,31 @@ async function onRequestPost2(context) {
   } catch (err) {
     return new Response(JSON.stringify({ message: err.message || "An unexpected error occurred." }), {
       status: 500,
-      headers: { ...CORS_HEADERS2, "Content-Type": "application/json" }
+      headers: { ...CORS_HEADERS3, "Content-Type": "application/json" }
     });
   }
 }
-__name(onRequestPost2, "onRequestPost2");
-__name2(onRequestPost2, "onRequestPost");
-var CORS_HEADERS3 = {
+__name(onRequestPost3, "onRequestPost3");
+__name2(onRequestPost3, "onRequestPost");
+var CORS_HEADERS4 = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
   "Access-Control-Allow-Headers": "Content-Type",
   "Access-Control-Allow-Credentials": "true"
 };
-async function onRequestOptions3() {
-  return new Response(null, { headers: CORS_HEADERS3 });
+async function onRequestOptions4() {
+  return new Response(null, { headers: CORS_HEADERS4 });
 }
-__name(onRequestOptions3, "onRequestOptions3");
-__name2(onRequestOptions3, "onRequestOptions");
-async function onRequestPost3(context) {
+__name(onRequestOptions4, "onRequestOptions4");
+__name2(onRequestOptions4, "onRequestOptions");
+async function onRequestPost4(context) {
   const { request, env } = context;
   try {
     const { username, password } = await request.json();
     if (!username || !password) {
       return new Response(JSON.stringify({ message: "Username and password are required." }), {
         status: 400,
-        headers: { ...CORS_HEADERS3, "Content-Type": "application/json" }
+        headers: { ...CORS_HEADERS4, "Content-Type": "application/json" }
       });
     }
     const trimmedUser = username.trim();
@@ -12278,14 +12351,14 @@ async function onRequestPost3(context) {
     if (error) {
       return new Response(JSON.stringify({ message: "Invalid username or password." }), {
         status: 401,
-        headers: { ...CORS_HEADERS3, "Content-Type": "application/json" }
+        headers: { ...CORS_HEADERS4, "Content-Type": "application/json" }
       });
     }
     const session = data.session;
     if (!session) {
       return new Response(JSON.stringify({ message: "Authentication failed. Session could not be created." }), {
         status: 500,
-        headers: { ...CORS_HEADERS3, "Content-Type": "application/json" }
+        headers: { ...CORS_HEADERS4, "Content-Type": "application/json" }
       });
     }
     if (env.SUPABASE_SERVICE_ROLE_KEY && data.user && (!data.user.user_metadata?.display_name || !data.user.user_metadata?.name)) {
@@ -12303,7 +12376,7 @@ async function onRequestPost3(context) {
       }
     }
     const headers = new Headers();
-    for (const [key, val] of Object.entries(CORS_HEADERS3)) {
+    for (const [key, val] of Object.entries(CORS_HEADERS4)) {
       headers.set(key, val);
     }
     headers.set("Content-Type", "application/json");
@@ -12325,26 +12398,26 @@ async function onRequestPost3(context) {
   } catch (err) {
     return new Response(JSON.stringify({ message: err.message || "An unexpected error occurred during login." }), {
       status: 500,
-      headers: { ...CORS_HEADERS3, "Content-Type": "application/json" }
+      headers: { ...CORS_HEADERS4, "Content-Type": "application/json" }
     });
   }
 }
-__name(onRequestPost3, "onRequestPost3");
-__name2(onRequestPost3, "onRequestPost");
-var CORS_HEADERS4 = {
+__name(onRequestPost4, "onRequestPost4");
+__name2(onRequestPost4, "onRequestPost");
+var CORS_HEADERS5 = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
   "Access-Control-Allow-Headers": "Content-Type",
   "Access-Control-Allow-Credentials": "true"
 };
-async function onRequestOptions4() {
-  return new Response(null, { headers: CORS_HEADERS4 });
+async function onRequestOptions5() {
+  return new Response(null, { headers: CORS_HEADERS5 });
 }
-__name(onRequestOptions4, "onRequestOptions4");
-__name2(onRequestOptions4, "onRequestOptions");
-async function onRequestPost4() {
+__name(onRequestOptions5, "onRequestOptions5");
+__name2(onRequestOptions5, "onRequestOptions");
+async function onRequestPost5() {
   const headers = new Headers();
-  for (const [key, val] of Object.entries(CORS_HEADERS4)) {
+  for (const [key, val] of Object.entries(CORS_HEADERS5)) {
     headers.set(key, val);
   }
   headers.set("Content-Type", "application/json");
@@ -12355,19 +12428,19 @@ async function onRequestPost4() {
     headers
   });
 }
-__name(onRequestPost4, "onRequestPost4");
-__name2(onRequestPost4, "onRequestPost");
-var CORS_HEADERS5 = {
+__name(onRequestPost5, "onRequestPost5");
+__name2(onRequestPost5, "onRequestPost");
+var CORS_HEADERS6 = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, OPTIONS",
   "Access-Control-Allow-Headers": "Content-Type",
   "Access-Control-Allow-Credentials": "true"
 };
-async function onRequestOptions5() {
-  return new Response(null, { headers: CORS_HEADERS5 });
+async function onRequestOptions6() {
+  return new Response(null, { headers: CORS_HEADERS6 });
 }
-__name(onRequestOptions5, "onRequestOptions5");
-__name2(onRequestOptions5, "onRequestOptions");
+__name(onRequestOptions6, "onRequestOptions6");
+__name2(onRequestOptions6, "onRequestOptions");
 async function onRequestGet(context) {
   const { request, env } = context;
   try {
@@ -12383,7 +12456,7 @@ async function onRequestGet(context) {
     if (!token) {
       return new Response(JSON.stringify({ message: "No session token found." }), {
         status: 401,
-        headers: { ...CORS_HEADERS5, "Content-Type": "application/json" }
+        headers: { ...CORS_HEADERS6, "Content-Type": "application/json" }
       });
     }
     if (!env.VITE_SUPABASE_URL || !env.VITE_SUPABASE_ANON_KEY) {
@@ -12404,13 +12477,13 @@ async function onRequestGet(context) {
     if (sessionError || !user) {
       return new Response(JSON.stringify({ message: "Invalid or expired session token." }), {
         status: 401,
-        headers: { ...CORS_HEADERS5, "Content-Type": "application/json" }
+        headers: { ...CORS_HEADERS6, "Content-Type": "application/json" }
       });
     }
     const username = user.user_metadata?.username || user.email?.split("@")[0] || "User";
     const userEmail = user.email && !user.email.endsWith("@chessparfait.com") ? user.email : void 0;
     const headers = new Headers();
-    for (const [key, val] of Object.entries(CORS_HEADERS5)) {
+    for (const [key, val] of Object.entries(CORS_HEADERS6)) {
       headers.set(key, val);
     }
     headers.set("Content-Type", "application/json");
@@ -12432,36 +12505,36 @@ async function onRequestGet(context) {
   } catch (err) {
     return new Response(JSON.stringify({ message: err.message || "An unexpected error occurred." }), {
       status: 500,
-      headers: { ...CORS_HEADERS5, "Content-Type": "application/json" }
+      headers: { ...CORS_HEADERS6, "Content-Type": "application/json" }
     });
   }
 }
 __name(onRequestGet, "onRequestGet");
 __name2(onRequestGet, "onRequestGet");
-var CORS_HEADERS6 = {
+var CORS_HEADERS7 = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
   "Access-Control-Allow-Headers": "Content-Type"
 };
-async function onRequestOptions6() {
-  return new Response(null, { headers: CORS_HEADERS6 });
+async function onRequestOptions7() {
+  return new Response(null, { headers: CORS_HEADERS7 });
 }
-__name(onRequestOptions6, "onRequestOptions6");
-__name2(onRequestOptions6, "onRequestOptions");
-async function onRequestPost5(context) {
+__name(onRequestOptions7, "onRequestOptions7");
+__name2(onRequestOptions7, "onRequestOptions");
+async function onRequestPost6(context) {
   const { request, env } = context;
   try {
     const { username, password } = await request.json();
     if (!username || typeof username !== "string" || username.trim().length < 3) {
       return new Response(JSON.stringify({ message: "Username must be at least 3 characters long." }), {
         status: 400,
-        headers: { ...CORS_HEADERS6, "Content-Type": "application/json" }
+        headers: { ...CORS_HEADERS7, "Content-Type": "application/json" }
       });
     }
     if (!password || typeof password !== "string" || password.length < 4) {
       return new Response(JSON.stringify({ message: "Password must be at least 4 characters long." }), {
         status: 400,
-        headers: { ...CORS_HEADERS6, "Content-Type": "application/json" }
+        headers: { ...CORS_HEADERS7, "Content-Type": "application/json" }
       });
     }
     const trimmedUser = username.trim();
@@ -12484,50 +12557,50 @@ async function onRequestPost5(context) {
       if (error.message?.toLowerCase().includes("already") || error.message?.toLowerCase().includes("duplicate")) {
         return new Response(JSON.stringify({ message: "Username is already taken." }), {
           status: 409,
-          headers: { ...CORS_HEADERS6, "Content-Type": "application/json" }
+          headers: { ...CORS_HEADERS7, "Content-Type": "application/json" }
         });
       }
       return new Response(JSON.stringify({ message: error.message }), {
         status: 400,
-        headers: { ...CORS_HEADERS6, "Content-Type": "application/json" }
+        headers: { ...CORS_HEADERS7, "Content-Type": "application/json" }
       });
     }
     return new Response(JSON.stringify({ message: "Account registered successfully!" }), {
       status: 201,
-      headers: { ...CORS_HEADERS6, "Content-Type": "application/json" }
+      headers: { ...CORS_HEADERS7, "Content-Type": "application/json" }
     });
   } catch (err) {
     return new Response(JSON.stringify({ message: err.message || "An unexpected error occurred during registration." }), {
       status: 500,
-      headers: { ...CORS_HEADERS6, "Content-Type": "application/json" }
+      headers: { ...CORS_HEADERS7, "Content-Type": "application/json" }
     });
   }
 }
-__name(onRequestPost5, "onRequestPost5");
-__name2(onRequestPost5, "onRequestPost");
-var CORS_HEADERS7 = {
+__name(onRequestPost6, "onRequestPost6");
+__name2(onRequestPost6, "onRequestPost");
+var CORS_HEADERS8 = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
   "Access-Control-Allow-Headers": "Content-Type",
   "Access-Control-Allow-Credentials": "true"
 };
-async function onRequestOptions7() {
-  return new Response(null, { headers: CORS_HEADERS7 });
+async function onRequestOptions8() {
+  return new Response(null, { headers: CORS_HEADERS8 });
 }
-__name(onRequestOptions7, "onRequestOptions7");
-__name2(onRequestOptions7, "onRequestOptions");
-async function onRequestPost6(context) {
+__name(onRequestOptions8, "onRequestOptions8");
+__name2(onRequestOptions8, "onRequestOptions");
+async function onRequestPost7(context) {
   const { request } = context;
   try {
     const { accessToken, refreshToken } = await request.json();
     if (!accessToken) {
       return new Response(JSON.stringify({ message: "Access token is required." }), {
         status: 400,
-        headers: { ...CORS_HEADERS7, "Content-Type": "application/json" }
+        headers: { ...CORS_HEADERS8, "Content-Type": "application/json" }
       });
     }
     const headers = new Headers();
-    for (const [key, val] of Object.entries(CORS_HEADERS7)) {
+    for (const [key, val] of Object.entries(CORS_HEADERS8)) {
       headers.set(key, val);
     }
     headers.set("Content-Type", "application/json");
@@ -12542,12 +12615,12 @@ async function onRequestPost6(context) {
   } catch (err) {
     return new Response(JSON.stringify({ message: err.message || "An unexpected error occurred." }), {
       status: 500,
-      headers: { ...CORS_HEADERS7, "Content-Type": "application/json" }
+      headers: { ...CORS_HEADERS8, "Content-Type": "application/json" }
     });
   }
 }
-__name(onRequestPost6, "onRequestPost6");
-__name2(onRequestPost6, "onRequestPost");
+__name(onRequestPost7, "onRequestPost7");
+__name2(onRequestPost7, "onRequestPost");
 function base64url(data) {
   let bytes;
   if (typeof data === "string") {
@@ -12635,7 +12708,7 @@ async function fetchTab(sheetId, tabName, token) {
 }
 __name(fetchTab, "fetchTab");
 __name2(fetchTab, "fetchTab");
-var CORS_HEADERS8 = {
+var CORS_HEADERS9 = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, OPTIONS",
   "Access-Control-Allow-Headers": "Content-Type"
@@ -12658,7 +12731,7 @@ async function handlePuzzles(env) {
     }),
     {
       headers: {
-        ...CORS_HEADERS8,
+        ...CORS_HEADERS9,
         "Content-Type": "application/json",
         "Cache-Control": "public, max-age=300, s-maxage=300"
       }
@@ -12667,11 +12740,11 @@ async function handlePuzzles(env) {
 }
 __name(handlePuzzles, "handlePuzzles");
 __name2(handlePuzzles, "handlePuzzles");
-async function onRequestOptions8() {
-  return new Response(null, { headers: CORS_HEADERS8 });
+async function onRequestOptions9() {
+  return new Response(null, { headers: CORS_HEADERS9 });
 }
-__name(onRequestOptions8, "onRequestOptions8");
-__name2(onRequestOptions8, "onRequestOptions");
+__name(onRequestOptions9, "onRequestOptions9");
+__name2(onRequestOptions9, "onRequestOptions");
 async function onRequestGet2(context) {
   try {
     return await handlePuzzles(context.env);
@@ -12679,7 +12752,7 @@ async function onRequestGet2(context) {
     const message = err instanceof Error ? err.message : String(err);
     return new Response(JSON.stringify({ error: message }), {
       status: 500,
-      headers: { ...CORS_HEADERS8, "Content-Type": "application/json" }
+      headers: { ...CORS_HEADERS9, "Content-Type": "application/json" }
     });
   }
 }
@@ -12701,46 +12774,60 @@ var routes = [
     modules: [onRequestPost]
   },
   {
-    routePath: "/api/auth/link-email",
+    routePath: "/api/auth/google",
     mountPath: "/api/auth",
     method: "OPTIONS",
     middlewares: [],
     modules: [onRequestOptions2]
   },
   {
-    routePath: "/api/auth/link-email",
+    routePath: "/api/auth/google",
     mountPath: "/api/auth",
     method: "POST",
     middlewares: [],
     modules: [onRequestPost2]
   },
   {
-    routePath: "/api/auth/login",
+    routePath: "/api/auth/link-email",
     mountPath: "/api/auth",
     method: "OPTIONS",
     middlewares: [],
     modules: [onRequestOptions3]
   },
   {
-    routePath: "/api/auth/login",
+    routePath: "/api/auth/link-email",
     mountPath: "/api/auth",
     method: "POST",
     middlewares: [],
     modules: [onRequestPost3]
   },
   {
-    routePath: "/api/auth/logout",
+    routePath: "/api/auth/login",
     mountPath: "/api/auth",
     method: "OPTIONS",
     middlewares: [],
     modules: [onRequestOptions4]
   },
   {
-    routePath: "/api/auth/logout",
+    routePath: "/api/auth/login",
     mountPath: "/api/auth",
     method: "POST",
     middlewares: [],
     modules: [onRequestPost4]
+  },
+  {
+    routePath: "/api/auth/logout",
+    mountPath: "/api/auth",
+    method: "OPTIONS",
+    middlewares: [],
+    modules: [onRequestOptions5]
+  },
+  {
+    routePath: "/api/auth/logout",
+    mountPath: "/api/auth",
+    method: "POST",
+    middlewares: [],
+    modules: [onRequestPost5]
   },
   {
     routePath: "/api/auth/me",
@@ -12754,35 +12841,35 @@ var routes = [
     mountPath: "/api/auth",
     method: "OPTIONS",
     middlewares: [],
-    modules: [onRequestOptions5]
-  },
-  {
-    routePath: "/api/auth/register",
-    mountPath: "/api/auth",
-    method: "OPTIONS",
-    middlewares: [],
     modules: [onRequestOptions6]
   },
   {
     routePath: "/api/auth/register",
-    mountPath: "/api/auth",
-    method: "POST",
-    middlewares: [],
-    modules: [onRequestPost5]
-  },
-  {
-    routePath: "/api/auth/session",
     mountPath: "/api/auth",
     method: "OPTIONS",
     middlewares: [],
     modules: [onRequestOptions7]
   },
   {
-    routePath: "/api/auth/session",
+    routePath: "/api/auth/register",
     mountPath: "/api/auth",
     method: "POST",
     middlewares: [],
     modules: [onRequestPost6]
+  },
+  {
+    routePath: "/api/auth/session",
+    mountPath: "/api/auth",
+    method: "OPTIONS",
+    middlewares: [],
+    modules: [onRequestOptions8]
+  },
+  {
+    routePath: "/api/auth/session",
+    mountPath: "/api/auth",
+    method: "POST",
+    middlewares: [],
+    modules: [onRequestPost7]
   },
   {
     routePath: "/api/puzzles",
@@ -12796,7 +12883,7 @@ var routes = [
     mountPath: "/api",
     method: "OPTIONS",
     middlewares: [],
-    modules: [onRequestOptions8]
+    modules: [onRequestOptions9]
   }
 ];
 function lexer(str) {

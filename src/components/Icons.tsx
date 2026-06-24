@@ -66,7 +66,7 @@ export function ChessCakeSliceIcon({ size = 24, ...props }: CustomIconProps) {
     );
 }
 
-// Pie Icon (Challenge Roulette, Hard Tart)
+// Pie Icon (Challenge Rulette, Hard Tart)
 export function PieIcon({ size = 24, ...props }: CustomIconProps) {
     return (
         <svg
@@ -211,7 +211,7 @@ export function ChessPawnIcon({ size = 24, ...props }: CustomIconProps) {
     );
 }
 
-// Roulette Icon (Challenge Roulette)
+// Roulette Icon (Challenge Rulette)
 export function RouletteIcon({ size = 24, ...props }: CustomIconProps) {
     return (
         <svg

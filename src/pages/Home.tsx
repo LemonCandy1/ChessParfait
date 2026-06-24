@@ -1,9 +1,7 @@
-import { useState, useRef } from 'react';
+import { useState } from 'react';
 import {
     Mail,
     ChevronRight,
-    ChevronLeft,
-    Star,
     BookOpen,
     Award,
     ArrowRight,
@@ -37,7 +35,7 @@ export default function Home() {
         },
         {
             title: "3. Test (Variant Zone)",
-            desc: "Put your skills into action against our minimax AI bot in the Pawn Game. Break routine habits using Challenge Roulette handicaps, testing your raw chess intuition.",
+            desc: "Put your skills into action against our minimax AI bot in the Pawn Game. Break routine habits using Challenge Rulette handicaps, testing your raw chess intuition.",
             icon: <RouletteIcon size={20} />
         }
     ];

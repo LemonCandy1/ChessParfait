@@ -51,7 +51,7 @@ export default function Games() {
         },
         {
             id: 'challenge-roulette',
-            title: 'Challenge Roulette',
+            title: 'Challenge Rulette',
             description: 'Draw random match handicaps.',
             longDescription: 'Spice up your friendly games! Spin the wheel to receive funny, tactical, or strategic handicaps created by Luis and his coaching students.',
             path: '/Challenge_Rulette',

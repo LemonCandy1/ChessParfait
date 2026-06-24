@@ -107,7 +107,7 @@ const Navbar = () => {
                                 />
                                 <DropdownItem 
                                     to="/Challenge_Rulette" 
-                                    title="Challenge Roulette" 
+                                    title="Challenge Rulette" 
                                     description="Draw funny match handicaps" 
                                     icon={<RouletteIcon size={18} />} 
                                 />

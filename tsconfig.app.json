@@ -16,6 +16,13 @@
     "noEmit": true,
     "jsx": "react-jsx",
 
+    /* Path Aliases */
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./src/*"],
+      "next/image": ["./src/components/ui/NextImageShim.tsx"]
+    },
+
     /* Linting */
     "strict": true,
     "noUnusedLocals": true,

@@ -822,7 +822,7 @@ const PawnGame: React.FC = () => {
                             </div>
 
                             <Link 
-                                to="/"
+                                to="/games"
                                 className="flex items-center justify-center gap-2 text-plum/40 hover:text-berry font-bold uppercase text-xs tracking-widest transition-all py-4 hover:translate-x-[-4px]"
                             >
                                 <ChevronLeft size={16} /> Back to Dashboard

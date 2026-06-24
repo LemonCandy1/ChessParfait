@@ -2,7 +2,7 @@
 
 @theme {
   --color-plum: #4A154B;
-  --color-cream: #FAF2E1;
+  --color-cream: #FAF1DB;
   --color-berry: #D23157;
   --color-parfait-dark: #6B5B95;
   --color-parfait-light: #F8F5F2;
@@ -56,5 +56,9 @@
   
   .pulse-dot-center {
     @apply relative inline-flex rounded-full h-4 w-4 bg-berry;
+  }
+
+  .shadow-none, .hover\:shadow-none:hover {
+    box-shadow: none !important;
   }
 }

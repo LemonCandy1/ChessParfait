@@ -6,6 +6,8 @@ import Navbar from '../components/Navbar/Navbar';
 import { supabase } from '../lib/supabaseClient';
 import { ChessCakeSliceIcon, PieIcon, SkullIcon } from '../components/Icons';
 import { playMoveSound, playCaptureSound } from '../lib/soundEffects';
+import localPuzzlesData from '../data/puzzles.json';
+import { useAuth } from '../context/AuthContext';
 
 type Difficulty = 'Piece of Cake' | 'Hard Tart' | 'Challenge';
 
@@ -18,16 +20,33 @@ interface Puzzle {
 type PuzzlesData = Record<Difficulty, Puzzle[]>;
 
 export default function TrainingPuzzles() {
+    const { user } = useAuth();
     const [selectedDifficulty, setSelectedDifficulty] = useState<Difficulty | null>(null);
     const [submitting, setSubmitting] = useState<boolean>(false);
     const [showSuccess, setShowSuccess] = useState(false);
-    const [formData, setFormData] = useState({ name: '', answer: '' });
+    const [formData, setFormData] = useState({ name: user?.username || '', answer: '' });
     const [game, setGame] = useState(new Chess());
 
+    useEffect(() => {
+        if (user) {
+            setFormData((prev) => ({ ...prev, name: user.username }));
+        } else {
+            setFormData((prev) => ({ ...prev, name: '' }));
+        }
+    }, [user]);
+
     // ── Puzzle data fetched from the Cloudflare Worker → Google Sheets ──
-    const [puzzlesData, setPuzzlesData] = useState<PuzzlesData | null>(null);
-    const [puzzlesLoading, setPuzzlesLoading] = useState(true);
-    const [puzzlesError, setPuzzlesError] = useState<string | null>(null);
+    const [puzzlesData, setPuzzlesData] = useState<PuzzlesData>(() => {
+        try {
+            const cached = localStorage.getItem('chessparfait_puzzles_data');
+            if (cached) {
+                return JSON.parse(cached) as PuzzlesData;
+            }
+        } catch (e) {
+            console.error('Failed to parse cached puzzles:', e);
+        }
+        return localPuzzlesData as PuzzlesData;
+    });
 
     useEffect(() => {
         fetch('/api/puzzles')
@@ -44,11 +63,14 @@ export default function TrainingPuzzles() {
             })
             .then((data) => {
                 setPuzzlesData(data);
-                setPuzzlesLoading(false);
+                try {
+                    localStorage.setItem('chessparfait_puzzles_data', JSON.stringify(data));
+                } catch (e) {
+                    console.error('Failed to cache puzzles:', e);
+                }
             })
             .catch((err: Error) => {
-                setPuzzlesError(err.message);
-                setPuzzlesLoading(false);
+                console.error('Background puzzle fetch failed:', err.message);
             });
     }, []);
 
@@ -157,26 +179,14 @@ export default function TrainingPuzzles() {
         }
     };
 
-    // ── Early returns for loading / error state (also consumes puzzlesLoading / puzzlesError) ──
-    if (puzzlesLoading) {
-        return (
-            <div className="min-h-screen bg-cream flex items-center justify-center text-plum font-sans">
-                <Navbar />
-                <div className="flex flex-col items-center gap-4">
-                    <Loader2 size={40} className="animate-spin text-berry" />
-                    <p className="text-plum/50 font-bold uppercase tracking-widest text-xs">Loading puzzles…</p>
-                </div>
-            </div>
-        );
-    }
-
-    if (puzzlesError || !puzzleInfo) {
+    // ── Early return if puzzleInfo is not available ──
+    if (!puzzleInfo) {
         return (
             <div className="min-h-screen bg-cream flex items-center justify-center text-plum font-sans">
                 <Navbar />
                 <div className="flex flex-col items-center gap-4 text-center">
                     <p className="text-berry font-black text-lg">Failed to load puzzles</p>
-                    <p className="text-plum/50 text-sm">{puzzlesError ?? 'Unknown error'}</p>
+                    <p className="text-plum/50 text-sm">Puzzle data is currently unavailable.</p>
                 </div>
             </div>
         );

@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Menu, X, User, Lock, LogOut, ChevronDown, Check, AlertCircle } from 'lucide-react';
+import { Menu, X, User, LogOut, ChevronDown } from 'lucide-react';
 import logo from '../../assets/Logo-bg-removed.png';
 import { ChessPawnIcon, PuzzleIcon, RouletteIcon, GhostChefIcon } from '../Icons';
 import { useAuth } from '../../context/AuthContext';
@@ -103,7 +103,6 @@ const Navbar = () => {
                             <button
                                 onClick={() => {
                                     setIsProfileOpen(!isProfileOpen);
-                                    setIsLoginOpen(false);
                                 }}
                                 className="flex items-center gap-2 p-1.5 rounded-full border-2 border-plum/15 hover:border-berry/50 transition-all bg-white/50 backdrop-blur-sm shadow-sm"
                             >

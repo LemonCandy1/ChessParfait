@@ -1,7 +1,7 @@
 var __defProp = Object.defineProperty;
 var __name = (target, value) => __defProp(target, "name", { value, configurable: true });
 
-// ../.wrangler/tmp/bundle-CL158L/strip-cf-connecting-ip-header.js
+// ../.wrangler/tmp/bundle-jRFbSo/strip-cf-connecting-ip-header.js
 function stripCfConnectingIPHeader(input, init) {
   const request = new Request(input, init);
   request.headers.delete("CF-Connecting-IP");
@@ -11820,7 +11820,6 @@ if (shouldShowDeprecationWarning())
 
 // api/auth/forgot-password.ts
 var CORS_HEADERS = {
-  "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
   "Access-Control-Allow-Headers": "Content-Type"
 };
@@ -11894,7 +11893,8 @@ async function onRequestPost(context) {
       headers: { ...CORS_HEADERS, "Content-Type": "application/json" }
     });
   } catch (err) {
-    return new Response(JSON.stringify({ message: err.message || "An unexpected error occurred." }), {
+    console.error("Forgot password error:", err);
+    return new Response(JSON.stringify({ message: "An unexpected error occurred." }), {
       status: 500,
       headers: { ...CORS_HEADERS, "Content-Type": "application/json" }
     });
@@ -11904,7 +11904,6 @@ __name(onRequestPost, "onRequestPost");
 
 // api/auth/google.ts
 var CORS_HEADERS2 = {
-  "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
   "Access-Control-Allow-Headers": "Content-Type",
   "Access-Control-Allow-Credentials": "true"
@@ -11967,7 +11966,8 @@ async function onRequestPost2(context) {
       headers
     });
   } catch (err) {
-    return new Response(JSON.stringify({ message: err.message || "An unexpected error occurred during Google login." }), {
+    console.error("Google auth error:", err);
+    return new Response(JSON.stringify({ message: "An unexpected error occurred during Google login." }), {
       status: 500,
       headers: { ...CORS_HEADERS2, "Content-Type": "application/json" }
     });
@@ -11977,7 +11977,6 @@ __name(onRequestPost2, "onRequestPost");
 
 // api/auth/link-email.ts
 var CORS_HEADERS3 = {
-  "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
   "Access-Control-Allow-Headers": "Content-Type",
   "Access-Control-Allow-Credentials": "true"
@@ -12088,7 +12087,8 @@ async function onRequestPost3(context) {
       headers
     });
   } catch (err) {
-    return new Response(JSON.stringify({ message: err.message || "An unexpected error occurred." }), {
+    console.error("Link email error:", err);
+    return new Response(JSON.stringify({ message: "An unexpected error occurred." }), {
       status: 500,
       headers: { ...CORS_HEADERS3, "Content-Type": "application/json" }
     });
@@ -12098,7 +12098,6 @@ __name(onRequestPost3, "onRequestPost");
 
 // api/auth/login.ts
 var CORS_HEADERS4 = {
-  "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
   "Access-Control-Allow-Headers": "Content-Type",
   "Access-Control-Allow-Credentials": "true"
@@ -12175,7 +12174,8 @@ async function onRequestPost4(context) {
       headers
     });
   } catch (err) {
-    return new Response(JSON.stringify({ message: err.message || "An unexpected error occurred during login." }), {
+    console.error("Login error:", err);
+    return new Response(JSON.stringify({ message: "An unexpected error occurred during login." }), {
       status: 500,
       headers: { ...CORS_HEADERS4, "Content-Type": "application/json" }
     });
@@ -12185,7 +12185,6 @@ __name(onRequestPost4, "onRequestPost");
 
 // api/auth/logout.ts
 var CORS_HEADERS5 = {
-  "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
   "Access-Control-Allow-Headers": "Content-Type",
   "Access-Control-Allow-Credentials": "true"
@@ -12211,7 +12210,6 @@ __name(onRequestPost5, "onRequestPost");
 
 // api/auth/me.ts
 var CORS_HEADERS6 = {
-  "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, OPTIONS",
   "Access-Control-Allow-Headers": "Content-Type",
   "Access-Control-Allow-Credentials": "true"
@@ -12282,7 +12280,8 @@ async function onRequestGet(context) {
       headers
     });
   } catch (err) {
-    return new Response(JSON.stringify({ message: err.message || "An unexpected error occurred." }), {
+    console.error("Session user me error:", err);
+    return new Response(JSON.stringify({ message: "An unexpected error occurred." }), {
       status: 500,
       headers: { ...CORS_HEADERS6, "Content-Type": "application/json" }
     });
@@ -12292,7 +12291,6 @@ __name(onRequestGet, "onRequestGet");
 
 // api/auth/register.ts
 var CORS_HEADERS7 = {
-  "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
   "Access-Control-Allow-Headers": "Content-Type"
 };
@@ -12355,7 +12353,8 @@ async function onRequestPost6(context) {
       headers: { ...CORS_HEADERS7, "Content-Type": "application/json" }
     });
   } catch (err) {
-    return new Response(JSON.stringify({ message: err.message || "An unexpected error occurred during registration." }), {
+    console.error("Registration error:", err);
+    return new Response(JSON.stringify({ message: "An unexpected error occurred during registration." }), {
       status: 500,
       headers: { ...CORS_HEADERS7, "Content-Type": "application/json" }
     });
@@ -12365,7 +12364,6 @@ __name(onRequestPost6, "onRequestPost");
 
 // api/auth/session.ts
 var CORS_HEADERS8 = {
-  "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
   "Access-Control-Allow-Headers": "Content-Type",
   "Access-Control-Allow-Credentials": "true"
@@ -12398,7 +12396,8 @@ async function onRequestPost7(context) {
       headers
     });
   } catch (err) {
-    return new Response(JSON.stringify({ message: err.message || "An unexpected error occurred." }), {
+    console.error("Session update error:", err);
+    return new Response(JSON.stringify({ message: "An unexpected error occurred." }), {
       status: 500,
       headers: { ...CORS_HEADERS8, "Content-Type": "application/json" }
     });
@@ -12408,7 +12407,6 @@ __name(onRequestPost7, "onRequestPost");
 
 // api/auth/setup-profile.ts
 var CORS_HEADERS9 = {
-  "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
   "Access-Control-Allow-Headers": "Content-Type",
   "Access-Control-Allow-Credentials": "true"
@@ -12492,7 +12490,8 @@ async function onRequestPost8(context) {
       headers: { ...CORS_HEADERS9, "Content-Type": "application/json" }
     });
   } catch (err) {
-    return new Response(JSON.stringify({ message: err.message || "An unexpected error occurred." }), {
+    console.error("Setup profile error:", err);
+    return new Response(JSON.stringify({ message: "An unexpected error occurred." }), {
       status: 500,
       headers: { ...CORS_HEADERS9, "Content-Type": "application/json" }
     });
@@ -12586,7 +12585,6 @@ async function fetchTab(sheetId, tabName, token) {
 }
 __name(fetchTab, "fetchTab");
 var CORS_HEADERS10 = {
-  "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, OPTIONS",
   "Access-Control-Allow-Headers": "Content-Type"
 };
@@ -12624,8 +12622,8 @@ async function onRequestGet2(context) {
   try {
     return await handlePuzzles(context.env);
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    return new Response(JSON.stringify({ error: message }), {
+    console.error("Fetch puzzles error:", err);
+    return new Response(JSON.stringify({ error: "An unexpected error occurred." }), {
       status: 500,
       headers: { ...CORS_HEADERS10, "Content-Type": "application/json" }
     });
@@ -12677,7 +12675,7 @@ async function onRequest(context) {
 }
 __name(onRequest, "onRequest");
 
-// ../.wrangler/tmp/pages-oqEjkX/functionsRoutes-0.0333334329891215.mjs
+// ../.wrangler/tmp/pages-o6kQA4/functionsRoutes-0.6751977937098812.mjs
 var routes = [
   {
     routePath: "/api/auth/forgot-password",
@@ -13315,7 +13313,7 @@ var jsonError = /* @__PURE__ */ __name(async (request, env, _ctx, middlewareCtx)
 }, "jsonError");
 var middleware_miniflare3_json_error_default = jsonError;
 
-// ../.wrangler/tmp/bundle-CL158L/middleware-insertion-facade.js
+// ../.wrangler/tmp/bundle-jRFbSo/middleware-insertion-facade.js
 var __INTERNAL_WRANGLER_MIDDLEWARE__ = [
   middleware_ensure_req_body_drained_default,
   middleware_miniflare3_json_error_default
@@ -13347,7 +13345,7 @@ function __facade_invoke__(request, env, ctx, dispatch, finalMiddleware) {
 }
 __name(__facade_invoke__, "__facade_invoke__");
 
-// ../.wrangler/tmp/bundle-CL158L/middleware-loader.entry.ts
+// ../.wrangler/tmp/bundle-jRFbSo/middleware-loader.entry.ts
 var __Facade_ScheduledController__ = class {
   constructor(scheduledTime, cron, noRetry) {
     this.scheduledTime = scheduledTime;
@@ -13445,4 +13443,4 @@ export {
   __INTERNAL_WRANGLER_MIDDLEWARE__,
   middleware_loader_entry_default as default
 };
-//# sourceMappingURL=functionsWorker-0.8358327991425869.mjs.map
+//# sourceMappingURL=functionsWorker-0.6955614561762922.mjs.map

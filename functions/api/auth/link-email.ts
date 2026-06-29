@@ -1,7 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 
 const CORS_HEADERS = {
-    'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type',
     'Access-Control-Allow-Credentials': 'true',
@@ -140,7 +139,8 @@ export async function onRequestPost(context: any) {
         });
 
     } catch (err: any) {
-        return new Response(JSON.stringify({ message: err.message || 'An unexpected error occurred.' }), {
+        console.error('Link email error:', err);
+        return new Response(JSON.stringify({ message: 'An unexpected error occurred.' }), {
             status: 500,
             headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' }
         });

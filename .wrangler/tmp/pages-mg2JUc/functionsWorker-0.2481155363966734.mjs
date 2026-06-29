@@ -1,7 +1,7 @@
 var __defProp = Object.defineProperty;
 var __name = (target, value) => __defProp(target, "name", { value, configurable: true });
 
-// ../.wrangler/tmp/bundle-M3nNfc/strip-cf-connecting-ip-header.js
+// ../.wrangler/tmp/bundle-yz3U9K/strip-cf-connecting-ip-header.js
 function stripCfConnectingIPHeader(input, init) {
   const request = new Request(input, init);
   request.headers.delete("CF-Connecting-IP");
@@ -11863,9 +11863,9 @@ async function onRequestPost(context) {
       const realEmail = match2.user_metadata?.real_email || match2.email;
       if (!realEmail || realEmail.endsWith("@chessparfait.com")) {
         return new Response(JSON.stringify({
-          message: "This account has no real email linked. Please link an email from your profile first."
+          message: "If a matching account with a linked email was found, a reset link has been sent."
         }), {
-          status: 400,
+          status: 200,
           headers: { ...CORS_HEADERS, "Content-Type": "application/json" }
         });
       }
@@ -12310,8 +12310,14 @@ async function onRequestPost6(context) {
         headers: { ...CORS_HEADERS7, "Content-Type": "application/json" }
       });
     }
-    if (!password || typeof password !== "string" || password.length < 4) {
-      return new Response(JSON.stringify({ message: "Password must be at least 4 characters long." }), {
+    if (!password || typeof password !== "string" || password.length < 8) {
+      return new Response(JSON.stringify({ message: "Password must be at least 8 characters long." }), {
+        status: 400,
+        headers: { ...CORS_HEADERS7, "Content-Type": "application/json" }
+      });
+    }
+    if (!/\d/.test(password)) {
+      return new Response(JSON.stringify({ message: "Password must contain at least one number." }), {
         status: 400,
         headers: { ...CORS_HEADERS7, "Content-Type": "application/json" }
       });
@@ -12627,6 +12633,50 @@ async function onRequestGet2(context) {
 }
 __name(onRequestGet2, "onRequestGet");
 
+// api/_middleware.ts
+async function onRequest(context) {
+  const { request, env, next } = context;
+  const origin = request.headers.get("Origin") || "";
+  const allowedOrigins = [
+    env.SITE_URL,
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    "http://127.0.0.1:8788"
+  ].filter(Boolean);
+  const allowOrigin = allowedOrigins.includes(origin) ? origin : env.SITE_URL || "http://localhost:5173";
+  const corsHeaders = {
+    "Access-Control-Allow-Origin": allowOrigin,
+    "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type, Authorization",
+    "Access-Control-Allow-Credentials": "true"
+  };
+  if (request.method === "OPTIONS") {
+    return new Response(null, { headers: corsHeaders });
+  }
+  try {
+    const response = await next();
+    const newHeaders = new Headers(response.headers);
+    for (const [key, value] of Object.entries(corsHeaders)) {
+      newHeaders.set(key, value);
+    }
+    return new Response(response.body, {
+      status: response.status,
+      statusText: response.statusText,
+      headers: newHeaders
+    });
+  } catch (err) {
+    console.error("Unhandled API Error:", err);
+    return new Response(JSON.stringify({ message: "An internal server error occurred." }), {
+      status: 500,
+      headers: {
+        ...corsHeaders,
+        "Content-Type": "application/json"
+      }
+    });
+  }
+}
+__name(onRequest, "onRequest");
+
 // ../.wrangler/tmp/pages-mg2JUc/functionsRoutes-0.5184578778044395.mjs
 var routes = [
   {
@@ -12768,6 +12818,13 @@ var routes = [
     method: "OPTIONS",
     middlewares: [],
     modules: [onRequestOptions10]
+  },
+  {
+    routePath: "/api",
+    mountPath: "/api",
+    method: "",
+    middlewares: [onRequest],
+    modules: []
   }
 ];
 
@@ -13258,7 +13315,7 @@ var jsonError = /* @__PURE__ */ __name(async (request, env, _ctx, middlewareCtx)
 }, "jsonError");
 var middleware_miniflare3_json_error_default = jsonError;
 
-// ../.wrangler/tmp/bundle-M3nNfc/middleware-insertion-facade.js
+// ../.wrangler/tmp/bundle-yz3U9K/middleware-insertion-facade.js
 var __INTERNAL_WRANGLER_MIDDLEWARE__ = [
   middleware_ensure_req_body_drained_default,
   middleware_miniflare3_json_error_default
@@ -13290,7 +13347,7 @@ function __facade_invoke__(request, env, ctx, dispatch, finalMiddleware) {
 }
 __name(__facade_invoke__, "__facade_invoke__");
 
-// ../.wrangler/tmp/bundle-M3nNfc/middleware-loader.entry.ts
+// ../.wrangler/tmp/bundle-yz3U9K/middleware-loader.entry.ts
 var __Facade_ScheduledController__ = class {
   constructor(scheduledTime, cron, noRetry) {
     this.scheduledTime = scheduledTime;

@@ -18,6 +18,7 @@ import { onRequestOptions as __api_auth_setup_profile_ts_onRequestOptions } from
 import { onRequestPost as __api_auth_setup_profile_ts_onRequestPost } from "C:\\Users\\luisc\\chessparfait\\functions\\api\\auth\\setup-profile.ts"
 import { onRequestGet as __api_puzzles_ts_onRequestGet } from "C:\\Users\\luisc\\chessparfait\\functions\\api\\puzzles.ts"
 import { onRequestOptions as __api_puzzles_ts_onRequestOptions } from "C:\\Users\\luisc\\chessparfait\\functions\\api\\puzzles.ts"
+import { onRequest as __api__middleware_ts_onRequest } from "C:\\Users\\luisc\\chessparfait\\functions\\api\\_middleware.ts"
 
 export const routes = [
     {
@@ -159,5 +160,12 @@ export const routes = [
       method: "OPTIONS",
       middlewares: [],
       modules: [__api_puzzles_ts_onRequestOptions],
+    },
+  {
+      routePath: "/api",
+      mountPath: "/api",
+      method: "",
+      middlewares: [__api__middleware_ts_onRequest],
+      modules: [],
     },
   ]

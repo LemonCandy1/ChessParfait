@@ -1,7 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 
 const CORS_HEADERS = {
-    'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type',
 };
@@ -60,10 +59,11 @@ export async function onRequestPost(context: any) {
             // Check if user has a real linked email or only the virtual one
             const realEmail = match.user_metadata?.real_email || match.email;
             if (!realEmail || realEmail.endsWith('@chessparfait.com')) {
+                // Return generic message to prevent username enumeration and email status leakage
                 return new Response(JSON.stringify({
-                    message: 'This account has no real email linked. Please link an email from your profile first.'
+                    message: 'If a matching account with a linked email was found, a reset link has been sent.'
                 }), {
-                    status: 400,
+                    status: 200,
                     headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' }
                 });
             }
@@ -101,7 +101,8 @@ export async function onRequestPost(context: any) {
             headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' }
         });
     } catch (err: any) {
-        return new Response(JSON.stringify({ message: err.message || 'An unexpected error occurred.' }), {
+        console.error('Forgot password error:', err);
+        return new Response(JSON.stringify({ message: 'An unexpected error occurred.' }), {
             status: 500,
             headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' }
         });

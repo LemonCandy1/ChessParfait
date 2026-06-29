@@ -1,7 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 
 const CORS_HEADERS = {
-    'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type',
 };
@@ -23,8 +22,14 @@ export async function onRequestPost(context: any) {
                 headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' }
             });
         }
-        if (!password || typeof password !== 'string' || password.length < 4) {
-            return new Response(JSON.stringify({ message: 'Password must be at least 4 characters long.' }), {
+        if (!password || typeof password !== 'string' || password.length < 8) {
+            return new Response(JSON.stringify({ message: 'Password must be at least 8 characters long.' }), {
+                status: 400,
+                headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' }
+            });
+        }
+        if (!/\d/.test(password)) {
+            return new Response(JSON.stringify({ message: 'Password must contain at least one number.' }), {
                 status: 400,
                 headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' }
             });
@@ -72,7 +77,8 @@ export async function onRequestPost(context: any) {
             headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' }
         });
     } catch (err: any) {
-        return new Response(JSON.stringify({ message: err.message || 'An unexpected error occurred during registration.' }), {
+        console.error('Registration error:', err);
+        return new Response(JSON.stringify({ message: 'An unexpected error occurred during registration.' }), {
             status: 500,
             headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' }
         });

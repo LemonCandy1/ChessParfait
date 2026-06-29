@@ -1,7 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 
 const CORS_HEADERS = {
-    'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Methods': 'GET, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type',
     'Access-Control-Allow-Credentials': 'true',
@@ -18,7 +17,7 @@ export async function onRequestGet(context: any) {
         // Parse cookies from Request Headers
         const cookieHeader = request.headers.get('Cookie') || '';
         const cookies = Object.fromEntries(
-            cookieHeader.split(';').map(c => {
+            cookieHeader.split(';').map((c: string) => {
                 const parts = c.trim().split('=');
                 return [parts[0], parts.slice(1).join('=')];
             })
@@ -88,7 +87,8 @@ export async function onRequestGet(context: any) {
             headers
         });
     } catch (err: any) {
-        return new Response(JSON.stringify({ message: err.message || 'An unexpected error occurred.' }), {
+        console.error('Session user me error:', err);
+        return new Response(JSON.stringify({ message: 'An unexpected error occurred.' }), {
             status: 500,
             headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' }
         });

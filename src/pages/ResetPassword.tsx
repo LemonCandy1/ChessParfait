@@ -33,8 +33,12 @@ export default function ResetPassword() {
             setErrorMsg('Password cannot be empty.');
             return;
         }
-        if (password.length < 4) {
-            setErrorMsg('Password must be at least 4 characters long.');
+        if (password.length < 8) {
+            setErrorMsg('Password must be at least 8 characters long.');
+            return;
+        }
+        if (!/\d/.test(password)) {
+            setErrorMsg('Password must contain at least one number.');
             return;
         }
         if (password !== confirmPassword) {

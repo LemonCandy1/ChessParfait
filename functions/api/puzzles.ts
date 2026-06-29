@@ -121,7 +121,6 @@ async function fetchTab(
 // ─── Request handler ──────────────────────────────────────────────────────────
 
 const CORS_HEADERS = {
-  'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type',
 };
@@ -162,8 +161,8 @@ export async function onRequestGet(context: any) {
   try {
     return await handlePuzzles(context.env);
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    return new Response(JSON.stringify({ error: message }), {
+    console.error('Fetch puzzles error:', err);
+    return new Response(JSON.stringify({ error: 'An unexpected error occurred.' }), {
       status: 500,
       headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
     });

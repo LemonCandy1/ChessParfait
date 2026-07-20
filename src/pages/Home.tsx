@@ -69,8 +69,11 @@ export default function Home() {
                             Perfect Your <span className="text-berry">Chess Intuition</span>
                         </h1>
 
+                        <p className="text-2xl md:text-3xl text-plum font-serif italic font-bold mb-4 leading-relaxed max-w-xl mx-auto">
+                            Welcome to ChessParfait.
+                        </p>
                         <p className="text-lg md:text-xl text-plum/70 mb-10 leading-relaxed max-w-xl mx-auto">
-                            Welcome to ChessParfait—a premier training space designed to guide players sequentially from casual games to strategic mastery.
+                            A premier training space designed to guide players sequentially from casual games to strategic mastery.
                         </p>
 
                         <div className="flex flex-wrap justify-center gap-4 w-full sm:w-auto">
@@ -107,8 +110,8 @@ export default function Home() {
                     </div>
                     <div className="hidden md:block h-10 w-px bg-white/10" />
                     <div className="space-y-1">
-                        <span className="block text-4xl font-serif font-black text-white">100%</span>
-                        <span className="text-[10px] uppercase font-black text-cream/50 tracking-widest block">Student Progression</span>
+                        <span className="block text-4xl font-serif font-black text-white">Online and Offline</span>
+                        <span className="text-[10px] uppercase font-black text-cream/50 tracking-widest block">Support</span>
                     </div>
                 </div>
             </section>
@@ -284,9 +287,9 @@ export default function Home() {
             {/* CALL TO ACTION ZONE */}
             <section className="py-24 px-6 md:px-12 text-center relative z-10 max-w-4xl mx-auto">
                 <div className="space-y-8 bg-cream/30 backdrop-blur-md p-12 md:p-16 rounded-[4rem] border-2 border-plum/15 shadow-lg">
-                    <h2 className="text-4xl md:text-5xl font-black text-plum">Ready to elevate your chess?</h2>
+                    <h2 className="text-4xl md:text-5xl font-black text-plum">Let's Perfect Your Chess!</h2>
                     <p className="text-lg text-plum/70 max-w-xl mx-auto mx-auto leading-relaxed">
-                        Improve your rating, solve weekly calculation challenges, or prepare for upcoming tournaments with structured support.
+                        Improve your rating, solve weekly calculation challenges and prepare for upcoming tournaments with structured support.
                     </p>
                     <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
                         <Link

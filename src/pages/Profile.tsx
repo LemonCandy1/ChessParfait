@@ -17,7 +17,7 @@ import {
 import Navbar from '../components/Navbar/Navbar';
 import { useAuth } from '../context/AuthContext';
 import { calculateLevelInfo, formatJoinDate, LEVEL_TIERS } from '../lib/levelSystem';
-import { ChessCakeSliceIcon, PieIcon, CherryBombIcon, PuzzleIcon, ChessPawnIcon } from '../components/Icons';
+import { ChessCakeSliceIcon, PieIcon, CherryBombIcon, PuzzleIcon, ChessPawnIcon, RouletteIcon } from '../components/Icons';
 
 export default function Profile() {
     const { user, loading, logout } = useAuth();
@@ -446,7 +446,7 @@ export default function Profile() {
                         className="bg-white/70 hover:bg-white p-5 rounded-2xl border-2 border-plum/15 shadow-sm hover:shadow-md transition-all group flex items-center gap-4"
                     >
                         <div className="p-3 bg-cream rounded-xl text-plum group-hover:text-berry group-hover:scale-110 transition-transform border border-plum/10">
-                            <Trophy size={22} />
+                            <RouletteIcon size={22} />
                         </div>
                         <div>
                             <h4 className="font-serif font-black text-sm text-plum group-hover:text-berry transition-colors">Challenge Rulette</h4>

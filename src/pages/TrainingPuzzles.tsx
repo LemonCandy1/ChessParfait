@@ -101,13 +101,24 @@ export default function TrainingPuzzles() {
 
     // Interactive puzzle gameplay states
     const [stepIndex, setStepIndex] = useState(0);
+    const [wrongAttempts, setWrongAttempts] = useState(0);
     const [puzzleStatus, setPuzzleStatus] = useState<'solving' | 'opponent_turn' | 'solved' | 'failed'>('solving');
     const [statusFeedback, setStatusFeedback] = useState<{ type: 'info' | 'success' | 'error' | 'celebrate'; message: string }>({
         type: 'info',
         message: 'Make your move on the board.'
     });
     const [showHint, setShowHint] = useState(false);
+    const [showSolvedOverlay, setShowSolvedOverlay] = useState(false);
     const opponentTimerRef = useRef<number | null>(null);
+    const solveRedirectTimerRef = useRef<number | null>(null);
+
+    // Cleanup timers on unmount
+    useEffect(() => {
+        return () => {
+            if (opponentTimerRef.current) clearTimeout(opponentTimerRef.current);
+            if (solveRedirectTimerRef.current) clearTimeout(solveRedirectTimerRef.current);
+        };
+    }, []);
 
     // ── Puzzle data fetched from the Cloudflare Worker → Google Sheets ──
     const [puzzlesData, setPuzzlesData] = useState<PuzzlesData>(() => {
@@ -198,6 +209,12 @@ export default function TrainingPuzzles() {
             clearTimeout(opponentTimerRef.current);
             opponentTimerRef.current = null;
         }
+        if (solveRedirectTimerRef.current) {
+            clearTimeout(solveRedirectTimerRef.current);
+            solveRedirectTimerRef.current = null;
+        }
+        setShowSolvedOverlay(false);
+        setWrongAttempts(0);
 
         if (selectedDifficulty && weeklyPuzzles && weeklyPuzzles[selectedDifficulty]) {
             setGame(new Chess(weeklyPuzzles[selectedDifficulty].fen));
@@ -217,6 +234,11 @@ export default function TrainingPuzzles() {
             clearTimeout(opponentTimerRef.current);
             opponentTimerRef.current = null;
         }
+        if (solveRedirectTimerRef.current) {
+            clearTimeout(solveRedirectTimerRef.current);
+            solveRedirectTimerRef.current = null;
+        }
+        setShowSolvedOverlay(false);
 
         if (activePuzzle) {
             setGame(new Chess(activePuzzle.fen));
@@ -233,6 +255,23 @@ export default function TrainingPuzzles() {
     // Award points on successful completion
     const handleAwardSolve = useCallback(async () => {
         if (!selectedDifficulty || !puzzleInfo) return;
+
+        setShowSolvedOverlay(true);
+        if (solveRedirectTimerRef.current) {
+            clearTimeout(solveRedirectTimerRef.current);
+        }
+        // Dismiss the green tint after 3 seconds so the user can see the final position of the puzzle
+        solveRedirectTimerRef.current = window.setTimeout(() => {
+            setShowSolvedOverlay(false);
+        }, 3000);
+
+        // If user made 3 or more wrong moves, no points are added
+        if (wrongAttempts >= 3) {
+            setSuccessMessage('Puzzle Solved! (0 points awarded - maximum mistakes exceeded)');
+            setShowSuccess(true);
+            setTimeout(() => setShowSuccess(false), 5000);
+            return;
+        }
 
         try {
             if (user) {
@@ -278,7 +317,7 @@ export default function TrainingPuzzles() {
         } catch (err) {
             console.error('Error recording solve:', err);
         }
-    }, [selectedDifficulty, puzzleInfo, user, weeklyPuzzles, updateUserStats]);
+    }, [selectedDifficulty, puzzleInfo, user, weeklyPuzzles, updateUserStats, wrongAttempts]);
 
     // Board Drop Handler
     const onDrop = ({ sourceSquare, targetSquare }: { sourceSquare: string, targetSquare: string | null }) => {
@@ -305,11 +344,22 @@ export default function TrainingPuzzles() {
 
                 if (!isMatch) {
                     playLoseSound();
+                    const newWrongCount = wrongAttempts + 1;
+                    setWrongAttempts(newWrongCount);
                     setPuzzleStatus('failed');
-                    setStatusFeedback({
-                        type: 'error',
-                        message: 'Not quite the best move. Try again or look for a stronger tactic!'
-                    });
+
+                    if (newWrongCount >= 3) {
+                        setStatusFeedback({
+                            type: 'error',
+                            message: 'Try to calculate the whole line before you move! Maximum attempts reached for points. You can still solve for practice!'
+                        });
+                    } else {
+                        const remaining = 3 - newWrongCount;
+                        setStatusFeedback({
+                            type: 'error',
+                            message: `Not quite! ${remaining} attempt${remaining === 1 ? '' : 's'} remaining for points.`
+                        });
+                    }
                     return false;
                 }
 
@@ -367,7 +417,7 @@ export default function TrainingPuzzles() {
                                     setPuzzleStatus('solved');
                                     setStatusFeedback({
                                         type: 'celebrate',
-                                        message: 'Puzzle Solved! Flawless tactical calculation.'
+                                        message: 'Puzzle Solved! Parfait tactical calculation!'
                                     });
                                     handleAwardSolve();
                                 }
@@ -384,7 +434,7 @@ export default function TrainingPuzzles() {
                     setPuzzleStatus('solved');
                     setStatusFeedback({
                         type: 'celebrate',
-                        message: 'Puzzle Solved! Flawless tactical calculation.'
+                        message: 'Puzzle Solved! Parfait tactical calculation!'
                     });
                     handleAwardSolve();
                     return true;
@@ -455,9 +505,6 @@ export default function TrainingPuzzles() {
     const isCurrentDifficultySolved = selectedDifficulty && user?.solvedPuzzles?.some(
         (p) => p.week === puzzleInfo.weekNumber && (p.difficulty === selectedDifficulty || (selectedDifficulty === 'Cherry Bomb' && p.difficulty === 'Challenge'))
     );
-
-    const totalStepsCount = Math.ceil(solutionSteps.length / 2);
-    const currentStepNumber = Math.min(totalStepsCount, Math.floor(stepIndex / 2) + 1);
 
     return (
         <div className="min-h-screen bg-cream flex flex-col relative overflow-x-clip text-plum font-sans">
@@ -556,11 +603,17 @@ export default function TrainingPuzzles() {
                                             {initialTurn === 'w' ? 'White to move' : 'Black to move'}
                                         </span>
                                     </div>
-                                    {totalStepsCount > 1 && (
-                                        <span className="text-[10px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-plum/5 text-plum/60 border border-plum/10">
-                                            Move {currentStepNumber} of {totalStepsCount}
-                                        </span>
-                                    )}
+                                    <div className="flex items-center gap-1.5" title={`${Math.max(0, 3 - wrongAttempts)} attempt${3 - wrongAttempts === 1 ? '' : 's'} remaining for points`}>
+                                        {[0, 1, 2].map((i) => (
+                                            <div
+                                                key={i}
+                                                className={`w-2.5 h-2.5 rounded-full border transition-all ${i < wrongAttempts
+                                                        ? 'bg-rose-500 border-rose-600 scale-90'
+                                                        : 'bg-emerald-400 border-emerald-500'
+                                                    }`}
+                                            />
+                                        ))}
+                                    </div>
                                 </div>
 
                                 <div className="w-full aspect-square max-w-[440px] mx-auto relative group">
@@ -578,14 +631,16 @@ export default function TrainingPuzzles() {
                                             />
 
                                             {/* Solved Overlay animation */}
-                                            {puzzleStatus === 'solved' && (
+                                            {showSolvedOverlay && (
                                                 <div className="absolute inset-0 bg-emerald-950/70 backdrop-blur-[2px] z-40 flex flex-col items-center justify-center p-6 text-center animate-in fade-in duration-500">
                                                     <div className="w-16 h-16 rounded-full bg-emerald-500 text-white flex items-center justify-center mb-3 shadow-xl animate-bounce">
                                                         <PartyPopper size={32} />
                                                     </div>
                                                     <h3 className="font-serif font-black text-2xl text-white mb-1">Puzzle Solved!</h3>
                                                     <p className="text-emerald-200 text-xs font-bold uppercase tracking-wider">
-                                                        +{DIFFICULTY_POINTS[selectedDifficulty]} Points Awarded
+                                                        {wrongAttempts >= 3
+                                                            ? '0 Points (3 Mistakes Exceeded)'
+                                                            : `+${DIFFICULTY_POINTS[selectedDifficulty]} Points Awarded`}
                                                     </p>
                                                 </div>
                                             )}
@@ -612,7 +667,7 @@ export default function TrainingPuzzles() {
                                 </div>
                             </div>
 
-                            {/* Puzzle Info & Live Feedback Column */}
+                            {/* Puzzle Info & Actions Column */}
                             <div className="lg:col-span-6 space-y-6">
                                 <div className="space-y-3">
                                     <div className="flex items-center gap-3 flex-wrap">
@@ -644,20 +699,16 @@ export default function TrainingPuzzles() {
                                     </p>
                                 </div>
 
-                                {/* Live Move Feedback Box */}
+                                {/* Status & Actions Card */}
                                 <div className="bg-white/60 backdrop-blur-md rounded-[2rem] p-6 border-2 border-plum/15 shadow-sm space-y-4">
-                                    <span className="text-[10px] font-black uppercase tracking-[0.2em] text-plum/40 block">
-                                        Live Puzzle Feedback
-                                    </span>
-
                                     {/* Feedback Status Alert */}
                                     <div className={`p-4 rounded-2xl border-2 flex items-center gap-3.5 transition-all ${statusFeedback.type === 'celebrate'
-                                            ? 'bg-emerald-50 border-emerald-300 text-emerald-900 shadow-sm'
-                                            : statusFeedback.type === 'success'
-                                                ? 'bg-emerald-50/60 border-emerald-200 text-emerald-800'
-                                                : statusFeedback.type === 'error'
-                                                    ? 'bg-rose-50 border-rose-300 text-rose-900 animate-shake'
-                                                    : 'bg-plum/5 border-plum/15 text-plum'
+                                        ? 'bg-emerald-50 border-emerald-300 text-emerald-900 shadow-sm'
+                                        : statusFeedback.type === 'success'
+                                            ? 'bg-emerald-50/60 border-emerald-200 text-emerald-800'
+                                            : statusFeedback.type === 'error'
+                                                ? 'bg-rose-50 border-rose-300 text-rose-900 animate-shake'
+                                                : 'bg-plum/5 border-plum/15 text-plum'
                                         }`}>
                                         {statusFeedback.type === 'celebrate' ? (
                                             <Sparkles className="text-amber-500 shrink-0" size={20} />
@@ -683,7 +734,7 @@ export default function TrainingPuzzles() {
                                     )}
 
                                     {/* Solve Action summary */}
-                                    {puzzleStatus === 'solved' ? (
+                                    {puzzleStatus === 'solved' && (
                                         <div className="pt-2 flex flex-col gap-3">
                                             <div className="flex items-center justify-between text-xs font-bold text-plum/70 px-1">
                                                 <span>Calculation complete!</span>
@@ -697,10 +748,6 @@ export default function TrainingPuzzles() {
                                                 <ArrowRight size={16} />
                                             </button>
                                         </div>
-                                    ) : (
-                                        <p className="text-xs text-plum/50 font-medium leading-relaxed">
-                                            Guess the solution moves by dragging the pieces on the board. You will receive immediate feedback as you calculate!
-                                        </p>
                                     )}
                                 </div>
 

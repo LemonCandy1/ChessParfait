@@ -157,7 +157,7 @@
             "rule": "If you lose 3 pawns in the game, you must resign."
         }
     ],
-    "Challenge": [
+    "Cherry Bomb": [
         {
             "title": "Pair of Pawns",
             "rule": "You can only move two of your pawns."
@@ -204,7 +204,7 @@
         },
         {
             "title": "Food Coma",
-            "rule": "Every time you capture a piece, the piece which captured that piece cannot be moved for the rest of the game. This rule does not include pawns, and your king cannot capture."
+            "rule": "Every time you capture an opponent's piece, your piece which captured that opponent's piece cannot be moved for the rest of the game. This rule does not apply to enemy pawns, and your king cannot capture."
         }
     ]
 }

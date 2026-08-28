@@ -543,13 +543,21 @@ const PawnGame: React.FC = () => {
 
     const undoMove = () => {
         if (history.length === 0) return;
-        const last = history[history.length - 1];
-        setBoard(last.board);
-        setTurn(last.turn);
-        setEnPassantTarget(last.ep);
-        setLastMove(last.lastMove);
+
+        // If it's currently the user's turn or game ended, skip 2 half moves (AI's reply + user's move)
+        // so the user returns to their state before making their move.
+        const stepsToUndo = (turn === userColor || winner) ? Math.min(2, history.length) : 1;
+        const targetIndex = history.length - stepsToUndo;
+        const targetState = history[targetIndex];
+
+        setBoard(targetState.board);
+        setTurn(targetState.turn);
+        setEnPassantTarget(targetState.ep);
+        setLastMove(targetState.lastMove);
+        setSelectedSquare(null);
         setWinner(null);
-        setHistory(prev => prev.slice(0, -1));
+        setIsThinking(false);
+        setHistory(prev => prev.slice(0, targetIndex));
     };
 
     const legalMovesForSelected = useMemo(() => {
@@ -590,7 +598,7 @@ const PawnGame: React.FC = () => {
     };
 
     return (
-        <div className="min-h-screen bg-cream flex flex-col font-sans text-plum overflow-x-hidden">
+        <div className="min-h-screen bg-cream flex flex-col font-sans text-plum overflow-x-clip">
             <Navbar />
 
             <main className="flex-1 max-w-7xl mx-auto w-full px-6 pt-4 pb-8 flex flex-col items-center overflow-hidden">

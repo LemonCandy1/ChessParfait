@@ -14,6 +14,8 @@ import ResetPassword from './pages/ResetPassword';
 import LinkEmail from './pages/LinkEmail';
 import Login from './pages/Login';
 import SetupProfile from './pages/SetupProfile';
+import Profile from './pages/Profile';
+import ScrollToTop from './components/ScrollToTop';
 import { AuthProvider } from './context/AuthContext';
 import { GoogleOAuthProvider } from '@react-oauth/google';
 
@@ -22,6 +24,7 @@ export default function App() {
     <GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID || ''}>
       <AuthProvider>
         <BrowserRouter>
+        <ScrollToTop />
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/about" element={<About />} />
@@ -32,6 +35,7 @@ export default function App() {
           <Route path="/PawnGameStrategy" element={<PawnGameStrategy />} />
           <Route path="/contact" element={<Contact />} />
           <Route path="/games" element={<Games />} />
+          <Route path="/profile" element={<Profile />} />
           <Route path="/login" element={<Login />} />
           <Route path="/setup-profile" element={<SetupProfile />} />
           <Route path="/register" element={<Register />} />

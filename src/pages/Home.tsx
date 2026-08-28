@@ -1,48 +1,18 @@
-import { useState } from 'react';
 import {
     Mail,
     ChevronRight,
-    BookOpen,
-    Award,
-    ArrowRight,
-    BrainCircuit
+    Award
 } from 'lucide-react';
 import Navbar from '../components/Navbar/Navbar.tsx';
 import { Link } from 'react-router-dom';
 import profilePicture from '../assets/Profile Photo.jpeg';
-import { PuzzleIcon, RouletteIcon } from '../components/Icons';
 import ClientFeedback from '@/components/ui/testimonial';
 import ParallaxBackground from '@/components/ui/ParallaxBackground';
 
-
 export default function Home() {
 
-
-
-    // ----------------------------------------------------
-    // 3. LEARN-TRAIN-TEST LOOP STATE & DATA
-    // ----------------------------------------------------
-    const [activeLoopStep, setActiveLoopStep] = useState<number>(0);
-    const loopSteps = [
-        {
-            title: "1. Learn (Weekly Lessons)",
-            desc: "Build structured theoretical foundations with FIDE Master Luis Chan. Create personalized opening repertoires, analyze your game database, and master critical positional principles.",
-            icon: <BookOpen size={20} />
-        },
-        {
-            title: "2. Train (Weekly Puzzles)",
-            desc: "Consolidate your knowledge by solving handpicked tactical positions updated every Monday. Build visual memory, pattern recognition, and sharp calculation skills.",
-            icon: <PuzzleIcon size={20} />
-        },
-        {
-            title: "3. Test (Variant Zone)",
-            desc: "Put your skills into action against our minimax AI bot in the Pawn Game. Break routine habits using Challenge Rulette handicaps, testing your raw chess intuition.",
-            icon: <RouletteIcon size={20} />
-        }
-    ];
-
     return (
-        <div className="min-h-screen flex flex-col font-sans text-plum relative bg-cream overflow-x-hidden">
+        <div className="min-h-screen flex flex-col font-sans text-plum relative bg-cream overflow-x-clip">
             {/* Background Decorative Mesh Gradients (Warmer yellow & light orange palette) */}
             <div className="absolute top-0 right-0 -translate-y-1/3 translate-x-1/4 w-[600px] h-[600px] bg-berry/10 rounded-full blur-[120px] pointer-events-none" />
             <div className="absolute top-1/4 left-0 -translate-x-1/4 w-[650px] h-[650px] bg-orange-400/10 rounded-full blur-[130px] pointer-events-none" />
@@ -73,7 +43,7 @@ export default function Home() {
                             Welcome to ChessParfait.
                         </p>
                         <p className="text-lg md:text-xl text-plum/70 mb-10 leading-relaxed max-w-xl mx-auto">
-                            A premier training space designed to guide players sequentially from casual games to strategic mastery.
+                            A premier training space designed for chess players with fun games, puzzles and instructive lessons.
                         </p>
 
                         <div className="flex flex-wrap justify-center gap-4 w-full sm:w-auto">
@@ -119,90 +89,7 @@ export default function Home() {
             {/* COACHING REVIEWS SECTION */}
             <ClientFeedback />
 
-            {/* THE "LEARN, TRAIN, TEST" STRUCTURED LOOP */}
-            <section className="py-24 px-6 md:px-12 max-w-7xl mx-auto w-full z-10 relative">
-                <div className="text-center max-w-3xl mx-auto mb-16 space-y-4">
-                    <div className="inline-flex items-center gap-2 px-3.5 py-1.5 text-xs font-black uppercase tracking-widest text-plum bg-plum/5 rounded-full">
-                        <BrainCircuit size={12} />
-                        The ChessParfait Loop
-                    </div>
-                    <h2 className="text-4xl md:text-5xl font-black tracking-tight text-plum">
-                        Learn, Train, Test
-                    </h2>
-                    <p className="text-lg text-plum/60 font-medium">
-                        Our structured cycle bypasses dry memorization, developing your intuition through active learning and play.
-                    </p>
-                </div>
 
-                <div className="grid lg:grid-cols-12 gap-8 items-center max-w-5xl mx-auto">
-                    {/* Step selector */}
-                    <div className="lg:col-span-5 space-y-3">
-                        {loopSteps.map((step, idx) => {
-                            const isActive = activeLoopStep === idx;
-                            return (
-                                <button
-                                    key={idx}
-                                    onClick={() => setActiveLoopStep(idx)}
-                                    className={`w-full p-5 text-left rounded-3xl border-2 transition-all flex items-center gap-4 group ${isActive
-                                        ? 'bg-plum border-plum text-cream shadow-lg shadow-plum/20'
-                                        : 'bg-white/40 border-plum/10 text-plum hover:bg-white/80 hover:border-plum/25'
-                                        }`}
-                                >
-                                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 border transition-all ${isActive ? 'bg-berry border-berry text-white' : 'bg-cream border-plum/15 text-plum'
-                                        }`}>
-                                        {step.icon}
-                                    </div>
-                                    <span className="font-serif font-black text-lg truncate">
-                                        {step.title}
-                                    </span>
-                                    <ChevronRight size={18} className={`ml-auto transition-transform ${isActive ? 'translate-x-1 text-berry' : 'text-plum/30 group-hover:translate-x-0.5'
-                                        }`} />
-                                </button>
-                            );
-                        })}
-                    </div>
-
-                    {/* Step detail panel */}
-                    <div className="lg:col-span-7">
-                        <div className="p-8 md:p-10 glass rounded-[3.5rem] border-2 border-plum/15 shadow-xl text-left space-y-6 min-h-[300px] flex flex-col justify-center relative">
-                            {/* Graphic background */}
-                            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 opacity-5 text-plum pointer-events-none">
-                                <BrainCircuit size={280} />
-                            </div>
-
-                            <span className="text-[10px] font-black uppercase tracking-widest text-berry">
-                                Pillar {activeLoopStep + 1} details
-                            </span>
-
-                            <h3 className="font-serif font-black text-plum text-3xl">
-                                {loopSteps[activeLoopStep].title}
-                            </h3>
-
-                            <p className="text-sm text-plum/70 leading-relaxed font-medium relative z-10">
-                                {loopSteps[activeLoopStep].desc}
-                            </p>
-
-                            <div className="pt-4 border-t border-plum/5 relative z-10">
-                                {activeLoopStep === 0 && (
-                                    <Link to="/contact" className="inline-flex items-center gap-1 text-xs font-black uppercase tracking-widest text-berry hover:underline">
-                                        Schedule an FM consultation <ArrowRight size={14} />
-                                    </Link>
-                                )}
-                                {activeLoopStep === 1 && (
-                                    <Link to="/TrainingPuzzles" className="inline-flex items-center gap-1 text-xs font-black uppercase tracking-widest text-berry hover:underline">
-                                        Solve puzzles now <ArrowRight size={14} />
-                                    </Link>
-                                )}
-                                {activeLoopStep === 2 && (
-                                    <Link to="/games" className="inline-flex items-center gap-1 text-xs font-black uppercase tracking-widest text-berry hover:underline">
-                                        Browse the game variants <ArrowRight size={14} />
-                                    </Link>
-                                )}
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </section>
 
             {/* COACH SHOWCASE: FM LUIS CHAN */}
             <section className="py-24 px-6 md:px-12 bg-plum text-cream z-10 relative">

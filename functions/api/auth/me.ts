@@ -77,10 +77,17 @@ export async function onRequestGet(context: any) {
             }
         }
 
+        const points = typeof user.user_metadata?.points === 'number' ? user.user_metadata.points : 0;
+        const solvedPuzzles = Array.isArray(user.user_metadata?.solved_puzzles) ? user.user_metadata.solved_puzzles : [];
+
         return new Response(JSON.stringify({
             user: {
+                id: user.id,
                 username,
-                email: userEmail
+                email: userEmail,
+                createdAt: user.created_at,
+                points,
+                solvedPuzzles
             }
         }), {
             status: 200,

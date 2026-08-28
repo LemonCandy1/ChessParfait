@@ -1,9 +1,22 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { supabase } from '../lib/supabaseClient';
 
+export interface SolvedPuzzle {
+    id: string;
+    week: number;
+    difficulty: string;
+    title?: string;
+    points: number;
+    solvedAt: string;
+}
+
 export interface User {
+    id?: string;
     username: string;
     email?: string;
+    createdAt?: string;
+    points?: number;
+    solvedPuzzles?: SolvedPuzzle[];
 }
 
 export interface Remembered {
@@ -21,6 +34,8 @@ interface AuthContextType {
     forgotPassword: (usernameOrEmail: string) => Promise<{ success: boolean; message: string }>;
     loginWithGoogle: (credential: string) => Promise<{ success: boolean; message: string; needsProfileSetup?: boolean }>;
     setupProfile: (username: string) => Promise<{ success: boolean; message: string }>;
+    refreshUser: () => Promise<void>;
+    updateUserStats: (points: number, solvedPuzzles: SolvedPuzzle[]) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -248,8 +263,31 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
     };
 
+    const refreshUser = async () => {
+        try {
+            const res = await fetch('/api/auth/me');
+            if (res.ok) {
+                const data = await res.json();
+                setUser(data.user);
+            }
+        } catch (e) {
+            console.error('Failed to refresh user:', e);
+        }
+    };
+
+    const updateUserStats = (points: number, solvedPuzzles: SolvedPuzzle[]) => {
+        setUser((prev) => {
+            if (!prev) return null;
+            return {
+                ...prev,
+                points,
+                solvedPuzzles
+            };
+        });
+    };
+
     return (
-        <AuthContext.Provider value={{ user, loading, remembered, login, register, logout, linkEmail, forgotPassword, loginWithGoogle, setupProfile }}>
+        <AuthContext.Provider value={{ user, loading, remembered, login, register, logout, linkEmail, forgotPassword, loginWithGoogle, setupProfile, refreshUser, updateUserStats }}>
             {children}
         </AuthContext.Provider>
     );

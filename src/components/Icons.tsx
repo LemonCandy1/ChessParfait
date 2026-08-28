@@ -157,8 +157,9 @@ export function SnowflakeIcon({ size = 24, ...props }: CustomIconProps) {
     );
 }
 
-// Skull Icon (Challenge)
-export function SkullIcon({ size = 24, ...props }: CustomIconProps) {
+// Cherry Bomb Icon (Cherry Bomb Difficulty)
+// A stylized dessert cherry bomb with a spherical cherry body, leaf, curved fuse, and spark
+export function CherryBombIcon({ size = 24, ...props }: CustomIconProps) {
     return (
         <svg
             width={size}
@@ -171,23 +172,32 @@ export function SkullIcon({ size = 24, ...props }: CustomIconProps) {
             strokeLinejoin="round"
             {...props}
         >
-            {/* Skull Outline */}
-            <path d="M6 12C6 8.7 8.7 6 12 6C15.3 6 18 8.7 18 12C18 14.5 16 15 16 17V19C16 19.5 15.5 20 15 20H9C8.5 20 8 19.5 8 19V17C8 15 6 15 6 12Z" />
+            {/* Cherry Bomb Sphere */}
+            <circle cx="10.5" cy="14.5" r="6.5" />
             
-            {/* Eye Holes */}
-            <circle cx="10" cy="11.5" r="1.2" />
-            <circle cx="14" cy="11.5" r="1.2" />
+            {/* Top Collar / Stem Cap */}
+            <path d="M8.5 8.5H12.5" />
             
-            {/* Nose cavity */}
-            <path d="M12 14L11.5 15H12.5Z" />
-            
-            {/* Teeth */}
-            <path d="M10 18V20" />
-            <path d="M12 18V20" />
-            <path d="M14 18V20" />
+            {/* Cherry Leaf on Stem */}
+            <path d="M11 7.5C13 5.5 15.5 6 15 7.5C13 8.5 11.5 8 11 7.5Z" />
+
+            {/* Curving Fuse */}
+            <path d="M10.5 8C10.5 5 13 3 16 3.5C17.5 3.8 18.5 4.8 19 6" />
+
+            {/* Spark Rays at fuse tip */}
+            <path d="M19 3V5" />
+            <path d="M21 5H19" />
+            <path d="M21 3L19.5 4.5" />
+            <path d="M20 7L18.5 5.5" />
+
+            {/* Gloss / Shine Highlight */}
+            <path d="M7 13C7.5 11.5 9 10.5 10.5 10.5" />
         </svg>
     );
 }
+
+// Legacy alias
+export const SkullIcon = CherryBombIcon;
 
 // Chess Pawn Icon (Pawn Game)
 export function ChessPawnIcon({ size = 24, ...props }: CustomIconProps) {

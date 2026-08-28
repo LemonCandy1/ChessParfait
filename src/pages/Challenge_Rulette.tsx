@@ -3,9 +3,9 @@ import { X, MessageSquarePlus, CheckCircle2 } from 'lucide-react';
 import rulesData from '../data/rules.json';
 import Navbar from '../components/Navbar/Navbar';
 import { supabase } from '../lib/supabaseClient.ts';
-import { ChessCakeSliceIcon, PieIcon, SnowflakeIcon, SkullIcon } from '../components/Icons';
+import { ChessCakeSliceIcon, PieIcon, SnowflakeIcon, CherryBombIcon } from '../components/Icons';
 
-type Difficulty = 'Piece of Cake' | 'Hard Tart' | 'Brain Freeze' | 'Challenge';
+type Difficulty = 'Piece of Cake' | 'Hard Tart' | 'Brain Freeze' | 'Cherry Bomb';
 
 export default function ChallengeRulette() {
     interface Rule {
@@ -30,7 +30,7 @@ export default function ChallengeRulette() {
         setDifficulty(level);
 
         setTimeout(() => {
-            const rulesForLevel = (rulesData as any)[level];
+            const rulesForLevel = (rulesData as any)[level] || (level === 'Cherry Bomb' ? (rulesData as any)['Challenge'] : []);
             const availableRules = rulesForLevel.filter((r: Rule) => !history.includes(r.rule));
             const pool = availableRules.length > 0 ? availableRules : rulesForLevel;
             const nextRule = pool[Math.floor(Math.random() * pool.length)];
@@ -45,7 +45,7 @@ export default function ChallengeRulette() {
             case 'Piece of Cake': return <ChessCakeSliceIcon size={size} />;
             case 'Hard Tart': return <PieIcon size={size} />;
             case 'Brain Freeze': return <SnowflakeIcon size={size} />;
-            case 'Challenge': return <SkullIcon size={size} />;
+            case 'Cherry Bomb': return <CherryBombIcon size={size} />;
             default: return <ChessCakeSliceIcon size={size} />;
         }
     };
@@ -85,7 +85,7 @@ export default function ChallengeRulette() {
         'Piece of Cake': { bg: 'bg-emerald-50', border: 'border-emerald-200', text: 'text-emerald-600', active: 'bg-emerald-600 border-emerald-700 shadow-emerald-200', glow: 'bg-emerald-400' },
         'Hard Tart': { bg: 'bg-amber-50', border: 'border-amber-200', text: 'text-amber-600', active: 'bg-amber-500 border-amber-600 shadow-amber-200', glow: 'bg-amber-400' },
         'Brain Freeze': { bg: 'bg-berry/5', border: 'border-berry/20', text: 'text-berry', active: 'bg-berry border-berry shadow-berry/20', glow: 'bg-berry' },
-        'Challenge': { bg: 'bg-plum/10', border: 'border-plum/40', text: 'text-plum', active: 'bg-[#2D0D2E] border-plum shadow-[#2D0D2E]/40', glow: 'bg-[#1A051B]' },
+        'Cherry Bomb': { bg: 'bg-plum/10', border: 'border-plum/40', text: 'text-plum', active: 'bg-[#2D0D2E] border-plum shadow-[#2D0D2E]/40', glow: 'bg-[#1A051B]' },
     };
 
     return (
@@ -146,7 +146,7 @@ export default function ChallengeRulette() {
 
                 {/* Difficulty Selectors */}
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 w-full max-w-3xl relative z-10">
-                    {(['Piece of Cake', 'Hard Tart', 'Brain Freeze', 'Challenge'] as Difficulty[]).map((level) => {
+                    {(['Piece of Cake', 'Hard Tart', 'Brain Freeze', 'Cherry Bomb'] as Difficulty[]).map((level) => {
                         const theme = themes[level];
                         const isActive = difficulty === level;
 
@@ -210,7 +210,7 @@ export default function ChallengeRulette() {
                                         <option value="Piece of Cake">Piece of Cake</option>
                                         <option value="Hard Tart">Hard Tart</option>
                                         <option value="Brain Freeze">Brain Freeze</option>
-                                        <option value="Challenge">Challenge</option>
+                                        <option value="Cherry Bomb">Cherry Bomb</option>
                                     </select>
                                 </div>
                             </div>

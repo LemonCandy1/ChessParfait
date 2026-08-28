@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Menu, X, User, LogOut, ChevronDown } from 'lucide-react';
+import { Menu, X, User, LogOut, ChevronDown, Trophy, Sparkles } from 'lucide-react';
 import logo from '../../assets/Logo-bg-removed.png';
 import { ChessPawnIcon, PuzzleIcon, RouletteIcon, GhostChefIcon } from '../Icons';
 import { useAuth } from '../../context/AuthContext';
+import { calculateLevelInfo } from '../../lib/levelSystem';
 
 const Navbar = () => {
     const { user, logout } = useAuth();
@@ -12,6 +13,8 @@ const Navbar = () => {
 
     const toggleMenu = () => setIsMobileMenuOpen(!isMobileMenuOpen);
     const closeMenu = () => setIsMobileMenuOpen(false);
+
+    const levelInfo = calculateLevelInfo(user?.points || 0);
 
     return (
         <nav className="sticky top-0 z-[9999] bg-cream/80 backdrop-blur-lg border-b-2 border-plum/15 py-3 px-6">
@@ -104,14 +107,19 @@ const Navbar = () => {
                                 onClick={() => {
                                     setIsProfileOpen(!isProfileOpen);
                                 }}
-                                className="flex items-center gap-2 p-1.5 rounded-full border-2 border-plum/15 hover:border-berry/50 transition-all bg-white/50 backdrop-blur-sm shadow-sm"
+                                className="flex items-center gap-2 p-1.5 pr-2.5 rounded-full border-2 border-plum/15 hover:border-berry/50 transition-all bg-white/50 backdrop-blur-sm shadow-sm"
                             >
                                 <div className="h-7 w-7 rounded-full bg-berry text-cream font-serif font-black flex items-center justify-center text-xs shadow-inner uppercase">
                                     {user.username.charAt(0)}
                                 </div>
-                                <span className="hidden sm:inline text-xs font-black text-plum max-w-[80px] truncate select-none">
-                                    {user.username}
-                                </span>
+                                <div className="hidden sm:flex flex-col items-start text-left leading-none">
+                                    <span className="text-xs font-black text-plum max-w-[90px] truncate select-none">
+                                        {user.username}
+                                    </span>
+                                    <span className="text-[9px] font-bold text-berry select-none mt-0.5">
+                                        Lvl {levelInfo.level}
+                                    </span>
+                                </div>
                                 <ChevronDown size={12} className={`text-plum/40 transition-transform ${isProfileOpen ? 'rotate-180' : ''}`} />
                             </button>
                         )}
@@ -126,32 +134,55 @@ const Navbar = () => {
                                     onClick={() => setIsProfileOpen(false)}
                                 />
                                 
-                                <div className="absolute right-0 top-full mt-2.5 w-56 bg-white rounded-3xl shadow-2xl border-2 border-plum/15 p-4 z-[9999] animate-in fade-in slide-in-from-top-2 duration-300">
+                                <div className="absolute right-0 top-full mt-2.5 w-64 bg-white rounded-3xl shadow-2xl border-2 border-plum/15 p-4 z-[9999] animate-in fade-in slide-in-from-top-2 duration-300">
                                     <div className="px-2 py-1 border-b border-plum/10 pb-3 mb-2">
-                                        <p className="text-[9px] font-black uppercase tracking-widest text-plum/30">Logged in as</p>
+                                        <div className="flex items-center justify-between gap-2 mb-1">
+                                            <p className="text-[9px] font-black uppercase tracking-widest text-plum/30">Logged in as</p>
+                                            <span className="bg-berry/10 text-berry text-[9px] font-black uppercase px-2 py-0.5 rounded-full flex items-center gap-1">
+                                                <Sparkles size={10} />
+                                                Lvl {levelInfo.level}
+                                            </span>
+                                        </div>
                                         <h4 className="font-serif font-black text-plum text-base leading-tight truncate">{user?.username}</h4>
-                                        {user?.email && (
-                                            <p className="text-[10px] text-plum/50 font-bold truncate mt-0.5" title={user.email}>{user.email}</p>
-                                        )}
+                                        <div className="flex items-center gap-2 mt-1">
+                                            <span className="inline-flex items-center gap-1 text-[10px] font-bold text-plum/60 bg-cream px-2 py-0.5 rounded-md border border-plum/10">
+                                                <Trophy size={11} className="text-amber-500" />
+                                                {user?.points || 0} pts
+                                            </span>
+                                            <span className="text-[10px] text-berry font-extrabold truncate">
+                                                {levelInfo.title}
+                                            </span>
+                                        </div>
                                     </div>
-                                    <button
-                                        onClick={() => {
-                                            logout();
-                                            setIsProfileOpen(false);
-                                        }}
-                                        className="w-full text-left flex items-center gap-2.5 p-2 rounded-xl text-plum hover:text-berry hover:bg-berry/5 transition font-bold text-xs"
-                                    >
-                                        <LogOut size={14} />
-                                        Logout
-                                    </button>
-                                    <Link
-                                        to="/link-email"
-                                        onClick={() => setIsProfileOpen(false)}
-                                        className="w-full flex items-center gap-2.5 p-2 rounded-xl text-plum hover:text-berry hover:bg-berry/5 transition font-bold text-xs"
-                                    >
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
-                                        {user?.email ? 'Change Email' : 'Link Email'}
-                                    </Link>
+
+                                    <div className="space-y-0.5">
+                                        <Link
+                                            to="/profile"
+                                            onClick={() => setIsProfileOpen(false)}
+                                            className="w-full flex items-center gap-2.5 p-2 rounded-xl text-plum hover:text-berry hover:bg-berry/5 transition font-bold text-xs"
+                                        >
+                                            <User size={14} className="text-berry" />
+                                            <span>My Profile & Stats</span>
+                                        </Link>
+                                        <Link
+                                            to="/link-email"
+                                            onClick={() => setIsProfileOpen(false)}
+                                            className="w-full flex items-center gap-2.5 p-2 rounded-xl text-plum hover:text-berry hover:bg-berry/5 transition font-bold text-xs"
+                                        >
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
+                                            <span>{user?.email ? 'Change Email' : 'Link Email'}</span>
+                                        </Link>
+                                        <button
+                                            onClick={() => {
+                                                logout();
+                                                setIsProfileOpen(false);
+                                            }}
+                                            className="w-full text-left flex items-center gap-2.5 p-2 rounded-xl text-plum hover:text-berry hover:bg-berry/5 transition font-bold text-xs"
+                                        >
+                                            <LogOut size={14} />
+                                            <span>Logout</span>
+                                        </button>
+                                    </div>
                                 </div>
                             </>
                         )}
@@ -173,6 +204,9 @@ const Navbar = () => {
                 <div className="md:hidden absolute top-full left-0 w-full z-[9999] bg-cream/95 backdrop-blur-xl border-b border-plum/10 shadow-2xl py-8 px-6 flex flex-col items-center gap-6 animate-in slide-in-from-top-2 duration-300">
                     <NavLink to="/" label="Home" onClick={closeMenu} />
                     <NavLink to="/games" label="Play" onClick={closeMenu} />
+                    {user && (
+                        <NavLink to="/profile" label={`Profile (Lvl ${levelInfo.level})`} onClick={closeMenu} />
+                    )}
                     <NavLink to="/contact" label="Contact" onClick={closeMenu} />
                     <NavLink to="/about" label="About" onClick={closeMenu} />
                 </div>

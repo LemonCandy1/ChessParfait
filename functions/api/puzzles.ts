@@ -8,6 +8,7 @@ interface Puzzle {
   title: string;
   fen: string;
   question: string;
+  answer?: string;
 }
 
 // ─── JWT / Auth helpers ───────────────────────────────────────────────────────
@@ -97,7 +98,7 @@ async function fetchTab(
   tabName: string,
   token: string,
 ): Promise<Puzzle[]> {
-  const range = encodeURIComponent(`${tabName}!A2:C`);
+  const range = encodeURIComponent(`${tabName}!A2:D`);
   const url = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${range}`;
 
   const res = await fetch(url, {
@@ -114,8 +115,13 @@ async function fetchTab(
   if (!data.values) return [];
 
   return (data.values as string[][])
-    .filter((row: string[]) => row.length >= 3 && row[0] && row[1] && row[2])
-    .map(([title, fen, question]: string[]) => ({ title, fen, question }));
+    .filter((row: string[]) => row.length >= 2 && row[0] && row[1])
+    .map(([title, fen, question, answer]: string[]) => ({
+      title: title || '',
+      fen: fen || '',
+      question: question || '',
+      answer: answer || '',
+    }));
 }
 
 // ─── Request handler ──────────────────────────────────────────────────────────
@@ -131,17 +137,29 @@ async function handlePuzzles(env: Env): Promise<Response> {
   }
   const token = await getAccessToken(env);
 
-  const [pieceOfCake, hardTart, challenge] = await Promise.all([
+  // Try fetching 'Cherry Bomb', fallback to 'Challenge' tab
+  let cherryBombPuzzles: Puzzle[] = [];
+  try {
+    cherryBombPuzzles = await fetchTab(env.GOOGLE_SHEET_ID, 'Cherry Bomb', token);
+  } catch {
+    try {
+      cherryBombPuzzles = await fetchTab(env.GOOGLE_SHEET_ID, 'Challenge', token);
+    } catch (e) {
+      console.warn('Could not fetch Cherry Bomb/Challenge tab:', e);
+    }
+  }
+
+  const [pieceOfCake, hardTart] = await Promise.all([
     fetchTab(env.GOOGLE_SHEET_ID, 'Piece of Cake', token),
     fetchTab(env.GOOGLE_SHEET_ID, 'Hard Tart', token),
-    fetchTab(env.GOOGLE_SHEET_ID, 'Challenge', token),
   ]);
 
   return new Response(
     JSON.stringify({
       'Piece of Cake': pieceOfCake,
       'Hard Tart': hardTart,
-      Challenge: challenge,
+      'Cherry Bomb': cherryBombPuzzles,
+      Challenge: cherryBombPuzzles,
     }),
     {
       headers: {

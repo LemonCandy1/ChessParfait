@@ -11,7 +11,7 @@ interface GameItem {
     longDescription: string;
     path: string;
     icon: React.ReactNode;
-    difficulty: 'Piece of Cake' | 'Hard Tart' | 'Brain Freeze' | 'Challenge' | 'Special';
+    difficulty: 'Piece of Cake' | 'Hard Tart' | 'Brain Freeze' | 'Cherry Bomb' | 'Special';
     difficultyColor: string;
     status: 'Playable' | 'Weekly' | 'Coming Soon';
     statusColor: string;
@@ -56,7 +56,7 @@ export default function Games() {
             longDescription: 'Spice up your friendly games! Spin the wheel to receive funny, tactical, or strategic handicaps created by Luis and his coaching students.',
             path: '/Challenge_Rulette',
             icon: <RouletteIcon size={48} />,
-            difficulty: 'Challenge',
+            difficulty: 'Cherry Bomb',
             difficultyColor: 'bg-rose-50 text-berry border-rose-200/50',
             status: 'Playable',
             statusColor: 'bg-emerald-50 text-emerald-600 border-emerald-200/50',
@@ -80,10 +80,10 @@ export default function Games() {
     ];
 
     return (
-        <div className="min-h-screen bg-cream flex flex-col font-sans text-plum relative overflow-x-hidden">
+        <div className="min-h-screen bg-cream flex flex-col font-sans text-plum relative overflow-x-clip">
             {/* Background Decorative Gradients */}
-            <div className="absolute top-0 right-0 -translate-y-1/2 translate-x-1/2 w-[600px] h-[600px] bg-berry/5 rounded-full blur-[120px] -z-10" />
-            <div className="absolute bottom-0 left-0 translate-y-1/2 -translate-x-1/2 w-[500px] h-[500px] bg-plum/5 rounded-full blur-[100px] -z-10" />
+            <div className="absolute top-0 right-0 -translate-y-1/2 translate-x-1/2 w-[600px] h-[600px] bg-berry/5 rounded-full blur-[120px] -z-10 pointer-events-none" />
+            <div className="absolute bottom-0 left-0 translate-y-1/2 -translate-x-1/2 w-[500px] h-[500px] bg-plum/5 rounded-full blur-[100px] -z-10 pointer-events-none" />
 
             <Navbar />
 

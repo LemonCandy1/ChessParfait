@@ -86,11 +86,18 @@ export async function onRequestPost(context: any) {
 
         const userEmail = data.user.email && !data.user.email.endsWith('@chessparfait.com') ? data.user.email : undefined;
 
+        const points = typeof data.user.user_metadata?.points === 'number' ? data.user.user_metadata.points : 0;
+        const solvedPuzzles = Array.isArray(data.user.user_metadata?.solved_puzzles) ? data.user.user_metadata.solved_puzzles : [];
+
         return new Response(JSON.stringify({
             message: 'Logged in successfully.',
             user: {
+                id: data.user.id,
                 username: data.user.user_metadata?.username || trimmedUser,
-                email: userEmail
+                email: userEmail,
+                createdAt: data.user.created_at,
+                points,
+                solvedPuzzles
             }
         }), {
             status: 200,

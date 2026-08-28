@@ -1,39 +1,113 @@
-import React, { useState, useMemo, useEffect } from 'react';
-import { Send, CheckCircle2, Loader2, ChevronLeft, Calendar, RotateCcw } from 'lucide-react';
+import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
+import {
+    CheckCircle2,
+    ChevronLeft,
+    Calendar,
+    RotateCcw,
+    Trophy,
+    Sparkles,
+    LogIn,
+    Lightbulb,
+    ArrowRight,
+    HelpCircle,
+    PartyPopper
+} from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { Chess } from 'chess.js';
 import { Chessboard } from 'react-chessboard';
 import Navbar from '../components/Navbar/Navbar';
 import { supabase } from '../lib/supabaseClient';
-import { ChessCakeSliceIcon, PieIcon, SkullIcon } from '../components/Icons';
-import { playMoveSound, playCaptureSound } from '../lib/soundEffects';
+import { ChessCakeSliceIcon, PieIcon, CherryBombIcon } from '../components/Icons';
+import { playMoveSound, playCaptureSound, playWinSound, playLoseSound } from '../lib/soundEffects';
 import localPuzzlesData from '../data/puzzles.json';
 import { useAuth } from '../context/AuthContext';
+import { DIFFICULTY_POINTS } from '../lib/levelSystem';
 
-type Difficulty = 'Piece of Cake' | 'Hard Tart' | 'Challenge';
+type Difficulty = 'Piece of Cake' | 'Hard Tart' | 'Cherry Bomb';
 
 interface Puzzle {
     title: string;
     fen: string;
     question: string;
+    answer?: string;
 }
 
-type PuzzlesData = Record<Difficulty, Puzzle[]>;
+type PuzzlesData = Record<string, Puzzle[]>;
+
+interface SolutionStep {
+    san: string;
+    from: string;
+    to: string;
+    promotion?: string;
+    fenAfter: string;
+}
+
+/**
+ * Parses raw answer string into verified sequential chess moves using chess.js
+ */
+function parseSolutionMoves(startFen: string, rawAnswer?: string): SolutionStep[] {
+    if (!rawAnswer || !rawAnswer.trim()) return [];
+
+    const tokens = rawAnswer
+        .replace(/\d+\.{1,3}/g, ' ') // strip 1., 1...
+        .replace(/[,;]/g, ' ')
+        .trim()
+        .split(/\s+/)
+        .filter(Boolean);
+
+    const steps: SolutionStep[] = [];
+    try {
+        const testGame = new Chess(startFen);
+        for (const token of tokens) {
+            let move = null;
+            try {
+                move = testGame.move(token);
+            } catch {
+                if (token.length >= 4 && token.length <= 5) {
+                    const from = token.slice(0, 2);
+                    const to = token.slice(2, 4);
+                    const promotion = token.length === 5 ? token[4] : 'q';
+                    try {
+                        move = testGame.move({ from, to, promotion });
+                    } catch { }
+                }
+            }
+
+            if (move) {
+                steps.push({
+                    san: move.san,
+                    from: move.from,
+                    to: move.to,
+                    promotion: move.promotion,
+                    fenAfter: testGame.fen(),
+                });
+            } else {
+                break;
+            }
+        }
+    } catch (e) {
+        console.warn('Error parsing puzzle solution:', e);
+    }
+
+    return steps;
+}
 
 export default function TrainingPuzzles() {
-    const { user } = useAuth();
+    const { user, updateUserStats } = useAuth();
     const [selectedDifficulty, setSelectedDifficulty] = useState<Difficulty | null>(null);
-    const [submitting, setSubmitting] = useState<boolean>(false);
     const [showSuccess, setShowSuccess] = useState(false);
-    const [formData, setFormData] = useState({ name: user?.username || '', answer: '' });
+    const [successMessage, setSuccessMessage] = useState('Puzzle Solved!');
     const [game, setGame] = useState(new Chess());
 
-    useEffect(() => {
-        if (user) {
-            setFormData((prev) => ({ ...prev, name: user.username }));
-        } else {
-            setFormData((prev) => ({ ...prev, name: '' }));
-        }
-    }, [user]);
+    // Interactive puzzle gameplay states
+    const [stepIndex, setStepIndex] = useState(0);
+    const [puzzleStatus, setPuzzleStatus] = useState<'solving' | 'opponent_turn' | 'solved' | 'failed'>('solving');
+    const [statusFeedback, setStatusFeedback] = useState<{ type: 'info' | 'success' | 'error' | 'celebrate'; message: string }>({
+        type: 'info',
+        message: 'Make your move on the board.'
+    });
+    const [showHint, setShowHint] = useState(false);
+    const opponentTimerRef = useRef<number | null>(null);
 
     // ── Puzzle data fetched from the Cloudflare Worker → Google Sheets ──
     const [puzzlesData, setPuzzlesData] = useState<PuzzlesData>(() => {
@@ -56,7 +130,9 @@ export default function TrainingPuzzles() {
                     try {
                         const errData = await res.json();
                         if (errData.error) errorMessage += `: ${errData.error}`;
-                    } catch (_) {}
+                    } catch (parseErr) {
+                        console.warn('Failed to parse error response:', parseErr);
+                    }
                     throw new Error(errorMessage);
                 }
                 return res.json() as Promise<PuzzlesData>;
@@ -83,23 +159,15 @@ export default function TrainingPuzzles() {
         if (!puzzlesData) return null;
 
         const now = new Date();
-        
-        // Reference Monday: March 2nd, 2026
         const referenceDate = new Date('2026-03-02T00:00:00');
-        
-        // Calculate the difference in milliseconds
         const diffInMs = now.getTime() - referenceDate.getTime();
-        
-        // Convert to weeks (7 days * 24h * 60m * 60s * 1000ms)
         const msInWeek = 1000 * 60 * 60 * 24 * 7;
-        
-        // Week number (1-indexed)
-        // If before reference date, default to 1
         const weekIndex = diffInMs < 0 ? 0 : Math.floor(diffInMs / msInWeek);
         const currentWeekNumber = weekIndex + 1;
 
         const select = (diff: Difficulty) => {
-            const pool = puzzlesData[diff];
+            const pool = puzzlesData[diff] || (diff === 'Cherry Bomb' ? puzzlesData['Challenge'] : undefined) || [];
+            if (!pool || pool.length === 0) return { title: `${diff} Puzzle`, fen: '8/8/8/8/8/8/8/8 w - - 0 1', question: 'Find the best move.' };
             return pool[weekIndex % pool.length];
         };
 
@@ -108,7 +176,7 @@ export default function TrainingPuzzles() {
             puzzles: {
                 'Piece of Cake': select('Piece of Cake'),
                 'Hard Tart': select('Hard Tart'),
-                'Challenge': select('Challenge')
+                'Cherry Bomb': select('Cherry Bomb')
             }
         };
     }, [puzzlesData]);
@@ -118,14 +186,105 @@ export default function TrainingPuzzles() {
     const initialTurn = activePuzzle ? activePuzzle.fen.split(' ')[1] : 'w';
     const puzzleOrientation = initialTurn === 'b' ? 'black' : 'white';
 
-    useEffect(() => {
-        if (selectedDifficulty && weeklyPuzzles) {
-            setGame(new Chess(weeklyPuzzles[selectedDifficulty].fen));
-        }
-    }, [selectedDifficulty, weeklyPuzzles]);
+    // Parse solution steps for the active puzzle
+    const solutionSteps = useMemo(() => {
+        if (!activePuzzle) return [];
+        return parseSolutionMoves(activePuzzle.fen, activePuzzle.answer);
+    }, [activePuzzle]);
 
+    // Reset board and state when difficulty changes
+    useEffect(() => {
+        if (opponentTimerRef.current) {
+            clearTimeout(opponentTimerRef.current);
+            opponentTimerRef.current = null;
+        }
+
+        if (selectedDifficulty && weeklyPuzzles && weeklyPuzzles[selectedDifficulty]) {
+            setGame(new Chess(weeklyPuzzles[selectedDifficulty].fen));
+            setStepIndex(0);
+            setPuzzleStatus('solving');
+            setShowHint(false);
+            setStatusFeedback({
+                type: 'info',
+                message: `${initialTurn === 'w' ? 'White' : 'Black'} to move. Find the best move!`
+            });
+        }
+    }, [selectedDifficulty, weeklyPuzzles, initialTurn]);
+
+    // Reset current puzzle to beginning
+    const handleResetPuzzle = useCallback(() => {
+        if (opponentTimerRef.current) {
+            clearTimeout(opponentTimerRef.current);
+            opponentTimerRef.current = null;
+        }
+
+        if (activePuzzle) {
+            setGame(new Chess(activePuzzle.fen));
+            setStepIndex(0);
+            setPuzzleStatus('solving');
+            setShowHint(false);
+            setStatusFeedback({
+                type: 'info',
+                message: 'Board reset. Give it another shot!'
+            });
+        }
+    }, [activePuzzle]);
+
+    // Award points on successful completion
+    const handleAwardSolve = useCallback(async () => {
+        if (!selectedDifficulty || !puzzleInfo) return;
+
+        try {
+            if (user) {
+                const res = await fetch('/api/puzzles/solve', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        week: puzzleInfo.weekNumber,
+                        difficulty: selectedDifficulty,
+                        title: weeklyPuzzles?.[selectedDifficulty]?.title,
+                        answer: 'Interactive Board Solve'
+                    })
+                });
+
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.totalPoints !== undefined && data.solvedPuzzles) {
+                        updateUserStats(data.totalPoints, data.solvedPuzzles);
+                    }
+                    if (data.alreadySolved) {
+                        setSuccessMessage('Puzzle Solved! (Points already claimed this week)');
+                    } else {
+                        const earned = data.pointsAwarded || DIFFICULTY_POINTS[selectedDifficulty] || 25;
+                        setSuccessMessage(`+${earned} Points Earned! Level progress updated.`);
+                    }
+                }
+            } else {
+                // Guest fallback: record answer in ChallengeAnswers
+                await supabase.from('ChallengeAnswers').insert([
+                    {
+                        user_name: 'Guest Player',
+                        difficulty: selectedDifficulty,
+                        answer: 'Interactive Board Solve',
+                        week: puzzleInfo.weekNumber,
+                        created_at: new Date().toISOString()
+                    }
+                ]);
+                setSuccessMessage('Puzzle Solved! Sign in to save permanent points & level up.');
+            }
+
+            setShowSuccess(true);
+            setTimeout(() => setShowSuccess(false), 5000);
+        } catch (err) {
+            console.error('Error recording solve:', err);
+        }
+    }, [selectedDifficulty, puzzleInfo, user, weeklyPuzzles, updateUserStats]);
+
+    // Board Drop Handler
     const onDrop = ({ sourceSquare, targetSquare }: { sourceSquare: string, targetSquare: string | null }) => {
         if (!targetSquare) return false;
+        if (puzzleStatus === 'opponent_turn' || puzzleStatus === 'solved') return false;
+
         try {
             const gameCopy = new Chess(game.fen());
             const move = gameCopy.move({
@@ -133,51 +292,146 @@ export default function TrainingPuzzles() {
                 to: targetSquare,
                 promotion: 'q',
             });
-            
+
             if (move === null) return false;
-            
-            if (move.captured) {
-                playCaptureSound();
+
+            // Check if solution steps exist for validation
+            if (solutionSteps.length > 0) {
+                const expected = solutionSteps[stepIndex];
+                const isMatch = expected && (
+                    (expected.from === sourceSquare && expected.to === targetSquare) ||
+                    (expected.san === move.san)
+                );
+
+                if (!isMatch) {
+                    playLoseSound();
+                    setPuzzleStatus('failed');
+                    setStatusFeedback({
+                        type: 'error',
+                        message: 'Not quite the best move. Try again or look for a stronger tactic!'
+                    });
+                    return false;
+                }
+
+                // Correct player move!
+                if (move.captured) {
+                    playCaptureSound();
+                } else {
+                    playMoveSound();
+                }
+
+                setGame(gameCopy);
+                setShowHint(false);
+
+                const nextStep = stepIndex + 1;
+
+                // If there is an opponent reply in the line
+                if (nextStep < solutionSteps.length) {
+                    const opponentStep = solutionSteps[nextStep];
+                    setStepIndex(nextStep);
+                    setPuzzleStatus('opponent_turn');
+                    setStatusFeedback({
+                        type: 'success',
+                        message: 'Great move! Opponent is responding...'
+                    });
+
+                    // Auto-play opponent response after 450ms
+                    opponentTimerRef.current = window.setTimeout(() => {
+                        try {
+                            const oppGame = new Chess(gameCopy.fen());
+                            const oppMove = oppGame.move({
+                                from: opponentStep.from,
+                                to: opponentStep.to,
+                                promotion: opponentStep.promotion || 'q'
+                            }) || oppGame.move(opponentStep.san);
+
+                            if (oppMove) {
+                                if (oppMove.captured) {
+                                    playCaptureSound();
+                                } else {
+                                    playMoveSound();
+                                }
+                                setGame(oppGame);
+
+                                const stepAfterOpponent = nextStep + 1;
+                                if (stepAfterOpponent < solutionSteps.length) {
+                                    setStepIndex(stepAfterOpponent);
+                                    setPuzzleStatus('solving');
+                                    setStatusFeedback({
+                                        type: 'info',
+                                        message: 'Your turn! Find the next winning move.'
+                                    });
+                                } else {
+                                    // Finished after opponent move
+                                    playWinSound();
+                                    setPuzzleStatus('solved');
+                                    setStatusFeedback({
+                                        type: 'celebrate',
+                                        message: 'Puzzle Solved! Flawless tactical calculation.'
+                                    });
+                                    handleAwardSolve();
+                                }
+                            }
+                        } catch (e) {
+                            console.error('Error auto-playing opponent move:', e);
+                        }
+                    }, 450);
+
+                    return true;
+                } else {
+                    // Final player move completed the puzzle!
+                    playWinSound();
+                    setPuzzleStatus('solved');
+                    setStatusFeedback({
+                        type: 'celebrate',
+                        message: 'Puzzle Solved! Flawless tactical calculation.'
+                    });
+                    handleAwardSolve();
+                    return true;
+                }
             } else {
-                playMoveSound();
+                // Free play fallback if no solution steps were specified
+                if (move.captured) {
+                    playCaptureSound();
+                } else {
+                    playMoveSound();
+                }
+                setGame(gameCopy);
+                playWinSound();
+                setPuzzleStatus('solved');
+                setStatusFeedback({
+                    type: 'celebrate',
+                    message: 'Move played! Solution submitted.'
+                });
+                handleAwardSolve();
+                return true;
             }
-            
-            setGame(gameCopy);
-            return true;
-        } catch(e) {
+        } catch {
             return false;
         }
     };
 
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!selectedDifficulty) return;
-        setSubmitting(true);
-
-        try {
-            const { error } = await supabase
-                .from('ChallengeAnswers')
-                .insert([
-                    {
-                        user_name: formData.name,
-                        difficulty: selectedDifficulty,
-                        answer: formData.answer,
-                        week: puzzleInfo?.weekNumber,
-                        created_at: new Date().toISOString()
-                    }
-                ]);
-
-            if (error) throw error;
-
-            setShowSuccess(true);
-            setFormData({ name: '', answer: '' });
-            setTimeout(() => setShowSuccess(false), 3000);
-        } catch (error: any) {
-            alert(`Error submitting answer: ${error.message}`);
-        } finally {
-            setSubmitting(false);
+    // Hint generator
+    const currentHint = useMemo(() => {
+        if (!solutionSteps || solutionSteps.length === 0) {
+            return 'Look for checks, captures, and unprotected pieces!';
         }
-    };
+        const expected = solutionSteps[stepIndex];
+        if (!expected) return 'Find the best continuation.';
+
+        // Identify piece type from starting square
+        const piece = game.get(expected.from as any);
+        const pieceNames: Record<string, string> = {
+            p: 'Pawn',
+            n: 'Knight',
+            b: 'Bishop',
+            r: 'Rook',
+            q: 'Queen',
+            k: 'King'
+        };
+        const pieceName = piece ? pieceNames[piece.type.toLowerCase()] || 'Piece' : 'Piece';
+        return `Hint: Move your ${pieceName} from ${expected.from.toUpperCase()}.`;
+    }, [solutionSteps, stepIndex, game]);
 
     // ── Early return if puzzleInfo is not available ──
     if (!puzzleInfo) {
@@ -192,20 +446,27 @@ export default function TrainingPuzzles() {
         );
     }
 
-    const themes = {
-        'Piece of Cake': { bg: 'bg-emerald-50/30', text: 'text-emerald-600', icon: <ChessCakeSliceIcon /> },
-        'Hard Tart': { bg: 'bg-amber-50/30', text: 'text-amber-600', icon: <PieIcon /> },
-        'Challenge': { bg: 'bg-berry/5', text: 'text-berry', icon: <SkullIcon /> }
+    const themes: Record<Difficulty, { bg: string; text: string; icon: (size?: number) => React.ReactNode }> = {
+        'Piece of Cake': { bg: 'bg-emerald-50/30', text: 'text-emerald-600', icon: (size = 24) => <ChessCakeSliceIcon size={size} /> },
+        'Hard Tart': { bg: 'bg-amber-50/30', text: 'text-amber-600', icon: (size = 24) => <PieIcon size={size} /> },
+        'Cherry Bomb': { bg: 'bg-berry/5', text: 'text-berry', icon: (size = 24) => <CherryBombIcon size={size} /> }
     };
 
+    const isCurrentDifficultySolved = selectedDifficulty && user?.solvedPuzzles?.some(
+        (p) => p.week === puzzleInfo.weekNumber && (p.difficulty === selectedDifficulty || (selectedDifficulty === 'Cherry Bomb' && p.difficulty === 'Challenge'))
+    );
+
+    const totalStepsCount = Math.ceil(solutionSteps.length / 2);
+    const currentStepNumber = Math.min(totalStepsCount, Math.floor(stepIndex / 2) + 1);
+
     return (
-        <div className="min-h-screen bg-cream flex flex-col relative overflow-x-hidden text-plum font-sans">
-            <div className="absolute top-0 left-0 w-250 h-250 bg-berry/5 rounded-full blur-3xl -z-10 -translate-x-1/2 -translate-y-1/2" />
-            
+        <div className="min-h-screen bg-cream flex flex-col relative overflow-x-clip text-plum font-sans">
+            <div className="absolute top-0 left-0 w-250 h-250 bg-berry/5 rounded-full blur-3xl -z-10 -translate-x-1/2 -translate-y-1/2 pointer-events-none" />
+
             <Navbar />
 
             <main className={`flex-1 max-w-7xl mx-auto w-full px-6 flex flex-col relative z-10 py-4 ${!selectedDifficulty ? 'justify-center' : 'justify-start'}`}>
-                
+
                 {!selectedDifficulty ? (
                     <>
                         {/* Landing View Header */}
@@ -218,7 +479,7 @@ export default function TrainingPuzzles() {
                             </h1>
                             <div className="space-y-4">
                                 <p className="text-xl text-plum/60 leading-relaxed">
-                                    Select your desired intensity to begin this week's strategic challenge.
+                                    Select the difficulty to begin this week's chess puzzle and earn points!
                                 </p>
                                 <div className="flex items-center justify-center gap-2 text-plum/40 text-sm font-bold uppercase tracking-widest">
                                     <Calendar size={16} />
@@ -229,128 +490,229 @@ export default function TrainingPuzzles() {
 
                         {/* Difficulty Selection View */}
                         <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto w-full pb-12">
-                            {(['Piece of Cake', 'Hard Tart', 'Challenge'] as Difficulty[]).map((level) => (
-                                <button
-                                    key={level}
-                                    onClick={() => setSelectedDifficulty(level)}
-                                    className="soft-card soft-card-hover rounded-[3rem] p-12 flex flex-col items-center gap-8 group"
-                                >
-                                    <div className={`p-5 rounded-[2.5rem] bg-white shadow-sm group-hover:scale-115 transition-transform duration-500 ${themes[level].text}`}>
-                                        {React.cloneElement(themes[level].icon, { size: 48 })}
-                                    </div>
-                                    <div className="text-center">
-                                        <h3 className="text-3xl font-serif font-black tracking-tight mb-2">{level}</h3>
-                                        <span className="font-black uppercase tracking-[0.2em] text-[10px] text-plum/30">Difficulty</span>
-                                    </div>
-                                </button>
-                            ))}
+                            {(['Piece of Cake', 'Hard Tart', 'Cherry Bomb'] as Difficulty[]).map((level) => {
+                                const isSolved = user?.solvedPuzzles?.some(
+                                    (p) => p.week === puzzleInfo.weekNumber && (p.difficulty === level || (level === 'Cherry Bomb' && p.difficulty === 'Challenge'))
+                                );
+                                const points = DIFFICULTY_POINTS[level] || 25;
+
+                                return (
+                                    <button
+                                        key={level}
+                                        onClick={() => setSelectedDifficulty(level)}
+                                        className="soft-card soft-card-hover rounded-[3rem] p-12 flex flex-col items-center gap-6 group relative overflow-hidden text-left"
+                                    >
+                                        {/* Status / Points Pill */}
+                                        <div className="flex items-center gap-1.5">
+                                            {isSolved ? (
+                                                <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-black uppercase tracking-wider shadow-sm">
+                                                    <CheckCircle2 size={12} className="text-emerald-600" />
+                                                    Solved (+{points} pts)
+                                                </span>
+                                            ) : (
+                                                <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-berry/10 text-berry text-[10px] font-black uppercase tracking-wider">
+                                                    <Trophy size={11} className="text-amber-500" />
+                                                    +{points} Points
+                                                </span>
+                                            )}
+                                        </div>
+
+                                        <div className={`p-5 rounded-[2.5rem] bg-white shadow-sm group-hover:scale-115 transition-transform duration-500 ${themes[level].text} w-fit`}>
+                                            {themes[level].icon(48)}
+                                        </div>
+                                        <div className="text-center w-full">
+                                            <h3 className="text-3xl font-serif font-black tracking-tight mb-2">{level}</h3>
+                                            <span className="font-black uppercase tracking-[0.2em] text-[10px] text-plum/30">Difficulty</span>
+                                        </div>
+                                    </button>
+                                );
+                            })}
                         </div>
                     </>
                 ) : (
                     /* Puzzle Detail View */
                     <div className="w-full max-w-6xl mx-auto animate-in fade-in zoom-in-95 duration-500">
-                        <div className="flex justify-between items-center mb-2">
-                            <button 
+                        <div className="flex justify-between items-center mb-4">
+                            <button
                                 onClick={() => setSelectedDifficulty(null)}
-                                className="inline-flex items-center gap-2 text-plum/40 hover:text-berry font-bold uppercase text-[10px] tracking-widest transition-colors"
+                                className="inline-flex items-center gap-2 text-plum/50 hover:text-berry font-bold uppercase text-[10px] tracking-widest transition-colors py-2 px-3 rounded-xl hover:bg-white/50"
                             >
                                 <ChevronLeft size={16} /> Back to selection
                             </button>
-                            <span className="text-[10px] font-black uppercase tracking-widest text-plum/30">
-                                Week {puzzleInfo.weekNumber} Challenge
-                            </span>
+                            <div className="flex items-center gap-2">
+                                <span className="text-[10px] font-black uppercase tracking-widest text-plum/40 bg-white/60 px-3 py-1.5 rounded-full border border-plum/10">
+                                    Week {puzzleInfo.weekNumber} • {selectedDifficulty}
+                                </span>
+                            </div>
                         </div>
 
-                        <div className="grid lg:grid-cols-2 gap-8 lg:gap-12 items-start mt-2">
-                            <div className="flex flex-col items-center w-full">
-                                <div className="flex items-center gap-3 mb-2 px-4 py-2 rounded-xl bg-white/70 backdrop-blur-sm border-2 border-plum/15 shadow-sm">
-                                    <div className={`w-3 h-3 rounded-full ${initialTurn === 'w' ? 'bg-white border-[1.5px] border-plum/20 shadow-inner' : 'bg-plum shadow-inner'}`} />
-                                    <span className="font-black text-[10px] uppercase tracking-widest text-plum/70">
-                                        {initialTurn === 'w' ? 'White to move' : 'Black to move'}
-                                    </span>
+                        <div className="grid lg:grid-cols-12 gap-8 lg:gap-12 items-start mt-2">
+                            {/* Board Column */}
+                            <div className="lg:col-span-6 flex flex-col items-center w-full">
+                                <div className="flex items-center justify-between w-full max-w-[440px] mb-3 px-4 py-2 rounded-2xl bg-white/80 backdrop-blur-sm border-2 border-plum/15 shadow-sm">
+                                    <div className="flex items-center gap-2.5">
+                                        <div className={`w-3.5 h-3.5 rounded-full ${initialTurn === 'w' ? 'bg-white border-[1.5px] border-plum/30 shadow-inner' : 'bg-plum shadow-inner'}`} />
+                                        <span className="font-black text-xs uppercase tracking-wider text-plum/80">
+                                            {initialTurn === 'w' ? 'White to move' : 'Black to move'}
+                                        </span>
+                                    </div>
+                                    {totalStepsCount > 1 && (
+                                        <span className="text-[10px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-plum/5 text-plum/60 border border-plum/10">
+                                            Move {currentStepNumber} of {totalStepsCount}
+                                        </span>
+                                    )}
                                 </div>
-                                <div className="w-full aspect-square max-w-[420px] mx-auto relative group">
-                                    <div className="p-4 soft-card shadow-2xl h-full flex flex-col">
-                                        <div className="w-full h-full rounded-2xl overflow-hidden shadow-inner border-2 border-plum/15 bg-white translate-z-0">
-                                            <Chessboard 
+
+                                <div className="w-full aspect-square max-w-[440px] mx-auto relative group">
+                                    <div className="p-4 soft-card shadow-2xl h-full flex flex-col relative overflow-hidden">
+                                        <div className="w-full h-full rounded-2xl overflow-hidden shadow-inner border-2 border-plum/15 bg-white translate-z-0 relative">
+                                            <Chessboard
                                                 options={{
                                                     position: game.fen(),
                                                     boardOrientation: puzzleOrientation,
                                                     onPieceDrop: onDrop,
                                                     darkSquareStyle: { backgroundColor: '#b58863' },
                                                     lightSquareStyle: { backgroundColor: '#f0d9b5' },
-                                                    animationDurationInMs: 300
+                                                    animationDurationInMs: 250
                                                 }}
                                             />
+
+                                            {/* Solved Overlay animation */}
+                                            {puzzleStatus === 'solved' && (
+                                                <div className="absolute inset-0 bg-emerald-950/70 backdrop-blur-[2px] z-40 flex flex-col items-center justify-center p-6 text-center animate-in fade-in duration-500">
+                                                    <div className="w-16 h-16 rounded-full bg-emerald-500 text-white flex items-center justify-center mb-3 shadow-xl animate-bounce">
+                                                        <PartyPopper size={32} />
+                                                    </div>
+                                                    <h3 className="font-serif font-black text-2xl text-white mb-1">Puzzle Solved!</h3>
+                                                    <p className="text-emerald-200 text-xs font-bold uppercase tracking-wider">
+                                                        +{DIFFICULTY_POINTS[selectedDifficulty]} Points Awarded
+                                                    </p>
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
                                 </div>
-                                <button 
-                                    onClick={() => setGame(new Chess(activePuzzle!.fen))}
-                                    className="mt-3 flex items-center justify-center gap-2 py-3 px-6 soft-button w-full max-w-[420px]"
-                                >
-                                    <RotateCcw size={16} />
-                                    Reset Puzzle
-                                </button>
+
+                                {/* Board Controls */}
+                                <div className="flex items-center gap-3 w-full max-w-[440px] mt-4">
+                                    <button
+                                        onClick={handleResetPuzzle}
+                                        className="flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl border-2 border-plum/15 bg-white/70 hover:bg-white text-plum font-black text-xs uppercase tracking-wider transition-all shadow-sm active:scale-95"
+                                    >
+                                        <RotateCcw size={15} />
+                                        <span>Reset Position</span>
+                                    </button>
+                                    <button
+                                        onClick={() => setShowHint(!showHint)}
+                                        className="flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl border-2 border-amber-300/80 bg-amber-50/80 hover:bg-amber-100 text-amber-900 font-black text-xs uppercase tracking-wider transition-all shadow-sm active:scale-95"
+                                    >
+                                        <Lightbulb size={15} className="text-amber-600" />
+                                        <span>{showHint ? 'Hide Hint' : 'Show Hint'}</span>
+                                    </button>
+                                </div>
                             </div>
 
-                            {/* Puzzle Info & Form */}
-                            <div className="space-y-6">
+                            {/* Puzzle Info & Live Feedback Column */}
+                            <div className="lg:col-span-6 space-y-6">
                                 <div className="space-y-3">
-                                    <div className={`inline-flex items-center gap-3 px-3 py-1.5 rounded-lg ${themes[selectedDifficulty].bg}`}>
-                                        <span className={themes[selectedDifficulty].text}>
-                                            {React.cloneElement(themes[selectedDifficulty].icon, { size: 20 })}
-                                        </span>
-                                        <span className="font-black uppercase tracking-widest text-[10px] text-plum/60">{selectedDifficulty}</span>
+                                    <div className="flex items-center gap-3 flex-wrap">
+                                        <div className={`inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl border border-plum/10 ${themes[selectedDifficulty].bg}`}>
+                                            <span className={themes[selectedDifficulty].text}>
+                                                {themes[selectedDifficulty].icon(18)}
+                                            </span>
+                                            <span className="font-black uppercase tracking-widest text-[11px] text-plum/70">{selectedDifficulty}</span>
+                                        </div>
+
+                                        {(puzzleStatus === 'solved' || isCurrentDifficultySolved) ? (
+                                            <span className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-emerald-100 text-emerald-800 text-xs font-black uppercase tracking-wider border border-emerald-300/50">
+                                                <CheckCircle2 size={14} className="text-emerald-600" />
+                                                Completed (+{DIFFICULTY_POINTS[selectedDifficulty]} pts)
+                                            </span>
+                                        ) : (
+                                            <span className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-berry/10 text-berry text-xs font-black uppercase tracking-wider border border-berry/20">
+                                                <Trophy size={14} className="text-amber-500" />
+                                                +{DIFFICULTY_POINTS[selectedDifficulty]} Points on Solve
+                                            </span>
+                                        )}
                                     </div>
-                                    <h2 className="text-4xl font-serif font-black tracking-tight">{weeklyPuzzles?.[selectedDifficulty]?.title}</h2>
-                                    <p className="text-xl text-plum/70 italic leading-relaxed">
+
+                                    <h2 className="text-3xl md:text-4xl font-serif font-black tracking-tight text-plum">
+                                        {weeklyPuzzles?.[selectedDifficulty]?.title}
+                                    </h2>
+                                    <p className="text-lg text-plum/70 font-medium italic leading-relaxed">
                                         "{weeklyPuzzles?.[selectedDifficulty]?.question}"
                                     </p>
                                 </div>
 
-                                <form onSubmit={handleSubmit} className="space-y-4 bg-white/30 p-6 rounded-[2.5rem] border-2 border-plum/15 backdrop-blur-sm shadow-inner">
-                                    <div className="space-y-1">
-                                        <label className="block text-[9px] font-black uppercase tracking-widest text-plum/40 ml-4">Your Name</label>
-                                        <input
-                                            type="text"
-                                            required
-                                            placeholder="Enter your name"
-                                            value={formData.name}
-                                            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                                            className="w-full bg-white/50 border-2 border-plum/15 rounded-xl px-5 py-3 text-plum focus:outline-none focus:border-berry transition-all font-bold text-sm"
-                                        />
-                                    </div>
-                                    <div className="space-y-1">
-                                        <label className="block text-[9px] font-black uppercase tracking-widest text-plum/40 ml-4">Your Analysis</label>
-                                        <textarea
-                                            required
-                                            rows={3}
-                                            placeholder="Your answer"
-                                            value={formData.answer}
-                                            onChange={(e) => setFormData({ ...formData, answer: e.target.value })}
-                                            className="w-full bg-white/50 border-2 border-plum/15 rounded-xl px-5 py-3 text-plum focus:outline-none focus:border-berry transition-all font-bold text-sm resize-none"
-                                        />
-                                    </div>
-                                    <button
-                                        type="submit"
-                                        disabled={submitting}
-                                        className={`w-full py-4 soft-button-berry flex items-center justify-center gap-3 ${
-                                            submitting 
-                                            ? 'opacity-50 pointer-events-none' 
-                                            : ''
-                                        }`}
-                                    >
-                                        {submitting ? (
-                                            <Loader2 size={20} className="animate-spin" />
+                                {/* Live Move Feedback Box */}
+                                <div className="bg-white/60 backdrop-blur-md rounded-[2rem] p-6 border-2 border-plum/15 shadow-sm space-y-4">
+                                    <span className="text-[10px] font-black uppercase tracking-[0.2em] text-plum/40 block">
+                                        Live Puzzle Feedback
+                                    </span>
+
+                                    {/* Feedback Status Alert */}
+                                    <div className={`p-4 rounded-2xl border-2 flex items-center gap-3.5 transition-all ${statusFeedback.type === 'celebrate'
+                                            ? 'bg-emerald-50 border-emerald-300 text-emerald-900 shadow-sm'
+                                            : statusFeedback.type === 'success'
+                                                ? 'bg-emerald-50/60 border-emerald-200 text-emerald-800'
+                                                : statusFeedback.type === 'error'
+                                                    ? 'bg-rose-50 border-rose-300 text-rose-900 animate-shake'
+                                                    : 'bg-plum/5 border-plum/15 text-plum'
+                                        }`}>
+                                        {statusFeedback.type === 'celebrate' ? (
+                                            <Sparkles className="text-amber-500 shrink-0" size={20} />
+                                        ) : statusFeedback.type === 'error' ? (
+                                            <HelpCircle className="text-rose-500 shrink-0" size={20} />
                                         ) : (
-                                            <>
-                                                <Send size={18} />
-                                                Submit Analysis
-                                            </>
+                                            <CheckCircle2 className="text-emerald-600 shrink-0" size={20} />
                                         )}
-                                    </button>
-                                </form>
+                                        <p className="text-sm font-black leading-snug">
+                                            {statusFeedback.message}
+                                        </p>
+                                    </div>
+
+                                    {/* Hint Card */}
+                                    {showHint && (
+                                        <div className="p-4 rounded-2xl bg-amber-50 border-2 border-amber-200 text-amber-900 text-xs font-bold leading-relaxed flex items-start gap-2.5 animate-in fade-in duration-300">
+                                            <Lightbulb className="text-amber-600 shrink-0 mt-0.5" size={16} />
+                                            <div>
+                                                <span className="block font-black uppercase tracking-wider text-[10px] text-amber-700 mb-0.5">Tactical Clue</span>
+                                                <span>{currentHint}</span>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* Solve Action summary */}
+                                    {puzzleStatus === 'solved' ? (
+                                        <div className="pt-2 flex flex-col gap-3">
+                                            <div className="flex items-center justify-between text-xs font-bold text-plum/70 px-1">
+                                                <span>Calculation complete!</span>
+                                                <span className="text-emerald-600 font-black">All moves verified ✓</span>
+                                            </div>
+                                            <button
+                                                onClick={() => setSelectedDifficulty(null)}
+                                                className="w-full py-3.5 soft-button-berry flex items-center justify-center gap-2 text-sm font-bold shadow-lg"
+                                            >
+                                                <span>Try Another Puzzle</span>
+                                                <ArrowRight size={16} />
+                                            </button>
+                                        </div>
+                                    ) : (
+                                        <p className="text-xs text-plum/50 font-medium leading-relaxed">
+                                            Guess the solution moves by dragging the pieces on the board. You will receive immediate feedback as you calculate!
+                                        </p>
+                                    )}
+                                </div>
+
+                                {!user && (
+                                    <div className="p-4 bg-white/70 border-2 border-plum/15 rounded-2xl flex items-center justify-between gap-3 text-xs font-bold text-plum/70 shadow-sm">
+                                        <span>Sign in to permanently save your puzzle points & rank up!</span>
+                                        <Link to="/login" className="text-berry font-black underline flex items-center gap-1 shrink-0 hover:text-plum transition-colors">
+                                            <LogIn size={14} />
+                                            <span>Sign In</span>
+                                        </Link>
+                                    </div>
+                                )}
                             </div>
                         </div>
                     </div>
@@ -358,11 +720,10 @@ export default function TrainingPuzzles() {
             </main>
 
             {/* Success Toast */}
-            <div className={`fixed bottom-12 left-1/2 -translate-x-1/2 bg-plum text-cream px-10 py-5 rounded-4xl font-black shadow-2xl flex items-center gap-4 z-100 transition-all duration-700 border border-white/10 ${
-                showSuccess ? 'opacity-100 translate-y-0 scale-100' : 'opacity-0 translate-y-12 scale-90 pointer-events-none'
-            }`}>
-                <CheckCircle2 size={24} className="text-berry" />
-                Analysis Received!
+            <div className={`fixed bottom-12 left-1/2 -translate-x-1/2 bg-plum text-cream px-8 py-4 rounded-3xl font-black shadow-2xl flex items-center gap-3.5 z-100 transition-all duration-700 border border-white/10 text-sm ${showSuccess ? 'opacity-100 translate-y-0 scale-100' : 'opacity-0 translate-y-12 scale-90 pointer-events-none'
+                }`}>
+                <Sparkles size={20} className="text-amber-300" />
+                <span>{successMessage}</span>
             </div>
         </div>
     );

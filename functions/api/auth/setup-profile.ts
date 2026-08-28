@@ -90,11 +90,18 @@ export async function onRequestPost(context: any) {
             });
         }
 
+        const points = typeof user.user_metadata?.points === 'number' ? user.user_metadata.points : 0;
+        const solvedPuzzles = Array.isArray(user.user_metadata?.solved_puzzles) ? user.user_metadata.solved_puzzles : [];
+
         return new Response(JSON.stringify({ 
             message: 'Profile updated successfully!',
             user: {
+                id: user.id,
                 username: trimmedUser,
-                email: user.email
+                email: user.email,
+                createdAt: user.created_at,
+                points,
+                solvedPuzzles
             }
         }), {
             status: 200,

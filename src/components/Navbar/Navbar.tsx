@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Menu, X, User, LogOut, ChevronDown, Trophy, Sparkles } from 'lucide-react';
+import { Menu, X, User, LogOut, ChevronDown, Trophy, Sparkles, Cpu } from 'lucide-react';
 import logo from '../../assets/Logo-bg-removed.png';
-import { ChessPawnIcon, PuzzleIcon, RouletteIcon, GhostChefIcon } from '../Icons';
+import { ChessPawnIcon, RouletteIcon, GhostChefIcon } from '../Icons';
 import { useAuth } from '../../context/AuthContext';
 import { calculateLevelInfo } from '../../lib/levelSystem';
 
@@ -17,7 +17,7 @@ const Navbar = () => {
     const levelInfo = calculateLevelInfo(user?.points || 0);
 
     return (
-        <nav className="sticky top-0 z-[9999] bg-cream/80 backdrop-blur-lg border-b-2 border-plum/15 py-3 px-6">
+        <nav className="sticky top-0 z-[9999] bg-cream border-b-2 border-plum/15 py-3 px-6 shadow-sm">
             <div className="relative max-w-7xl mx-auto flex items-center justify-between">
 
                 {/* Left: Logo */}
@@ -37,7 +37,7 @@ const Navbar = () => {
                 </div>
 
                 {/* Center: Desktop Navigation Links */}
-                <div className="hidden md:flex absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 items-center justify-center gap-10">
+                <div className="hidden md:flex absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 items-center justify-center gap-8 lg:gap-10">
                     <NavLink to="/" label="Home" />
                     
                     {/* Play Link with Dropdown */}
@@ -63,10 +63,10 @@ const Navbar = () => {
                                     icon={<ChessPawnIcon size={18} />} 
                                 />
                                 <DropdownItem 
-                                    to="/TrainingPuzzles" 
-                                    title="Weekly Puzzles" 
-                                    description="Calculation & tactical exercises" 
-                                    icon={<PuzzleIcon size={18} />} 
+                                    to="/EndgamePractice" 
+                                    title="Endgame Practice" 
+                                    description="Tablebase & Stockfish trainer" 
+                                    icon={<Cpu size={18} />} 
                                 />
                                 <DropdownItem 
                                     to="/Challenge_Rulette" 
@@ -85,6 +85,7 @@ const Navbar = () => {
                         </div>
                     </div>
 
+                    <NavLink to="/TrainingPuzzles" label="Puzzles" />
                     <NavLink to="/contact" label="Contact" />
                     <NavLink to="/about" label="About" />
                 </div>
@@ -109,8 +110,16 @@ const Navbar = () => {
                                 }}
                                 className="flex items-center gap-2 p-1.5 pr-2.5 rounded-full border-2 border-plum/15 hover:border-berry/50 transition-all bg-white/50 backdrop-blur-sm shadow-sm"
                             >
-                                <div className="h-7 w-7 rounded-full bg-berry text-cream font-serif font-black flex items-center justify-center text-xs shadow-inner uppercase">
-                                    {user.username.charAt(0)}
+                                <div className="h-7 w-7 rounded-full bg-berry text-cream font-serif font-black flex items-center justify-center text-xs shadow-inner uppercase overflow-hidden">
+                                    {user.avatarUrl ? (
+                                        <img
+                                            src={user.avatarUrl}
+                                            alt={user.username}
+                                            className="h-full w-full object-cover"
+                                        />
+                                    ) : (
+                                        user.username.charAt(0)
+                                    )}
                                 </div>
                                 <div className="hidden sm:flex flex-col items-start text-left leading-none">
                                     <span className="text-xs font-black text-plum max-w-[90px] truncate select-none">
@@ -143,16 +152,35 @@ const Navbar = () => {
                                                 Lvl {levelInfo.level}
                                             </span>
                                         </div>
-                                        <h4 className="font-serif font-black text-plum text-base leading-tight truncate">{user?.username}</h4>
-                                        <div className="flex items-center gap-2 mt-1">
-                                            <span className="inline-flex items-center gap-1 text-[10px] font-bold text-plum/60 bg-cream px-2 py-0.5 rounded-md border border-plum/10">
-                                                <Trophy size={11} className="text-amber-500" />
-                                                {user?.points || 0} pts
-                                            </span>
-                                            <span className="text-[10px] text-berry font-extrabold truncate">
-                                                {levelInfo.title}
-                                            </span>
-                                        </div>
+                                        <Link
+                                            to="/profile"
+                                            onClick={() => setIsProfileOpen(false)}
+                                            className="flex items-center gap-2.5 my-1.5 p-1.5 -mx-1.5 rounded-2xl hover:bg-berry/5 transition group/header cursor-pointer"
+                                        >
+                                            <div className="h-9 w-9 rounded-xl bg-berry text-cream font-serif font-black flex items-center justify-center text-sm shadow-inner uppercase overflow-hidden shrink-0 group-hover/header:scale-105 transition-transform">
+                                                {user?.avatarUrl ? (
+                                                    <img
+                                                        src={user.avatarUrl}
+                                                        alt={user?.username || 'Avatar'}
+                                                        className="h-full w-full object-cover"
+                                                    />
+                                                ) : (
+                                                    user?.username?.charAt(0) || 'U'
+                                                )}
+                                            </div>
+                                            <div className="min-w-0">
+                                                <h4 className="font-serif font-black text-plum text-sm leading-tight truncate group-hover/header:text-berry transition-colors">{user?.username}</h4>
+                                                <div className="flex items-center gap-1.5 mt-0.5">
+                                                    <span className="inline-flex items-center gap-1 text-[9px] font-bold text-plum/60 bg-cream px-1.5 py-0.5 rounded-md border border-plum/10">
+                                                        <Trophy size={10} className="text-amber-500" />
+                                                        {user?.points || 0} pts
+                                                    </span>
+                                                    <span className="text-[9px] text-berry font-extrabold truncate">
+                                                        {levelInfo.title}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </Link>
                                     </div>
 
                                     <div className="space-y-0.5">
@@ -204,6 +232,7 @@ const Navbar = () => {
                 <div className="md:hidden absolute top-full left-0 w-full z-[9999] bg-cream/95 backdrop-blur-xl border-b border-plum/10 shadow-2xl py-8 px-6 flex flex-col items-center gap-6 animate-in slide-in-from-top-2 duration-300">
                     <NavLink to="/" label="Home" onClick={closeMenu} />
                     <NavLink to="/games" label="Play" onClick={closeMenu} />
+                    <NavLink to="/TrainingPuzzles" label="Puzzles" onClick={closeMenu} />
                     {user && (
                         <NavLink to="/profile" label={`Profile (Lvl ${levelInfo.level})`} onClick={closeMenu} />
                     )}

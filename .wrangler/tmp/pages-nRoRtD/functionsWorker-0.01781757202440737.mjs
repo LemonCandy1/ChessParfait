@@ -1,7 +1,7 @@
 var __defProp = Object.defineProperty;
 var __name = (target, value) => __defProp(target, "name", { value, configurable: true });
 
-// ../.wrangler/tmp/bundle-obW0mE/strip-cf-connecting-ip-header.js
+// ../.wrangler/tmp/bundle-jiEajv/strip-cf-connecting-ip-header.js
 function stripCfConnectingIPHeader(input, init) {
   const request = new Request(input, init);
   request.headers.delete("CF-Connecting-IP");
@@ -11818,23 +11818,161 @@ __name(shouldShowDeprecationWarning, "shouldShowDeprecationWarning");
 if (shouldShowDeprecationWarning())
   console.warn("\u26A0\uFE0F  Node.js 18 and below are deprecated and will no longer be supported in future versions of @supabase/supabase-js. Please upgrade to Node.js 20 or later. For more information, visit: https://github.com/orgs/supabase/discussions/37217");
 
-// api/auth/forgot-password.ts
+// api/auth/avatar.ts
 var CORS_HEADERS = {
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type"
+  "Access-Control-Allow-Methods": "POST, DELETE, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type",
+  "Access-Control-Allow-Credentials": "true"
 };
 async function onRequestOptions() {
   return new Response(null, { headers: CORS_HEADERS });
 }
 __name(onRequestOptions, "onRequestOptions");
+function parseAuthCookie(request) {
+  const cookieHeader = request.headers.get("Cookie") || "";
+  let token;
+  cookieHeader.split(";").forEach((cookie) => {
+    const parts = cookie.split("=");
+    if (parts.length >= 2 && parts[0].trim() === "auth_token") {
+      token = parts.slice(1).join("=").trim();
+    }
+  });
+  return token;
+}
+__name(parseAuthCookie, "parseAuthCookie");
 async function onRequestPost(context) {
+  const { request, env } = context;
+  try {
+    const token = parseAuthCookie(request);
+    if (!token) {
+      return new Response(JSON.stringify({ message: "Unauthorized. Please log in." }), {
+        status: 401,
+        headers: { ...CORS_HEADERS, "Content-Type": "application/json" }
+      });
+    }
+    const body = await request.json();
+    const { avatarUrl } = body;
+    if (!avatarUrl || typeof avatarUrl !== "string") {
+      return new Response(JSON.stringify({ message: "Invalid avatar image data." }), {
+        status: 400,
+        headers: { ...CORS_HEADERS, "Content-Type": "application/json" }
+      });
+    }
+    if (!env.VITE_SUPABASE_URL || !env.VITE_SUPABASE_ANON_KEY || !env.SUPABASE_SERVICE_ROLE_KEY) {
+      throw new Error("Missing Supabase configuration in environment.");
+    }
+    const supabase = createClient(env.VITE_SUPABASE_URL, env.VITE_SUPABASE_ANON_KEY);
+    const { data: { user }, error: userError } = await supabase.auth.getUser(token);
+    if (userError || !user) {
+      return new Response(JSON.stringify({ message: "Invalid or expired session." }), {
+        status: 401,
+        headers: { ...CORS_HEADERS, "Content-Type": "application/json" }
+      });
+    }
+    const supabaseAdmin = createClient(env.VITE_SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY);
+    const updatedMetadata = {
+      ...user.user_metadata,
+      avatar_url: avatarUrl,
+      picture: avatarUrl
+    };
+    const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(user.id, {
+      user_metadata: updatedMetadata
+    });
+    if (updateError) {
+      console.error("Failed to update avatar in metadata:", updateError);
+      return new Response(JSON.stringify({ message: "Failed to save profile picture." }), {
+        status: 500,
+        headers: { ...CORS_HEADERS, "Content-Type": "application/json" }
+      });
+    }
+    return new Response(JSON.stringify({
+      success: true,
+      message: "Profile picture updated successfully!",
+      avatarUrl
+    }), {
+      status: 200,
+      headers: { ...CORS_HEADERS, "Content-Type": "application/json" }
+    });
+  } catch (err) {
+    console.error("Avatar upload error:", err);
+    return new Response(JSON.stringify({ message: "An unexpected error occurred." }), {
+      status: 500,
+      headers: { ...CORS_HEADERS, "Content-Type": "application/json" }
+    });
+  }
+}
+__name(onRequestPost, "onRequestPost");
+async function onRequestDelete(context) {
+  const { request, env } = context;
+  try {
+    const token = parseAuthCookie(request);
+    if (!token) {
+      return new Response(JSON.stringify({ message: "Unauthorized. Please log in." }), {
+        status: 401,
+        headers: { ...CORS_HEADERS, "Content-Type": "application/json" }
+      });
+    }
+    if (!env.VITE_SUPABASE_URL || !env.VITE_SUPABASE_ANON_KEY || !env.SUPABASE_SERVICE_ROLE_KEY) {
+      throw new Error("Missing Supabase configuration in environment.");
+    }
+    const supabase = createClient(env.VITE_SUPABASE_URL, env.VITE_SUPABASE_ANON_KEY);
+    const { data: { user }, error: userError } = await supabase.auth.getUser(token);
+    if (userError || !user) {
+      return new Response(JSON.stringify({ message: "Invalid or expired session." }), {
+        status: 401,
+        headers: { ...CORS_HEADERS, "Content-Type": "application/json" }
+      });
+    }
+    const supabaseAdmin = createClient(env.VITE_SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY);
+    const updatedMetadata = {
+      ...user.user_metadata,
+      avatar_url: null,
+      picture: null
+    };
+    const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(user.id, {
+      user_metadata: updatedMetadata
+    });
+    if (updateError) {
+      console.error("Failed to remove avatar from metadata:", updateError);
+      return new Response(JSON.stringify({ message: "Failed to remove profile picture." }), {
+        status: 500,
+        headers: { ...CORS_HEADERS, "Content-Type": "application/json" }
+      });
+    }
+    return new Response(JSON.stringify({
+      success: true,
+      message: "Profile picture removed successfully!"
+    }), {
+      status: 200,
+      headers: { ...CORS_HEADERS, "Content-Type": "application/json" }
+    });
+  } catch (err) {
+    console.error("Avatar delete error:", err);
+    return new Response(JSON.stringify({ message: "An unexpected error occurred." }), {
+      status: 500,
+      headers: { ...CORS_HEADERS, "Content-Type": "application/json" }
+    });
+  }
+}
+__name(onRequestDelete, "onRequestDelete");
+
+// api/auth/forgot-password.ts
+var CORS_HEADERS2 = {
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type"
+};
+async function onRequestOptions2() {
+  return new Response(null, { headers: CORS_HEADERS2 });
+}
+__name(onRequestOptions2, "onRequestOptions");
+async function onRequestPost2(context) {
   const { request, env } = context;
   try {
     const { username, email } = await request.json();
     if (!username && !email) {
       return new Response(JSON.stringify({ message: "Please provide a username or email address." }), {
         status: 400,
-        headers: { ...CORS_HEADERS, "Content-Type": "application/json" }
+        headers: { ...CORS_HEADERS2, "Content-Type": "application/json" }
       });
     }
     if (!env.VITE_SUPABASE_URL || !env.SUPABASE_SERVICE_ROLE_KEY) {
@@ -11856,7 +11994,7 @@ async function onRequestPost(context) {
           message: "If a matching account with a linked email was found, a reset link has been sent."
         }), {
           status: 200,
-          headers: { ...CORS_HEADERS, "Content-Type": "application/json" }
+          headers: { ...CORS_HEADERS2, "Content-Type": "application/json" }
         });
       }
       const realEmail = match2.user_metadata?.real_email || match2.email;
@@ -11865,7 +12003,7 @@ async function onRequestPost(context) {
           message: "If a matching account with a linked email was found, a reset link has been sent."
         }), {
           status: 200,
-          headers: { ...CORS_HEADERS, "Content-Type": "application/json" }
+          headers: { ...CORS_HEADERS2, "Content-Type": "application/json" }
         });
       }
       resetEmail = realEmail;
@@ -11873,7 +12011,7 @@ async function onRequestPost(context) {
     if (!resetEmail) {
       return new Response(JSON.stringify({ message: "Could not determine the email address for this account." }), {
         status: 400,
-        headers: { ...CORS_HEADERS, "Content-Type": "application/json" }
+        headers: { ...CORS_HEADERS2, "Content-Type": "application/json" }
       });
     }
     const redirectTo = env.SITE_URL ? `${env.SITE_URL}/reset-password` : "http://localhost:5173/reset-password";
@@ -11883,43 +12021,43 @@ async function onRequestPost(context) {
     if (error) {
       return new Response(JSON.stringify({ message: error.message }), {
         status: 400,
-        headers: { ...CORS_HEADERS, "Content-Type": "application/json" }
+        headers: { ...CORS_HEADERS2, "Content-Type": "application/json" }
       });
     }
     return new Response(JSON.stringify({
       message: "If a matching account was found, a password reset link has been sent to your email."
     }), {
       status: 200,
-      headers: { ...CORS_HEADERS, "Content-Type": "application/json" }
+      headers: { ...CORS_HEADERS2, "Content-Type": "application/json" }
     });
   } catch (err) {
     console.error("Forgot password error:", err);
     return new Response(JSON.stringify({ message: "An unexpected error occurred." }), {
       status: 500,
-      headers: { ...CORS_HEADERS, "Content-Type": "application/json" }
+      headers: { ...CORS_HEADERS2, "Content-Type": "application/json" }
     });
   }
 }
-__name(onRequestPost, "onRequestPost");
+__name(onRequestPost2, "onRequestPost");
 
 // api/auth/google.ts
-var CORS_HEADERS2 = {
+var CORS_HEADERS3 = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
   "Access-Control-Allow-Headers": "Content-Type",
   "Access-Control-Allow-Credentials": "true"
 };
-async function onRequestOptions2() {
-  return new Response(null, { headers: CORS_HEADERS2 });
+async function onRequestOptions3() {
+  return new Response(null, { headers: CORS_HEADERS3 });
 }
-__name(onRequestOptions2, "onRequestOptions");
-async function onRequestPost2(context) {
+__name(onRequestOptions3, "onRequestOptions");
+async function onRequestPost3(context) {
   const { request, env } = context;
   try {
     const { credential } = await request.json();
     if (!credential) {
       return new Response(JSON.stringify({ message: "Missing Google credential." }), {
         status: 400,
-        headers: { ...CORS_HEADERS2, "Content-Type": "application/json" }
+        headers: { ...CORS_HEADERS3, "Content-Type": "application/json" }
       });
     }
     if (!env.VITE_SUPABASE_URL || !env.VITE_SUPABASE_ANON_KEY) {
@@ -11939,7 +12077,7 @@ async function onRequestPost2(context) {
           message: error?.message || "Google authentication failed. Please check Supabase Google provider configuration."
         }), {
           status: 401,
-          headers: { ...CORS_HEADERS2, "Content-Type": "application/json" }
+          headers: { ...CORS_HEADERS3, "Content-Type": "application/json" }
         });
       }
       const googleRes = await fetch(`https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(credential)}`);
@@ -11948,14 +12086,14 @@ async function onRequestPost2(context) {
         console.error("Google token verification failed:", errText);
         return new Response(JSON.stringify({ message: "Invalid or expired Google credential." }), {
           status: 401,
-          headers: { ...CORS_HEADERS2, "Content-Type": "application/json" }
+          headers: { ...CORS_HEADERS3, "Content-Type": "application/json" }
         });
       }
       const googleUser = await googleRes.json();
       if (!googleUser.email || googleUser.email_verified !== "true" && googleUser.email_verified !== true) {
         return new Response(JSON.stringify({ message: "Google account email is unverified." }), {
           status: 400,
-          headers: { ...CORS_HEADERS2, "Content-Type": "application/json" }
+          headers: { ...CORS_HEADERS3, "Content-Type": "application/json" }
         });
       }
       const supabaseAdmin = createClient(env.VITE_SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY);
@@ -11976,7 +12114,7 @@ async function onRequestPost2(context) {
           console.error("Failed to create Supabase user:", createError);
           return new Response(JSON.stringify({ message: createError?.message || "Failed to initialize account." }), {
             status: 500,
-            headers: { ...CORS_HEADERS2, "Content-Type": "application/json" }
+            headers: { ...CORS_HEADERS3, "Content-Type": "application/json" }
           });
         }
         targetUser = createdUser.user;
@@ -11989,7 +12127,7 @@ async function onRequestPost2(context) {
         console.error("Failed to generate auth token link:", linkError);
         return new Response(JSON.stringify({ message: "Failed to create session." }), {
           status: 500,
-          headers: { ...CORS_HEADERS2, "Content-Type": "application/json" }
+          headers: { ...CORS_HEADERS3, "Content-Type": "application/json" }
         });
       }
       const { data: otpData, error: otpError } = await supabase.auth.verifyOtp({
@@ -12005,7 +12143,7 @@ async function onRequestPost2(context) {
           console.error("OTP verification failed:", otpError || emailOtpError);
           return new Response(JSON.stringify({ message: "Session initialization failed." }), {
             status: 500,
-            headers: { ...CORS_HEADERS2, "Content-Type": "application/json" }
+            headers: { ...CORS_HEADERS3, "Content-Type": "application/json" }
           });
         }
         session = emailOtpData.session;
@@ -12018,11 +12156,11 @@ async function onRequestPost2(context) {
     if (!session || !authUser) {
       return new Response(JSON.stringify({ message: "Authentication failed. Session could not be created." }), {
         status: 500,
-        headers: { ...CORS_HEADERS2, "Content-Type": "application/json" }
+        headers: { ...CORS_HEADERS3, "Content-Type": "application/json" }
       });
     }
     const headers = new Headers();
-    for (const [key, val] of Object.entries(CORS_HEADERS2)) {
+    for (const [key, val] of Object.entries(CORS_HEADERS3)) {
       headers.set(key, val);
     }
     headers.set("Content-Type", "application/json");
@@ -12034,6 +12172,8 @@ async function onRequestPost2(context) {
     const needsProfileSetup = !username;
     const points = typeof authUser.user_metadata?.points === "number" ? authUser.user_metadata.points : 0;
     const solvedPuzzles = Array.isArray(authUser.user_metadata?.solved_puzzles) ? authUser.user_metadata.solved_puzzles : [];
+    const avatarUrl = authUser.user_metadata?.avatar_url || authUser.user_metadata?.picture || void 0;
+    const pawnStats = authUser.user_metadata?.pawn_stats || { whiteWins: 0, whiteLosses: 0, blackWins: 0, blackLosses: 0 };
     return new Response(JSON.stringify({
       message: "Logged in successfully.",
       needsProfileSetup,
@@ -12041,6 +12181,8 @@ async function onRequestPost2(context) {
         id: authUser.id,
         username: username || "",
         email: authUser.email,
+        avatarUrl,
+        pawnStats,
         createdAt: authUser.created_at,
         points,
         solvedPuzzles
@@ -12053,14 +12195,14 @@ async function onRequestPost2(context) {
     console.error("Google auth error:", err);
     return new Response(JSON.stringify({ message: "An unexpected error occurred during Google login." }), {
       status: 500,
-      headers: { ...CORS_HEADERS2, "Content-Type": "application/json" }
+      headers: { ...CORS_HEADERS3, "Content-Type": "application/json" }
     });
   }
 }
-__name(onRequestPost2, "onRequestPost");
+__name(onRequestPost3, "onRequestPost");
 
 // api/auth/link-email.ts
-var CORS_HEADERS3 = {
+var CORS_HEADERS4 = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
   "Access-Control-Allow-Headers": "Content-Type",
   "Access-Control-Allow-Credentials": "true"
@@ -12074,31 +12216,31 @@ function parseCookies(cookieHeader) {
   );
 }
 __name(parseCookies, "parseCookies");
-async function onRequestOptions3() {
-  return new Response(null, { headers: CORS_HEADERS3 });
+async function onRequestOptions4() {
+  return new Response(null, { headers: CORS_HEADERS4 });
 }
-__name(onRequestOptions3, "onRequestOptions");
-async function onRequestPost3(context) {
+__name(onRequestOptions4, "onRequestOptions");
+async function onRequestPost4(context) {
   const { request, env } = context;
   try {
     const { email: newEmail } = await request.json();
     if (!newEmail || typeof newEmail !== "string") {
       return new Response(JSON.stringify({ message: "Email address is required." }), {
         status: 400,
-        headers: { ...CORS_HEADERS3, "Content-Type": "application/json" }
+        headers: { ...CORS_HEADERS4, "Content-Type": "application/json" }
       });
     }
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(newEmail.trim())) {
       return new Response(JSON.stringify({ message: "Please enter a valid email address." }), {
         status: 400,
-        headers: { ...CORS_HEADERS3, "Content-Type": "application/json" }
+        headers: { ...CORS_HEADERS4, "Content-Type": "application/json" }
       });
     }
     if (newEmail.trim().endsWith("@chessparfait.com")) {
       return new Response(JSON.stringify({ message: "Please use a real email address." }), {
         status: 400,
-        headers: { ...CORS_HEADERS3, "Content-Type": "application/json" }
+        headers: { ...CORS_HEADERS4, "Content-Type": "application/json" }
       });
     }
     const cookieHeader = request.headers.get("Cookie") || "";
@@ -12108,7 +12250,7 @@ async function onRequestPost3(context) {
     if (!token) {
       return new Response(JSON.stringify({ message: "You must be logged in to link an email." }), {
         status: 401,
-        headers: { ...CORS_HEADERS3, "Content-Type": "application/json" }
+        headers: { ...CORS_HEADERS4, "Content-Type": "application/json" }
       });
     }
     if (!env.VITE_SUPABASE_URL || !env.VITE_SUPABASE_ANON_KEY) {
@@ -12129,7 +12271,7 @@ async function onRequestPost3(context) {
     if (sessionError || !user) {
       return new Response(JSON.stringify({ message: "Invalid or expired session." }), {
         status: 401,
-        headers: { ...CORS_HEADERS3, "Content-Type": "application/json" }
+        headers: { ...CORS_HEADERS4, "Content-Type": "application/json" }
       });
     }
     const redirectTo = env.SITE_URL ? `${env.SITE_URL}` : "http://localhost:5173";
@@ -12138,7 +12280,7 @@ async function onRequestPost3(context) {
       { emailRedirectTo: redirectTo }
     );
     const headers = new Headers();
-    for (const [key, val] of Object.entries(CORS_HEADERS3)) {
+    for (const [key, val] of Object.entries(CORS_HEADERS4)) {
       headers.set(key, val);
     }
     headers.set("Content-Type", "application/json");
@@ -12174,30 +12316,30 @@ async function onRequestPost3(context) {
     console.error("Link email error:", err);
     return new Response(JSON.stringify({ message: "An unexpected error occurred." }), {
       status: 500,
-      headers: { ...CORS_HEADERS3, "Content-Type": "application/json" }
+      headers: { ...CORS_HEADERS4, "Content-Type": "application/json" }
     });
   }
 }
-__name(onRequestPost3, "onRequestPost");
+__name(onRequestPost4, "onRequestPost");
 
 // api/auth/login.ts
-var CORS_HEADERS4 = {
+var CORS_HEADERS5 = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
   "Access-Control-Allow-Headers": "Content-Type",
   "Access-Control-Allow-Credentials": "true"
 };
-async function onRequestOptions4() {
-  return new Response(null, { headers: CORS_HEADERS4 });
+async function onRequestOptions5() {
+  return new Response(null, { headers: CORS_HEADERS5 });
 }
-__name(onRequestOptions4, "onRequestOptions");
-async function onRequestPost4(context) {
+__name(onRequestOptions5, "onRequestOptions");
+async function onRequestPost5(context) {
   const { request, env } = context;
   try {
     const { username, password } = await request.json();
     if (!username || !password) {
       return new Response(JSON.stringify({ message: "Username and password are required." }), {
         status: 400,
-        headers: { ...CORS_HEADERS4, "Content-Type": "application/json" }
+        headers: { ...CORS_HEADERS5, "Content-Type": "application/json" }
       });
     }
     const trimmedUser = username.trim();
@@ -12213,14 +12355,14 @@ async function onRequestPost4(context) {
     if (error) {
       return new Response(JSON.stringify({ message: "Invalid username or password." }), {
         status: 401,
-        headers: { ...CORS_HEADERS4, "Content-Type": "application/json" }
+        headers: { ...CORS_HEADERS5, "Content-Type": "application/json" }
       });
     }
     const session = data.session;
     if (!session) {
       return new Response(JSON.stringify({ message: "Authentication failed. Session could not be created." }), {
         status: 500,
-        headers: { ...CORS_HEADERS4, "Content-Type": "application/json" }
+        headers: { ...CORS_HEADERS5, "Content-Type": "application/json" }
       });
     }
     if (env.SUPABASE_SERVICE_ROLE_KEY && data.user && (!data.user.user_metadata?.display_name || !data.user.user_metadata?.name)) {
@@ -12238,7 +12380,7 @@ async function onRequestPost4(context) {
       }
     }
     const headers = new Headers();
-    for (const [key, val] of Object.entries(CORS_HEADERS4)) {
+    for (const [key, val] of Object.entries(CORS_HEADERS5)) {
       headers.set(key, val);
     }
     headers.set("Content-Type", "application/json");
@@ -12249,12 +12391,16 @@ async function onRequestPost4(context) {
     const userEmail = data.user.email && !data.user.email.endsWith("@chessparfait.com") ? data.user.email : void 0;
     const points = typeof data.user.user_metadata?.points === "number" ? data.user.user_metadata.points : 0;
     const solvedPuzzles = Array.isArray(data.user.user_metadata?.solved_puzzles) ? data.user.user_metadata.solved_puzzles : [];
+    const avatarUrl = data.user.user_metadata?.avatar_url || data.user.user_metadata?.picture || void 0;
+    const pawnStats = data.user.user_metadata?.pawn_stats || { whiteWins: 0, whiteLosses: 0, blackWins: 0, blackLosses: 0 };
     return new Response(JSON.stringify({
       message: "Logged in successfully.",
       user: {
         id: data.user.id,
         username: data.user.user_metadata?.username || trimmedUser,
         email: userEmail,
+        avatarUrl,
+        pawnStats,
         createdAt: data.user.created_at,
         points,
         solvedPuzzles
@@ -12267,25 +12413,25 @@ async function onRequestPost4(context) {
     console.error("Login error:", err);
     return new Response(JSON.stringify({ message: "An unexpected error occurred during login." }), {
       status: 500,
-      headers: { ...CORS_HEADERS4, "Content-Type": "application/json" }
+      headers: { ...CORS_HEADERS5, "Content-Type": "application/json" }
     });
   }
 }
-__name(onRequestPost4, "onRequestPost");
+__name(onRequestPost5, "onRequestPost");
 
 // api/auth/logout.ts
-var CORS_HEADERS5 = {
+var CORS_HEADERS6 = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
   "Access-Control-Allow-Headers": "Content-Type",
   "Access-Control-Allow-Credentials": "true"
 };
-async function onRequestOptions5() {
-  return new Response(null, { headers: CORS_HEADERS5 });
+async function onRequestOptions6() {
+  return new Response(null, { headers: CORS_HEADERS6 });
 }
-__name(onRequestOptions5, "onRequestOptions");
-async function onRequestPost5() {
+__name(onRequestOptions6, "onRequestOptions");
+async function onRequestPost6() {
   const headers = new Headers();
-  for (const [key, val] of Object.entries(CORS_HEADERS5)) {
+  for (const [key, val] of Object.entries(CORS_HEADERS6)) {
     headers.set(key, val);
   }
   headers.set("Content-Type", "application/json");
@@ -12296,18 +12442,18 @@ async function onRequestPost5() {
     headers
   });
 }
-__name(onRequestPost5, "onRequestPost");
+__name(onRequestPost6, "onRequestPost");
 
 // api/auth/me.ts
-var CORS_HEADERS6 = {
+var CORS_HEADERS7 = {
   "Access-Control-Allow-Methods": "GET, OPTIONS",
   "Access-Control-Allow-Headers": "Content-Type",
   "Access-Control-Allow-Credentials": "true"
 };
-async function onRequestOptions6() {
-  return new Response(null, { headers: CORS_HEADERS6 });
+async function onRequestOptions7() {
+  return new Response(null, { headers: CORS_HEADERS7 });
 }
-__name(onRequestOptions6, "onRequestOptions");
+__name(onRequestOptions7, "onRequestOptions");
 async function onRequestGet(context) {
   const { request, env } = context;
   try {
@@ -12323,7 +12469,7 @@ async function onRequestGet(context) {
     if (!token) {
       return new Response(JSON.stringify({ message: "No session token found." }), {
         status: 401,
-        headers: { ...CORS_HEADERS6, "Content-Type": "application/json" }
+        headers: { ...CORS_HEADERS7, "Content-Type": "application/json" }
       });
     }
     if (!env.VITE_SUPABASE_URL || !env.VITE_SUPABASE_ANON_KEY) {
@@ -12344,13 +12490,13 @@ async function onRequestGet(context) {
     if (sessionError || !user) {
       return new Response(JSON.stringify({ message: "Invalid or expired session token." }), {
         status: 401,
-        headers: { ...CORS_HEADERS6, "Content-Type": "application/json" }
+        headers: { ...CORS_HEADERS7, "Content-Type": "application/json" }
       });
     }
     const username = user.user_metadata?.username || user.email?.split("@")[0] || "User";
     const userEmail = user.email && !user.email.endsWith("@chessparfait.com") ? user.email : void 0;
     const headers = new Headers();
-    for (const [key, val] of Object.entries(CORS_HEADERS6)) {
+    for (const [key, val] of Object.entries(CORS_HEADERS7)) {
       headers.set(key, val);
     }
     headers.set("Content-Type", "application/json");
@@ -12362,11 +12508,15 @@ async function onRequestGet(context) {
     }
     const points = typeof user.user_metadata?.points === "number" ? user.user_metadata.points : 0;
     const solvedPuzzles = Array.isArray(user.user_metadata?.solved_puzzles) ? user.user_metadata.solved_puzzles : [];
+    const avatarUrl = user.user_metadata?.avatar_url || user.user_metadata?.picture || void 0;
+    const pawnStats = user.user_metadata?.pawn_stats || { whiteWins: 0, whiteLosses: 0, blackWins: 0, blackLosses: 0 };
     return new Response(JSON.stringify({
       user: {
         id: user.id,
         username,
         email: userEmail,
+        avatarUrl,
+        pawnStats,
         createdAt: user.created_at,
         points,
         solvedPuzzles
@@ -12379,41 +12529,41 @@ async function onRequestGet(context) {
     console.error("Session user me error:", err);
     return new Response(JSON.stringify({ message: "An unexpected error occurred." }), {
       status: 500,
-      headers: { ...CORS_HEADERS6, "Content-Type": "application/json" }
+      headers: { ...CORS_HEADERS7, "Content-Type": "application/json" }
     });
   }
 }
 __name(onRequestGet, "onRequestGet");
 
 // api/auth/register.ts
-var CORS_HEADERS7 = {
+var CORS_HEADERS8 = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
   "Access-Control-Allow-Headers": "Content-Type"
 };
-async function onRequestOptions7() {
-  return new Response(null, { headers: CORS_HEADERS7 });
+async function onRequestOptions8() {
+  return new Response(null, { headers: CORS_HEADERS8 });
 }
-__name(onRequestOptions7, "onRequestOptions");
-async function onRequestPost6(context) {
+__name(onRequestOptions8, "onRequestOptions");
+async function onRequestPost7(context) {
   const { request, env } = context;
   try {
     const { username, password } = await request.json();
     if (!username || typeof username !== "string" || username.trim().length < 3) {
       return new Response(JSON.stringify({ message: "Username must be at least 3 characters long." }), {
         status: 400,
-        headers: { ...CORS_HEADERS7, "Content-Type": "application/json" }
+        headers: { ...CORS_HEADERS8, "Content-Type": "application/json" }
       });
     }
     if (!password || typeof password !== "string" || password.length < 8) {
       return new Response(JSON.stringify({ message: "Password must be at least 8 characters long." }), {
         status: 400,
-        headers: { ...CORS_HEADERS7, "Content-Type": "application/json" }
+        headers: { ...CORS_HEADERS8, "Content-Type": "application/json" }
       });
     }
     if (!/\d/.test(password)) {
       return new Response(JSON.stringify({ message: "Password must contain at least one number." }), {
         status: 400,
-        headers: { ...CORS_HEADERS7, "Content-Type": "application/json" }
+        headers: { ...CORS_HEADERS8, "Content-Type": "application/json" }
       });
     }
     const trimmedUser = username.trim();
@@ -12436,50 +12586,50 @@ async function onRequestPost6(context) {
       if (error.message?.toLowerCase().includes("already") || error.message?.toLowerCase().includes("duplicate")) {
         return new Response(JSON.stringify({ message: "Username is already taken." }), {
           status: 409,
-          headers: { ...CORS_HEADERS7, "Content-Type": "application/json" }
+          headers: { ...CORS_HEADERS8, "Content-Type": "application/json" }
         });
       }
       return new Response(JSON.stringify({ message: error.message }), {
         status: 400,
-        headers: { ...CORS_HEADERS7, "Content-Type": "application/json" }
+        headers: { ...CORS_HEADERS8, "Content-Type": "application/json" }
       });
     }
     return new Response(JSON.stringify({ message: "Account registered successfully!" }), {
       status: 201,
-      headers: { ...CORS_HEADERS7, "Content-Type": "application/json" }
+      headers: { ...CORS_HEADERS8, "Content-Type": "application/json" }
     });
   } catch (err) {
     console.error("Registration error:", err);
     return new Response(JSON.stringify({ message: "An unexpected error occurred during registration." }), {
       status: 500,
-      headers: { ...CORS_HEADERS7, "Content-Type": "application/json" }
+      headers: { ...CORS_HEADERS8, "Content-Type": "application/json" }
     });
   }
 }
-__name(onRequestPost6, "onRequestPost");
+__name(onRequestPost7, "onRequestPost");
 
 // api/auth/session.ts
-var CORS_HEADERS8 = {
+var CORS_HEADERS9 = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
   "Access-Control-Allow-Headers": "Content-Type",
   "Access-Control-Allow-Credentials": "true"
 };
-async function onRequestOptions8() {
-  return new Response(null, { headers: CORS_HEADERS8 });
+async function onRequestOptions9() {
+  return new Response(null, { headers: CORS_HEADERS9 });
 }
-__name(onRequestOptions8, "onRequestOptions");
-async function onRequestPost7(context) {
+__name(onRequestOptions9, "onRequestOptions");
+async function onRequestPost8(context) {
   const { request } = context;
   try {
     const { accessToken, refreshToken } = await request.json();
     if (!accessToken) {
       return new Response(JSON.stringify({ message: "Access token is required." }), {
         status: 400,
-        headers: { ...CORS_HEADERS8, "Content-Type": "application/json" }
+        headers: { ...CORS_HEADERS9, "Content-Type": "application/json" }
       });
     }
     const headers = new Headers();
-    for (const [key, val] of Object.entries(CORS_HEADERS8)) {
+    for (const [key, val] of Object.entries(CORS_HEADERS9)) {
       headers.set(key, val);
     }
     headers.set("Content-Type", "application/json");
@@ -12495,30 +12645,30 @@ async function onRequestPost7(context) {
     console.error("Session update error:", err);
     return new Response(JSON.stringify({ message: "An unexpected error occurred." }), {
       status: 500,
-      headers: { ...CORS_HEADERS8, "Content-Type": "application/json" }
+      headers: { ...CORS_HEADERS9, "Content-Type": "application/json" }
     });
   }
 }
-__name(onRequestPost7, "onRequestPost");
+__name(onRequestPost8, "onRequestPost");
 
 // api/auth/setup-profile.ts
-var CORS_HEADERS9 = {
+var CORS_HEADERS10 = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
   "Access-Control-Allow-Headers": "Content-Type",
   "Access-Control-Allow-Credentials": "true"
 };
-async function onRequestOptions9() {
-  return new Response(null, { headers: CORS_HEADERS9 });
+async function onRequestOptions10() {
+  return new Response(null, { headers: CORS_HEADERS10 });
 }
-__name(onRequestOptions9, "onRequestOptions");
-async function onRequestPost8(context) {
+__name(onRequestOptions10, "onRequestOptions");
+async function onRequestPost9(context) {
   const { request, env } = context;
   try {
     const { username } = await request.json();
     if (!username || typeof username !== "string" || username.trim().length < 3) {
       return new Response(JSON.stringify({ message: "Username must be at least 3 characters long." }), {
         status: 400,
-        headers: { ...CORS_HEADERS9, "Content-Type": "application/json" }
+        headers: { ...CORS_HEADERS10, "Content-Type": "application/json" }
       });
     }
     const trimmedUser = username.trim();
@@ -12535,7 +12685,7 @@ async function onRequestPost8(context) {
     if (!token) {
       return new Response(JSON.stringify({ message: "Unauthorized. Please sign in again." }), {
         status: 401,
-        headers: { ...CORS_HEADERS9, "Content-Type": "application/json" }
+        headers: { ...CORS_HEADERS10, "Content-Type": "application/json" }
       });
     }
     if (!env.VITE_SUPABASE_URL || !env.SUPABASE_SERVICE_ROLE_KEY) {
@@ -12546,7 +12696,7 @@ async function onRequestPost8(context) {
     if (userError || !user) {
       return new Response(JSON.stringify({ message: "Invalid session." }), {
         status: 401,
-        headers: { ...CORS_HEADERS9, "Content-Type": "application/json" }
+        headers: { ...CORS_HEADERS10, "Content-Type": "application/json" }
       });
     }
     const supabaseAdmin = createClient(env.VITE_SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY);
@@ -12558,7 +12708,7 @@ async function onRequestPost8(context) {
     if (isTaken) {
       return new Response(JSON.stringify({ message: "Username is already taken." }), {
         status: 409,
-        headers: { ...CORS_HEADERS9, "Content-Type": "application/json" }
+        headers: { ...CORS_HEADERS10, "Content-Type": "application/json" }
       });
     }
     const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(user.id, {
@@ -12572,37 +12722,147 @@ async function onRequestPost8(context) {
     if (updateError) {
       return new Response(JSON.stringify({ message: updateError.message }), {
         status: 400,
-        headers: { ...CORS_HEADERS9, "Content-Type": "application/json" }
+        headers: { ...CORS_HEADERS10, "Content-Type": "application/json" }
       });
     }
     const points = typeof user.user_metadata?.points === "number" ? user.user_metadata.points : 0;
     const solvedPuzzles = Array.isArray(user.user_metadata?.solved_puzzles) ? user.user_metadata.solved_puzzles : [];
+    const avatarUrl = user.user_metadata?.avatar_url || user.user_metadata?.picture || void 0;
+    const pawnStats = user.user_metadata?.pawn_stats || { whiteWins: 0, whiteLosses: 0, blackWins: 0, blackLosses: 0 };
     return new Response(JSON.stringify({
       message: "Profile updated successfully!",
       user: {
         id: user.id,
         username: trimmedUser,
         email: user.email,
+        avatarUrl,
+        pawnStats,
         createdAt: user.created_at,
         points,
         solvedPuzzles
       }
     }), {
       status: 200,
-      headers: { ...CORS_HEADERS9, "Content-Type": "application/json" }
+      headers: { ...CORS_HEADERS10, "Content-Type": "application/json" }
     });
   } catch (err) {
     console.error("Setup profile error:", err);
     return new Response(JSON.stringify({ message: "An unexpected error occurred." }), {
       status: 500,
-      headers: { ...CORS_HEADERS9, "Content-Type": "application/json" }
+      headers: { ...CORS_HEADERS10, "Content-Type": "application/json" }
     });
   }
 }
-__name(onRequestPost8, "onRequestPost");
+__name(onRequestPost9, "onRequestPost");
+
+// api/pawn/record.ts
+var CORS_HEADERS11 = {
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type",
+  "Access-Control-Allow-Credentials": "true"
+};
+async function onRequestOptions11() {
+  return new Response(null, { headers: CORS_HEADERS11 });
+}
+__name(onRequestOptions11, "onRequestOptions");
+function parseAuthCookie2(request) {
+  const cookieHeader = request.headers.get("Cookie") || "";
+  let token;
+  cookieHeader.split(";").forEach((cookie) => {
+    const parts = cookie.split("=");
+    if (parts.length >= 2 && parts[0].trim() === "auth_token") {
+      token = parts.slice(1).join("=").trim();
+    }
+  });
+  return token;
+}
+__name(parseAuthCookie2, "parseAuthCookie");
+async function onRequestPost10(context) {
+  const { request, env } = context;
+  try {
+    const token = parseAuthCookie2(request);
+    if (!token) {
+      return new Response(JSON.stringify({ message: "Unauthorized. Please log in." }), {
+        status: 401,
+        headers: { ...CORS_HEADERS11, "Content-Type": "application/json" }
+      });
+    }
+    const body = await request.json();
+    const { color, result } = body;
+    if (color !== "white" && color !== "black" || result !== "win" && result !== "loss") {
+      return new Response(JSON.stringify({ message: "Invalid color or result parameter." }), {
+        status: 400,
+        headers: { ...CORS_HEADERS11, "Content-Type": "application/json" }
+      });
+    }
+    if (!env.VITE_SUPABASE_URL || !env.VITE_SUPABASE_ANON_KEY || !env.SUPABASE_SERVICE_ROLE_KEY) {
+      throw new Error("Missing Supabase configuration in environment.");
+    }
+    const supabase = createClient(env.VITE_SUPABASE_URL, env.VITE_SUPABASE_ANON_KEY);
+    const { data: { user }, error: userError } = await supabase.auth.getUser(token);
+    if (userError || !user) {
+      return new Response(JSON.stringify({ message: "Invalid or expired session." }), {
+        status: 401,
+        headers: { ...CORS_HEADERS11, "Content-Type": "application/json" }
+      });
+    }
+    const supabaseAdmin = createClient(env.VITE_SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY);
+    const currentPawnStats = user.user_metadata?.pawn_stats || {
+      whiteWins: 0,
+      whiteLosses: 0,
+      blackWins: 0,
+      blackLosses: 0
+    };
+    const updatedStats = {
+      whiteWins: typeof currentPawnStats.whiteWins === "number" ? currentPawnStats.whiteWins : 0,
+      whiteLosses: typeof currentPawnStats.whiteLosses === "number" ? currentPawnStats.whiteLosses : 0,
+      blackWins: typeof currentPawnStats.blackWins === "number" ? currentPawnStats.blackWins : 0,
+      blackLosses: typeof currentPawnStats.blackLosses === "number" ? currentPawnStats.blackLosses : 0
+    };
+    if (color === "white") {
+      if (result === "win")
+        updatedStats.whiteWins += 1;
+      else
+        updatedStats.whiteLosses += 1;
+    } else {
+      if (result === "win")
+        updatedStats.blackWins += 1;
+      else
+        updatedStats.blackLosses += 1;
+    }
+    const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(user.id, {
+      user_metadata: {
+        ...user.user_metadata,
+        pawn_stats: updatedStats
+      }
+    });
+    if (updateError) {
+      console.error("Failed to update pawn stats in metadata:", updateError);
+      return new Response(JSON.stringify({ message: "Failed to record pawn game stats." }), {
+        status: 500,
+        headers: { ...CORS_HEADERS11, "Content-Type": "application/json" }
+      });
+    }
+    return new Response(JSON.stringify({
+      success: true,
+      message: "Pawn game record updated!",
+      pawnStats: updatedStats
+    }), {
+      status: 200,
+      headers: { ...CORS_HEADERS11, "Content-Type": "application/json" }
+    });
+  } catch (err) {
+    console.error("Pawn game record error:", err);
+    return new Response(JSON.stringify({ message: "An unexpected error occurred." }), {
+      status: 500,
+      headers: { ...CORS_HEADERS11, "Content-Type": "application/json" }
+    });
+  }
+}
+__name(onRequestPost10, "onRequestPost");
 
 // api/puzzles/solve.ts
-var CORS_HEADERS10 = {
+var CORS_HEADERS12 = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
   "Access-Control-Allow-Headers": "Content-Type",
   "Access-Control-Allow-Credentials": "true"
@@ -12613,11 +12873,11 @@ var DIFFICULTY_POINTS = {
   "Cherry Bomb": 100,
   "Challenge": 100
 };
-async function onRequestOptions10() {
-  return new Response(null, { headers: CORS_HEADERS10 });
+async function onRequestOptions12() {
+  return new Response(null, { headers: CORS_HEADERS12 });
 }
-__name(onRequestOptions10, "onRequestOptions");
-async function onRequestPost9(context) {
+__name(onRequestOptions12, "onRequestOptions");
+async function onRequestPost11(context) {
   const { request, env } = context;
   try {
     const body = await request.json();
@@ -12625,7 +12885,7 @@ async function onRequestPost9(context) {
     if (!week || !difficulty) {
       return new Response(JSON.stringify({ message: "Missing week or difficulty in request." }), {
         status: 400,
-        headers: { ...CORS_HEADERS10, "Content-Type": "application/json" }
+        headers: { ...CORS_HEADERS12, "Content-Type": "application/json" }
       });
     }
     const cookieHeader = request.headers.get("Cookie") || "";
@@ -12645,7 +12905,7 @@ async function onRequestPost9(context) {
     if (!token) {
       return new Response(JSON.stringify({ message: "Unauthorized. Please sign in to earn points." }), {
         status: 401,
-        headers: { ...CORS_HEADERS10, "Content-Type": "application/json" }
+        headers: { ...CORS_HEADERS12, "Content-Type": "application/json" }
       });
     }
     if (!env.VITE_SUPABASE_URL || !env.VITE_SUPABASE_ANON_KEY || !env.SUPABASE_SERVICE_ROLE_KEY) {
@@ -12665,7 +12925,7 @@ async function onRequestPost9(context) {
     if (sessionError || !user) {
       return new Response(JSON.stringify({ message: "Invalid or expired session. Please log in again." }), {
         status: 401,
-        headers: { ...CORS_HEADERS10, "Content-Type": "application/json" }
+        headers: { ...CORS_HEADERS12, "Content-Type": "application/json" }
       });
     }
     const supabaseAdmin = createClient(env.VITE_SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY);
@@ -12702,7 +12962,7 @@ async function onRequestPost9(context) {
         message: "Puzzle already solved this week! Points previously claimed."
       }), {
         status: 200,
-        headers: { ...CORS_HEADERS10, "Content-Type": "application/json" }
+        headers: { ...CORS_HEADERS12, "Content-Type": "application/json" }
       });
     }
     const pointsToAward = DIFFICULTY_POINTS[difficulty] || 25;
@@ -12727,7 +12987,7 @@ async function onRequestPost9(context) {
       console.error("Failed to update user points metadata:", updateError);
       return new Response(JSON.stringify({ message: "Failed to update user profile points." }), {
         status: 500,
-        headers: { ...CORS_HEADERS10, "Content-Type": "application/json" }
+        headers: { ...CORS_HEADERS12, "Content-Type": "application/json" }
       });
     }
     return new Response(JSON.stringify({
@@ -12739,17 +12999,17 @@ async function onRequestPost9(context) {
       message: `+${pointsToAward} Points earned!`
     }), {
       status: 200,
-      headers: { ...CORS_HEADERS10, "Content-Type": "application/json" }
+      headers: { ...CORS_HEADERS12, "Content-Type": "application/json" }
     });
   } catch (err) {
     console.error("Solve puzzle API error:", err);
     return new Response(JSON.stringify({ message: "An unexpected error occurred while processing solve." }), {
       status: 500,
-      headers: { ...CORS_HEADERS10, "Content-Type": "application/json" }
+      headers: { ...CORS_HEADERS12, "Content-Type": "application/json" }
     });
   }
 }
-__name(onRequestPost9, "onRequestPost");
+__name(onRequestPost11, "onRequestPost");
 
 // api/puzzles.ts
 function base64url(data) {
@@ -12841,7 +13101,7 @@ async function fetchTab(sheetId, tabName, token) {
   }));
 }
 __name(fetchTab, "fetchTab");
-var CORS_HEADERS11 = {
+var CORS_HEADERS13 = {
   "Access-Control-Allow-Methods": "GET, OPTIONS",
   "Access-Control-Allow-Headers": "Content-Type"
 };
@@ -12873,7 +13133,7 @@ async function handlePuzzles(env) {
     }),
     {
       headers: {
-        ...CORS_HEADERS11,
+        ...CORS_HEADERS13,
         "Content-Type": "application/json",
         "Cache-Control": "public, max-age=300, s-maxage=300"
       }
@@ -12881,10 +13141,10 @@ async function handlePuzzles(env) {
   );
 }
 __name(handlePuzzles, "handlePuzzles");
-async function onRequestOptions11() {
-  return new Response(null, { headers: CORS_HEADERS11 });
+async function onRequestOptions13() {
+  return new Response(null, { headers: CORS_HEADERS13 });
 }
-__name(onRequestOptions11, "onRequestOptions");
+__name(onRequestOptions13, "onRequestOptions");
 async function onRequestGet2(context) {
   try {
     return await handlePuzzles(context.env);
@@ -12892,7 +13152,7 @@ async function onRequestGet2(context) {
     console.error("Fetch puzzles error:", err);
     return new Response(JSON.stringify({ error: "An unexpected error occurred." }), {
       status: 500,
-      headers: { ...CORS_HEADERS11, "Content-Type": "application/json" }
+      headers: { ...CORS_HEADERS13, "Content-Type": "application/json" }
     });
   }
 }
@@ -12945,74 +13205,95 @@ __name(onRequest, "onRequest");
 // ../.wrangler/tmp/pages-nRoRtD/functionsRoutes-0.679740805521494.mjs
 var routes = [
   {
-    routePath: "/api/auth/forgot-password",
+    routePath: "/api/auth/avatar",
+    mountPath: "/api/auth",
+    method: "DELETE",
+    middlewares: [],
+    modules: [onRequestDelete]
+  },
+  {
+    routePath: "/api/auth/avatar",
     mountPath: "/api/auth",
     method: "OPTIONS",
     middlewares: [],
     modules: [onRequestOptions]
   },
   {
-    routePath: "/api/auth/forgot-password",
+    routePath: "/api/auth/avatar",
     mountPath: "/api/auth",
     method: "POST",
     middlewares: [],
     modules: [onRequestPost]
   },
   {
-    routePath: "/api/auth/google",
+    routePath: "/api/auth/forgot-password",
     mountPath: "/api/auth",
     method: "OPTIONS",
     middlewares: [],
     modules: [onRequestOptions2]
   },
   {
-    routePath: "/api/auth/google",
+    routePath: "/api/auth/forgot-password",
     mountPath: "/api/auth",
     method: "POST",
     middlewares: [],
     modules: [onRequestPost2]
   },
   {
-    routePath: "/api/auth/link-email",
+    routePath: "/api/auth/google",
     mountPath: "/api/auth",
     method: "OPTIONS",
     middlewares: [],
     modules: [onRequestOptions3]
   },
   {
-    routePath: "/api/auth/link-email",
+    routePath: "/api/auth/google",
     mountPath: "/api/auth",
     method: "POST",
     middlewares: [],
     modules: [onRequestPost3]
   },
   {
-    routePath: "/api/auth/login",
+    routePath: "/api/auth/link-email",
     mountPath: "/api/auth",
     method: "OPTIONS",
     middlewares: [],
     modules: [onRequestOptions4]
   },
   {
-    routePath: "/api/auth/login",
+    routePath: "/api/auth/link-email",
     mountPath: "/api/auth",
     method: "POST",
     middlewares: [],
     modules: [onRequestPost4]
   },
   {
-    routePath: "/api/auth/logout",
+    routePath: "/api/auth/login",
     mountPath: "/api/auth",
     method: "OPTIONS",
     middlewares: [],
     modules: [onRequestOptions5]
   },
   {
-    routePath: "/api/auth/logout",
+    routePath: "/api/auth/login",
     mountPath: "/api/auth",
     method: "POST",
     middlewares: [],
     modules: [onRequestPost5]
+  },
+  {
+    routePath: "/api/auth/logout",
+    mountPath: "/api/auth",
+    method: "OPTIONS",
+    middlewares: [],
+    modules: [onRequestOptions6]
+  },
+  {
+    routePath: "/api/auth/logout",
+    mountPath: "/api/auth",
+    method: "POST",
+    middlewares: [],
+    modules: [onRequestPost6]
   },
   {
     routePath: "/api/auth/me",
@@ -13026,63 +13307,77 @@ var routes = [
     mountPath: "/api/auth",
     method: "OPTIONS",
     middlewares: [],
-    modules: [onRequestOptions6]
-  },
-  {
-    routePath: "/api/auth/register",
-    mountPath: "/api/auth",
-    method: "OPTIONS",
-    middlewares: [],
     modules: [onRequestOptions7]
   },
   {
     routePath: "/api/auth/register",
-    mountPath: "/api/auth",
-    method: "POST",
-    middlewares: [],
-    modules: [onRequestPost6]
-  },
-  {
-    routePath: "/api/auth/session",
     mountPath: "/api/auth",
     method: "OPTIONS",
     middlewares: [],
     modules: [onRequestOptions8]
   },
   {
-    routePath: "/api/auth/session",
+    routePath: "/api/auth/register",
     mountPath: "/api/auth",
     method: "POST",
     middlewares: [],
     modules: [onRequestPost7]
   },
   {
-    routePath: "/api/auth/setup-profile",
+    routePath: "/api/auth/session",
     mountPath: "/api/auth",
     method: "OPTIONS",
     middlewares: [],
     modules: [onRequestOptions9]
   },
   {
-    routePath: "/api/auth/setup-profile",
+    routePath: "/api/auth/session",
     mountPath: "/api/auth",
     method: "POST",
     middlewares: [],
     modules: [onRequestPost8]
   },
   {
+    routePath: "/api/auth/setup-profile",
+    mountPath: "/api/auth",
+    method: "OPTIONS",
+    middlewares: [],
+    modules: [onRequestOptions10]
+  },
+  {
+    routePath: "/api/auth/setup-profile",
+    mountPath: "/api/auth",
+    method: "POST",
+    middlewares: [],
+    modules: [onRequestPost9]
+  },
+  {
+    routePath: "/api/pawn/record",
+    mountPath: "/api/pawn",
+    method: "OPTIONS",
+    middlewares: [],
+    modules: [onRequestOptions11]
+  },
+  {
+    routePath: "/api/pawn/record",
+    mountPath: "/api/pawn",
+    method: "POST",
+    middlewares: [],
+    modules: [onRequestPost10]
+  },
+  {
     routePath: "/api/puzzles/solve",
     mountPath: "/api/puzzles",
     method: "OPTIONS",
     middlewares: [],
-    modules: [onRequestOptions10]
+    modules: [onRequestOptions12]
   },
   {
     routePath: "/api/puzzles/solve",
     mountPath: "/api/puzzles",
     method: "POST",
     middlewares: [],
-    modules: [onRequestPost9]
+    modules: [onRequestPost11]
   },
   {
     routePath: "/api/puzzles",
@@ -13096,7 +13391,7 @@ var routes = [
     mountPath: "/api",
     method: "OPTIONS",
     middlewares: [],
-    modules: [onRequestOptions11]
+    modules: [onRequestOptions13]
   },
   {
     routePath: "/api",
@@ -13594,7 +13889,7 @@ var jsonError = /* @__PURE__ */ __name(async (request, env, _ctx, middlewareCtx)
 }, "jsonError");
 var middleware_miniflare3_json_error_default = jsonError;
 
-// ../.wrangler/tmp/bundle-obW0mE/middleware-insertion-facade.js
+// ../.wrangler/tmp/bundle-jiEajv/middleware-insertion-facade.js
 var __INTERNAL_WRANGLER_MIDDLEWARE__ = [
   middleware_ensure_req_body_drained_default,
   middleware_miniflare3_json_error_default
@@ -13626,7 +13921,7 @@ function __facade_invoke__(request, env, ctx, dispatch, finalMiddleware) {
 }
 __name(__facade_invoke__, "__facade_invoke__");
 
-// ../.wrangler/tmp/bundle-obW0mE/middleware-loader.entry.ts
+// ../.wrangler/tmp/bundle-jiEajv/middleware-loader.entry.ts
 var __Facade_ScheduledController__ = class {
   constructor(scheduledTime, cron, noRetry) {
     this.scheduledTime = scheduledTime;

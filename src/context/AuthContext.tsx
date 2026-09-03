@@ -10,13 +10,22 @@ export interface SolvedPuzzle {
     solvedAt: string;
 }
 
+export interface PawnGameStats {
+    whiteWins: number;
+    whiteLosses: number;
+    blackWins: number;
+    blackLosses: number;
+}
+
 export interface User {
     id?: string;
     username: string;
     email?: string;
+    avatarUrl?: string;
     createdAt?: string;
     points?: number;
     solvedPuzzles?: SolvedPuzzle[];
+    pawnStats?: PawnGameStats;
 }
 
 export interface Remembered {
@@ -34,6 +43,9 @@ interface AuthContextType {
     forgotPassword: (usernameOrEmail: string) => Promise<{ success: boolean; message: string }>;
     loginWithGoogle: (credential: string) => Promise<{ success: boolean; message: string; needsProfileSetup?: boolean }>;
     setupProfile: (username: string) => Promise<{ success: boolean; message: string }>;
+    updateAvatar: (avatarUrl: string) => Promise<{ success: boolean; message: string }>;
+    removeAvatar: () => Promise<{ success: boolean; message: string }>;
+    recordPawnGame: (color: 'white' | 'black', result: 'win' | 'loss') => Promise<{ success: boolean; pawnStats?: PawnGameStats }>;
     refreshUser: () => Promise<void>;
     updateUserStats: (points: number, solvedPuzzles: SolvedPuzzle[]) => void;
 }
@@ -263,6 +275,61 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
     };
 
+    const updateAvatar = async (avatarUrl: string) => {
+        try {
+            const res = await fetch('/api/auth/avatar', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ avatarUrl })
+            });
+            const data = await res.json();
+            if (!res.ok) {
+                return { success: false, message: data.message || 'Failed to update avatar.' };
+            }
+            setUser((prev) => prev ? { ...prev, avatarUrl } : null);
+            return { success: true, message: data.message || 'Avatar updated successfully!' };
+        } catch (e: any) {
+            console.error('Update avatar error:', e);
+            return { success: false, message: 'Could not connect to server.' };
+        }
+    };
+
+    const removeAvatar = async () => {
+        try {
+            const res = await fetch('/api/auth/avatar', {
+                method: 'DELETE'
+            });
+            const data = await res.json();
+            if (!res.ok) {
+                return { success: false, message: data.message || 'Failed to remove avatar.' };
+            }
+            setUser((prev) => prev ? { ...prev, avatarUrl: undefined } : null);
+            return { success: true, message: data.message || 'Avatar removed successfully!' };
+        } catch (e: any) {
+            console.error('Remove avatar error:', e);
+            return { success: false, message: 'Could not connect to server.' };
+        }
+    };
+
+    const recordPawnGame = async (color: 'white' | 'black', result: 'win' | 'loss') => {
+        try {
+            const res = await fetch('/api/pawn/record', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ color, result })
+            });
+            const data = await res.json();
+            if (res.ok && data.pawnStats) {
+                setUser((prev) => prev ? { ...prev, pawnStats: data.pawnStats } : null);
+                return { success: true, pawnStats: data.pawnStats };
+            }
+            return { success: false };
+        } catch (e: any) {
+            console.error('Record pawn game error:', e);
+            return { success: false };
+        }
+    };
+
     const refreshUser = async () => {
         try {
             const res = await fetch('/api/auth/me');
@@ -287,7 +354,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
 
     return (
-        <AuthContext.Provider value={{ user, loading, remembered, login, register, logout, linkEmail, forgotPassword, loginWithGoogle, setupProfile, refreshUser, updateUserStats }}>
+        <AuthContext.Provider value={{ user, loading, remembered, login, register, logout, linkEmail, forgotPassword, loginWithGoogle, setupProfile, updateAvatar, removeAvatar, recordPawnGame, refreshUser, updateUserStats }}>
             {children}
         </AuthContext.Provider>
     );

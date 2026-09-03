@@ -170,6 +170,8 @@ export async function onRequestPost(context: any) {
         const needsProfileSetup = !username;
         const points = typeof authUser.user_metadata?.points === 'number' ? authUser.user_metadata.points : 0;
         const solvedPuzzles = Array.isArray(authUser.user_metadata?.solved_puzzles) ? authUser.user_metadata.solved_puzzles : [];
+        const avatarUrl = authUser.user_metadata?.avatar_url || authUser.user_metadata?.picture || undefined;
+        const pawnStats = authUser.user_metadata?.pawn_stats || { whiteWins: 0, whiteLosses: 0, blackWins: 0, blackLosses: 0 };
 
         return new Response(JSON.stringify({
             message: 'Logged in successfully.',
@@ -178,6 +180,8 @@ export async function onRequestPost(context: any) {
                 id: authUser.id,
                 username: username || '',
                 email: authUser.email,
+                avatarUrl,
+                pawnStats,
                 createdAt: authUser.created_at,
                 points,
                 solvedPuzzles

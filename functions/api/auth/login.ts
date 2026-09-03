@@ -88,6 +88,8 @@ export async function onRequestPost(context: any) {
 
         const points = typeof data.user.user_metadata?.points === 'number' ? data.user.user_metadata.points : 0;
         const solvedPuzzles = Array.isArray(data.user.user_metadata?.solved_puzzles) ? data.user.user_metadata.solved_puzzles : [];
+        const avatarUrl = data.user.user_metadata?.avatar_url || data.user.user_metadata?.picture || undefined;
+        const pawnStats = data.user.user_metadata?.pawn_stats || { whiteWins: 0, whiteLosses: 0, blackWins: 0, blackLosses: 0 };
 
         return new Response(JSON.stringify({
             message: 'Logged in successfully.',
@@ -95,6 +97,8 @@ export async function onRequestPost(context: any) {
                 id: data.user.id,
                 username: data.user.user_metadata?.username || trimmedUser,
                 email: userEmail,
+                avatarUrl,
+                pawnStats,
                 createdAt: data.user.created_at,
                 points,
                 solvedPuzzles

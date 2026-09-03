@@ -1,8 +1,9 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { Trophy, RotateCcw, ChevronLeft, Cpu, User, Info } from 'lucide-react';
 import Navbar from '../components/Navbar/Navbar';
 import { Link } from 'react-router-dom';
 import { playMoveSound, playCaptureSound, playWinSound, playLoseSound } from '../lib/soundEffects';
+import { useAuth } from '../context/AuthContext';
 
 // Constants
 const BOARD_SIZE = 8;
@@ -38,6 +39,7 @@ const TT_LOWERBOUND = 1;
 const TT_UPPERBOUND = 2;
 
 const PawnGame: React.FC = () => {
+    const { recordPawnGame } = useAuth();
     const [board, setBoard] = useState<Board>([]);
     const [turn, setTurn] = useState<typeof WHITE | typeof BLACK>(WHITE);
     const [userColor, setUserColor] = useState<typeof WHITE | typeof BLACK | null>(null);
@@ -48,6 +50,7 @@ const PawnGame: React.FC = () => {
     const [lastMove, setLastMove] = useState<Move | null>(null);
     const [history, setHistory] = useState<{ board: Board, turn: typeof WHITE | typeof BLACK, ep: [number, number] | null, lastMove: Move | null }[]>([]);
     const [loadedPieces, setLoadedPieces] = useState<Record<string, boolean>>({});
+    const hasRecordedRef = useRef(false);
 
     // Initialize board
     const initBoard = useCallback(() => {
@@ -64,6 +67,7 @@ const PawnGame: React.FC = () => {
         setWinner(null);
         setHistory([]);
         setLoadedPieces({});
+        hasRecordedRef.current = false;
     }, []);
 
     useEffect(() => {
@@ -541,6 +545,17 @@ const PawnGame: React.FC = () => {
         }
     }, [turn, winner, board, enPassantTarget, userColor]);
 
+    // Record stats when match concludes
+    useEffect(() => {
+        if (winner && userColor && !hasRecordedRef.current) {
+            hasRecordedRef.current = true;
+            const color = userColor === WHITE ? 'white' : 'black';
+            const isUserWinner = (userColor === WHITE && winner === 'White') || (userColor === BLACK && winner === 'Black');
+            const result = isUserWinner ? 'win' : 'loss';
+            recordPawnGame(color, result);
+        }
+    }, [winner, userColor, recordPawnGame]);
+
     const undoMove = () => {
         if (history.length === 0) return;
 
@@ -598,44 +613,44 @@ const PawnGame: React.FC = () => {
     };
 
     return (
-        <div className="min-h-screen bg-cream flex flex-col font-sans text-plum overflow-x-clip">
+        <div className={`${!userColor ? 'h-screen max-h-screen overflow-hidden' : 'min-h-screen'} bg-cream flex flex-col font-sans text-plum overflow-x-clip`}>
             <Navbar />
 
-            <main className="flex-1 max-w-7xl mx-auto w-full px-6 pt-4 pb-8 flex flex-col items-center overflow-hidden">
+            <main className={`flex-1 max-w-7xl mx-auto w-full px-6 flex flex-col items-center justify-center ${!userColor ? 'py-2 overflow-hidden' : 'pt-4 pb-8 overflow-hidden'}`}>
                 {/* Header */}
-                <div className="text-center mb-6">
-                    <h1 className="text-4xl md:text-5xl font-black tracking-tight">
+                <div className="text-center mb-3">
+                    <h1 className="text-3xl md:text-4xl font-black tracking-tight">
                         Pawn <span className="text-berry italic">Game</span>
                     </h1>
                 </div>
 
                 {!userColor ? (
                     /* Side Selection View */
-                    <div className="soft-card p-12 rounded-[3rem] w-full max-w-3xl flex flex-col items-center animate-in fade-in zoom-in-95 duration-500">
-                        <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-berry/10 text-berry text-[10px] font-bold uppercase tracking-widest mb-6">
+                    <div className="soft-card p-6 md:p-8 rounded-3xl w-full max-w-xl flex flex-col items-center animate-in fade-in zoom-in-95 duration-500 shadow-xl border border-plum/10">
+                        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-berry/10 text-berry text-[10px] font-bold uppercase tracking-widest mb-2.5">
                             <Trophy size={12} />
                             Classic Mini-Game
                         </div>
-                        <h2 className="text-3xl font-serif font-black mb-4 text-plum">Choose Your Side</h2>
-                        <p className="text-plum/60 text-center max-w-xl mx-auto font-medium mb-12">
-                            The objective of the pawn game is to be the first one to push your pawn to the opponent's side. You can find out more about it <Link to="/PawnGameStrategy" className="text-berry hover:underline font-bold">here</Link>.
+                        <h2 className="text-2xl md:text-3xl font-serif font-black mb-1.5 text-plum">Choose Your Side</h2>
+                        <p className="text-plum/60 text-center max-w-md mx-auto text-xs md:text-sm font-medium mb-5 leading-relaxed">
+                            The objective is to be the first to push a pawn to the opponent's back rank. Learn strategies <Link to="/PawnGameStrategy" className="text-berry hover:underline font-bold">here</Link>.
                         </p>
-                        <div className="grid grid-cols-2 gap-10 w-full">
+                        <div className="grid grid-cols-2 gap-4 md:gap-6 w-full max-w-md">
                             {/* White Side Option */}
                             <button 
                                 onClick={() => setUserColor(WHITE)}
-                                className="soft-card soft-card-hover group flex flex-col items-center gap-8 p-12 rounded-[4rem] bg-white border-2 border-transparent"
+                                className="soft-card soft-card-hover group flex flex-col items-center gap-3 md:gap-4 p-5 md:p-6 rounded-2xl bg-white border-2 border-transparent hover:border-berry/30 transition-all shadow-md hover:shadow-xl"
                             >
-                                <div className="h-44 w-44 rounded-[3rem] bg-cream flex items-center justify-center shadow-inner group-hover:scale-110 transition-transform">
-                                    <svg viewBox="0 0 45 45" className="w-32 h-32 drop-shadow-2xl">
+                                <div className="h-20 w-20 md:h-24 md:w-24 rounded-2xl bg-cream flex items-center justify-center shadow-inner group-hover:scale-105 transition-transform">
+                                    <svg viewBox="0 0 45 45" className="w-14 h-14 md:w-16 md:h-16 drop-shadow-md">
                                         <g fill="#fff" stroke="#000" strokeWidth="1.5" strokeLinecap="round">
                                             <path d="M22.5 9c-2.21 0-4 1.79-4 4 0 .89.29 1.71.78 2.38C17.33 16.5 16 18.59 16 21c0 2.03.94 3.84 2.41 5.03-3 1.06-7.41 5.55-7.41 13.47h23c0-7.92-4.41-12.41-7.41-13.47 1.47-1.19 2.41-3 2.41-5.03 0-2.41-1.33-4.5-3.28-5.62.49-.67.78-1.49.78-2.38 0-2.21-1.79-4-4-4z" />
                                         </g>
                                     </svg>
                                 </div>
                                 <div className="text-center">
-                                    <span className="block font-black uppercase tracking-widest text-[10px] text-plum/40 mb-4">Move First</span>
-                                    <div className="bg-berry/10 px-6 py-2 rounded-full">
+                                    <span className="block font-black uppercase tracking-widest text-[9px] text-plum/40 mb-1">Move First</span>
+                                    <div className="bg-berry/10 px-4 py-1 rounded-full">
                                         <span className="text-berry font-black uppercase tracking-widest text-xs">White</span>
                                     </div>
                                 </div>
@@ -644,18 +659,18 @@ const PawnGame: React.FC = () => {
                             {/* Black Side Option */}
                             <button 
                                 onClick={() => setUserColor(BLACK)}
-                                className="soft-card soft-card-hover group flex flex-col items-center gap-8 p-12 rounded-[4rem] bg-white border-2 border-transparent"
+                                className="soft-card soft-card-hover group flex flex-col items-center gap-3 md:gap-4 p-5 md:p-6 rounded-2xl bg-white border-2 border-transparent hover:border-plum/30 transition-all shadow-md hover:shadow-xl"
                             >
-                                <div className="h-44 w-44 rounded-[3rem] bg-plum/5 flex items-center justify-center shadow-inner group-hover:scale-110 transition-transform">
-                                    <svg viewBox="0 0 45 45" className="w-32 h-32 drop-shadow-2xl">
+                                <div className="h-20 w-20 md:h-24 md:w-24 rounded-2xl bg-plum/5 flex items-center justify-center shadow-inner group-hover:scale-105 transition-transform">
+                                    <svg viewBox="0 0 45 45" className="w-14 h-14 md:w-16 md:h-16 drop-shadow-md">
                                         <g fill="#000" stroke="#000" strokeWidth="1.5" strokeLinecap="round">
                                             <path d="M22.5 9c-2.21 0-4 1.79-4 4 0 .89.29 1.71.78 2.38C17.33 16.5 16 18.59 16 21c0 2.03.94 3.84 2.41 5.03-3 1.06-7.41 5.55-7.41 13.47h23c0-7.92-4.41-12.41-7.41-13.47 1.47-1.19 2.41-3 2.41-5.03 0-2.41-1.33-4.5-3.28-5.62.49-.67.78-1.49.78-2.38 0-2.21-1.79-4-4-4z" />
                                         </g>
                                     </svg>
                                 </div>
                                 <div className="text-center">
-                                    <span className="block font-black uppercase tracking-widest text-[10px] text-plum/40 mb-4">Move Second</span>
-                                    <div className="bg-plum/10 px-6 py-2 rounded-full">
+                                    <span className="block font-black uppercase tracking-widest text-[9px] text-plum/40 mb-1">Move Second</span>
+                                    <div className="bg-plum/10 px-4 py-1 rounded-full">
                                         <span className="text-plum font-black uppercase tracking-widest text-xs">Black</span>
                                     </div>
                                 </div>

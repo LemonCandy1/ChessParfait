@@ -80,8 +80,16 @@ export default function LinkEmail() {
                             <ArrowLeft size={12} /> Back to home
                         </Link>
                         <div className="flex items-center gap-3 mb-2">
-                            <div className="h-11 w-11 rounded-full bg-berry text-cream font-serif font-black flex items-center justify-center text-lg shadow-inner uppercase select-none">
-                                {user.username.charAt(0)}
+                            <div className="h-11 w-11 rounded-full bg-berry text-cream font-serif font-black flex items-center justify-center text-lg shadow-inner uppercase select-none overflow-hidden">
+                                {user.avatarUrl ? (
+                                    <img
+                                        src={user.avatarUrl}
+                                        alt={user.username}
+                                        className="h-full w-full object-cover"
+                                    />
+                                ) : (
+                                    user.username.charAt(0)
+                                )}
                             </div>
                             <div>
                                 <p className="text-[9px] font-black uppercase tracking-widest text-plum/30">Logged in as</p>

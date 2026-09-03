@@ -79,12 +79,16 @@ export async function onRequestGet(context: any) {
 
         const points = typeof user.user_metadata?.points === 'number' ? user.user_metadata.points : 0;
         const solvedPuzzles = Array.isArray(user.user_metadata?.solved_puzzles) ? user.user_metadata.solved_puzzles : [];
+        const avatarUrl = user.user_metadata?.avatar_url || user.user_metadata?.picture || undefined;
+        const pawnStats = user.user_metadata?.pawn_stats || { whiteWins: 0, whiteLosses: 0, blackWins: 0, blackLosses: 0 };
 
         return new Response(JSON.stringify({
             user: {
                 id: user.id,
                 username,
                 email: userEmail,
+                avatarUrl,
+                pawnStats,
                 createdAt: user.created_at,
                 points,
                 solvedPuzzles

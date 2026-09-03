@@ -1,18 +1,21 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { 
-    Trophy, 
-    Award, 
-    Crown, 
-    Calendar, 
-    Sparkles, 
-    CheckCircle2, 
-    Mail, 
-    LogOut, 
+import {
+    Trophy,
+    Award,
+    Crown,
+    Calendar,
+    Sparkles,
+    CheckCircle2,
+    Mail,
+    LogOut,
     ArrowRight,
     Zap,
     Flame,
-    Lock
+    Lock,
+    Camera,
+    Trash2,
+    Loader2
 } from 'lucide-react';
 import Navbar from '../components/Navbar/Navbar';
 import { useAuth } from '../context/AuthContext';
@@ -20,9 +23,73 @@ import { calculateLevelInfo, formatJoinDate, LEVEL_TIERS } from '../lib/levelSys
 import { ChessCakeSliceIcon, PieIcon, CherryBombIcon, PuzzleIcon, ChessPawnIcon, RouletteIcon } from '../components/Icons';
 
 export default function Profile() {
-    const { user, loading, logout } = useAuth();
+    const { user, loading, logout, updateAvatar, removeAvatar } = useAuth();
     const navigate = useNavigate();
     const [showTierModal, setShowTierModal] = useState(false);
+    const [uploadingAvatar, setUploadingAvatar] = useState(false);
+    const [avatarError, setAvatarError] = useState<string | null>(null);
+    const fileInputRef = useRef<HTMLInputElement>(null);
+
+    const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        if (!file.type.startsWith('image/')) {
+            setAvatarError('Please select a valid image file (PNG, JPEG, WebP).');
+            return;
+        }
+
+        setUploadingAvatar(true);
+        setAvatarError(null);
+
+        try {
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                const img = new Image();
+                img.onload = async () => {
+                    // Create canvas for 256x256 square crop
+                    const canvas = document.createElement('canvas');
+                    const size = 256;
+                    canvas.width = size;
+                    canvas.height = size;
+                    const ctx = canvas.getContext('2d');
+                    if (!ctx) {
+                        setAvatarError('Could not process image.');
+                        setUploadingAvatar(false);
+                        return;
+                    }
+
+                    // Center-crop to square
+                    const minDim = Math.min(img.width, img.height);
+                    const startX = (img.width - minDim) / 2;
+                    const startY = (img.height - minDim) / 2;
+
+                    ctx.drawImage(img, startX, startY, minDim, minDim, 0, 0, size, size);
+
+                    const dataUrl = canvas.toDataURL('image/jpeg', 0.88);
+                    const res = await updateAvatar(dataUrl);
+                    if (!res.success) {
+                        setAvatarError(res.message);
+                    }
+                    setUploadingAvatar(false);
+                    if (fileInputRef.current) fileInputRef.current.value = '';
+                };
+                img.src = event.target?.result as string;
+            };
+            reader.readAsDataURL(file);
+        } catch (err) {
+            console.error('Avatar upload processing error:', err);
+            setAvatarError('Failed to process image upload.');
+            setUploadingAvatar(false);
+        }
+    };
+
+    const handleRemoveAvatar = async () => {
+        if (!window.confirm('Are you sure you want to remove your profile picture?')) return;
+        setUploadingAvatar(true);
+        await removeAvatar();
+        setUploadingAvatar(false);
+    };
 
     if (loading) {
         return (
@@ -73,6 +140,17 @@ export default function Profile() {
     const tartCount = solvedPuzzles.filter((p) => p.difficulty === 'Hard Tart').length;
     const bombCount = solvedPuzzles.filter((p) => p.difficulty === 'Cherry Bomb' || p.difficulty === 'Challenge').length;
 
+    // Calculate pawn game performance stats
+    const pawnStats = user.pawnStats || { whiteWins: 0, whiteLosses: 0, blackWins: 0, blackLosses: 0 };
+    const totalWhiteGames = pawnStats.whiteWins + pawnStats.whiteLosses;
+    const whiteWinRate = totalWhiteGames > 0 ? Math.round((pawnStats.whiteWins / totalWhiteGames) * 100) : 0;
+    const totalBlackGames = pawnStats.blackWins + pawnStats.blackLosses;
+    const blackWinRate = totalBlackGames > 0 ? Math.round((pawnStats.blackWins / totalBlackGames) * 100) : 0;
+    const totalPawnGames = totalWhiteGames + totalBlackGames;
+    const totalPawnWins = pawnStats.whiteWins + pawnStats.blackWins;
+    const totalPawnLosses = pawnStats.whiteLosses + pawnStats.blackLosses;
+    const overallPawnWinRate = totalPawnGames > 0 ? Math.round((totalPawnWins / totalPawnGames) * 100) : 0;
+
     return (
         <div className="min-h-screen bg-cream flex flex-col font-sans text-plum relative overflow-x-clip">
             {/* Background Glows */}
@@ -82,24 +160,77 @@ export default function Profile() {
             <Navbar />
 
             <main className="flex-1 max-w-6xl mx-auto w-full px-6 py-10 space-y-8">
-                
+
                 {/* ── Top Header Profile Card ── */}
                 <div className="bg-white/80 backdrop-blur-md rounded-[2.5rem] p-8 md:p-10 border-2 border-plum/15 shadow-xl relative overflow-hidden">
                     <div className="flex flex-col md:flex-row items-center md:items-start justify-between gap-6 relative z-10">
                         <div className="flex flex-col md:flex-row items-center gap-6 text-center md:text-left">
-                            {/* Avatar */}
-                            <div className="relative group">
-                                <div className="w-24 h-24 md:w-28 md:h-28 rounded-3xl bg-gradient-to-br from-berry to-berry/80 text-cream font-serif font-black text-4xl md:text-5xl flex items-center justify-center shadow-lg border-4 border-white uppercase">
-                                    {user.username.charAt(0)}
+                            {/* Avatar with Upload Capability */}
+                            <div className="relative group/avatar">
+                                <div className="w-24 h-24 md:w-28 md:h-28 rounded-3xl bg-gradient-to-br from-berry to-berry/80 text-cream font-serif font-black text-4xl md:text-5xl flex items-center justify-center shadow-lg border-4 border-white uppercase overflow-hidden relative">
+                                    {user.avatarUrl ? (
+                                        <img
+                                            src={user.avatarUrl}
+                                            alt={user.username}
+                                            className="w-full h-full object-cover"
+                                        />
+                                    ) : (
+                                        <span>{user.username.charAt(0)}</span>
+                                    )}
+
+                                    {/* Hover Upload Overlay */}
+                                    <button
+                                        onClick={() => fileInputRef.current?.click()}
+                                        disabled={uploadingAvatar}
+                                        className="absolute inset-0 bg-plum/70 backdrop-blur-[2px] opacity-0 group-hover/avatar:opacity-100 transition-opacity flex flex-col items-center justify-center text-white cursor-pointer"
+                                        title="Upload profile picture"
+                                    >
+                                        {uploadingAvatar ? (
+                                            <Loader2 size={24} className="animate-spin text-white" />
+                                        ) : (
+                                            <>
+                                                <Camera size={22} className="text-white drop-shadow" />
+                                                <span className="text-[9px] font-black uppercase tracking-wider mt-1 text-white/90">Change</span>
+                                            </>
+                                        )}
+                                    </button>
                                 </div>
-                                <div className="absolute -bottom-2 -right-2 bg-plum text-white text-[11px] font-black uppercase px-2.5 py-1 rounded-full shadow-md border-2 border-white flex items-center gap-1">
+
+                                {/* Level badge */}
+                                <div className="absolute -bottom-2 -right-2 bg-plum text-white text-[11px] font-black uppercase px-2.5 py-1 rounded-full shadow-md border-2 border-white flex items-center gap-1 z-10">
                                     <Sparkles size={12} className="text-amber-300" />
                                     <span>Lvl {levelInfo.level}</span>
                                 </div>
+
+                                {/* Remove Avatar button */}
+                                {user.avatarUrl && (
+                                    <button
+                                        onClick={handleRemoveAvatar}
+                                        disabled={uploadingAvatar}
+                                        className="absolute -top-2 -left-2 bg-white hover:bg-rose-50 text-rose-500 hover:text-rose-600 p-1.5 rounded-full shadow-md border border-plum/10 transition-all opacity-0 group-hover/avatar:opacity-100 z-10"
+                                        title="Remove profile picture"
+                                    >
+                                        <Trash2 size={12} />
+                                    </button>
+                                )}
+
+                                {/* Hidden file input */}
+                                <input
+                                    ref={fileInputRef}
+                                    type="file"
+                                    accept="image/png, image/jpeg, image/webp, image/gif"
+                                    onChange={handleFileChange}
+                                    className="hidden"
+                                />
                             </div>
 
                             {/* User details */}
                             <div className="space-y-2">
+                                {avatarError && (
+                                    <div className="bg-rose-50 text-rose-700 text-xs font-bold px-3 py-1.5 rounded-xl border border-rose-200 mb-1">
+                                        {avatarError}
+                                    </div>
+                                )}
                                 <div className="flex flex-wrap items-center justify-center md:justify-start gap-3">
                                     <h1 className="text-3xl md:text-4xl font-serif font-black text-plum tracking-tight">
                                         {user.username}
@@ -234,18 +365,16 @@ export default function Profile() {
                                 return (
                                     <div
                                         key={tier.level}
-                                        className={`p-4 rounded-2xl border-2 transition-all flex flex-col justify-between gap-2 ${
-                                            isCurrent
+                                        className={`p-4 rounded-2xl border-2 transition-all flex flex-col justify-between gap-2 ${isCurrent
                                                 ? 'bg-berry/10 border-berry shadow-md'
                                                 : isUnlocked
-                                                ? 'bg-white border-plum/15'
-                                                : 'bg-white/40 border-plum/5 opacity-60'
-                                        }`}
+                                                    ? 'bg-white border-plum/15'
+                                                    : 'bg-white/40 border-plum/5 opacity-60'
+                                            }`}
                                     >
                                         <div className="flex items-center justify-between">
-                                            <span className={`text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full ${
-                                                isCurrent ? 'bg-berry text-white' : 'bg-plum/10 text-plum/70'
-                                            }`}>
+                                            <span className={`text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full ${isCurrent ? 'bg-berry text-white' : 'bg-plum/10 text-plum/70'
+                                                }`}>
                                                 Lvl {tier.level}
                                             </span>
                                             {isCurrent ? (
@@ -302,6 +431,118 @@ export default function Profile() {
                     </div>
                 </div>
 
+                {/* ── Pawn Game Performance Card ── */}
+                <div className="bg-white/80 backdrop-blur-md rounded-[2.5rem] p-8 md:p-10 border-2 border-plum/15 shadow-xl space-y-6">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                        <div>
+                            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-plum/40">Endgame Training</span>
+                            <h2 className="text-2xl md:text-3xl font-serif font-black text-plum flex items-center gap-3">
+                                Pawn Game <span className="text-berry italic">Record</span>
+                            </h2>
+                        </div>
+
+                        {/* Overall Record Summary Pill */}
+                        <div className="flex items-center gap-2 flex-wrap">
+                            <span className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-plum/5 text-plum border border-plum/15 text-xs font-black">
+                                <ChessPawnIcon size={16} /> Total Games: {totalPawnGames}
+                            </span>
+                            <span className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-emerald-50 text-emerald-800 border border-emerald-200 text-xs font-black">
+                                {totalPawnWins}W - {totalPawnLosses}L ({overallPawnWinRate}%)
+                            </span>
+                        </div>
+                    </div>
+
+                    {totalPawnGames === 0 ? (
+                        <div className="p-8 bg-cream/50 rounded-3xl border-2 border-dashed border-plum/15 flex flex-col items-center justify-center text-center gap-3">
+                            <div className="p-3.5 bg-white rounded-2xl shadow-sm text-plum/40">
+                                <ChessPawnIcon size={32} />
+                            </div>
+                            <div className="space-y-1 max-w-sm">
+                                <h4 className="font-serif font-black text-base text-plum">No Pawn Games Played Yet</h4>
+                                <p className="text-xs text-plum/60 leading-relaxed">
+                                    Play the Pawn Game against our AI to master pawn endgames, zugzwang, and breakthrough techniques!
+                                </p>
+                            </div>
+                            <Link to="/PawnGame" className="soft-button-berry py-2.5 px-6 text-xs font-bold flex items-center gap-2 mt-2">
+                                <ChessPawnIcon size={16} />
+                                <span>Play Pawn Game</span>
+                            </Link>
+                        </div>
+                    ) : (
+                        <div className="grid md:grid-cols-2 gap-6">
+                            {/* Playing as White */}
+                            <div className="bg-white p-6 rounded-3xl border-2 border-plum/10 shadow-sm space-y-4">
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-10 h-10 rounded-2xl bg-cream flex items-center justify-center text-plum shadow-inner border border-plum/10 font-bold">
+                                            <div className="w-4 h-4 rounded-full bg-white border-2 border-plum/40 shadow-sm" />
+                                        </div>
+                                        <div>
+                                            <h4 className="font-serif font-black text-lg text-plum">Playing as White</h4>
+                                            <span className="text-[10px] font-bold text-plum/50 uppercase tracking-wider">Moves First</span>
+                                        </div>
+                                    </div>
+                                    <div className="text-right">
+                                        <span className="text-xl font-black text-plum">{whiteWinRate}%</span>
+                                        <p className="text-[10px] font-bold text-plum/40">Win Rate</p>
+                                    </div>
+                                </div>
+
+                                <div className="space-y-2">
+                                    <div className="flex justify-between text-xs font-bold text-plum/70">
+                                        <span className="text-emerald-600 font-extrabold">{pawnStats.whiteWins} Wins</span>
+                                        <span className="text-rose-500 font-extrabold">{pawnStats.whiteLosses} Losses</span>
+                                    </div>
+                                    <div className="h-3 w-full bg-rose-100 rounded-full overflow-hidden flex shadow-inner">
+                                        <div
+                                            className="h-full bg-emerald-500 rounded-full transition-all duration-500"
+                                            style={{ width: `${totalWhiteGames > 0 ? (pawnStats.whiteWins / totalWhiteGames) * 100 : 0}%` }}
+                                        />
+                                    </div>
+                                    <p className="text-[11px] font-bold text-plum/40 text-center pt-1">
+                                        {totalWhiteGames} matches played as White
+                                    </p>
+                                </div>
+                            </div>
+
+                            {/* Playing as Black */}
+                            <div className="bg-white p-6 rounded-3xl border-2 border-plum/10 shadow-sm space-y-4">
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-10 h-10 rounded-2xl bg-cream flex items-center justify-center text-plum shadow-inner border border-plum/10 font-bold">
+                                            <div className="w-4 h-4 rounded-full bg-plum shadow-sm" />
+                                        </div>
+                                        <div>
+                                            <h4 className="font-serif font-black text-lg text-plum">Playing as Black</h4>
+                                            <span className="text-[10px] font-bold text-plum/50 uppercase tracking-wider">Defending Second</span>
+                                        </div>
+                                    </div>
+                                    <div className="text-right">
+                                        <span className="text-xl font-black text-plum">{blackWinRate}%</span>
+                                        <p className="text-[10px] font-bold text-plum/40">Win Rate</p>
+                                    </div>
+                                </div>
+
+                                <div className="space-y-2">
+                                    <div className="flex justify-between text-xs font-bold text-plum/70">
+                                        <span className="text-emerald-600 font-extrabold">{pawnStats.blackWins} Wins</span>
+                                        <span className="text-rose-500 font-extrabold">{pawnStats.blackLosses} Losses</span>
+                                    </div>
+                                    <div className="h-3 w-full bg-rose-100 rounded-full overflow-hidden flex shadow-inner">
+                                        <div
+                                            className="h-full bg-emerald-500 rounded-full transition-all duration-500"
+                                            style={{ width: `${totalBlackGames > 0 ? (pawnStats.blackWins / totalBlackGames) * 100 : 0}%` }}
+                                        />
+                                    </div>
+                                    <p className="text-[11px] font-bold text-plum/40 text-center pt-1">
+                                        {totalBlackGames} matches played as Black
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
+
                 {/* ── Solved Weekly Puzzles History ── */}
                 <div className="bg-white/80 backdrop-blur-md rounded-[2.5rem] p-8 md:p-10 border-2 border-plum/15 shadow-xl space-y-6">
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -348,10 +589,10 @@ export default function Profile() {
                                 {solvedPuzzles.map((puzzle, idx) => {
                                     const dateStr = puzzle.solvedAt
                                         ? new Date(puzzle.solvedAt).toLocaleDateString('en-US', {
-                                              month: 'short',
-                                              day: 'numeric',
-                                              year: 'numeric'
-                                          })
+                                            month: 'short',
+                                            day: 'numeric',
+                                            year: 'numeric'
+                                        })
                                         : 'Completed';
 
                                     const isCherryBomb = puzzle.difficulty === 'Cherry Bomb' || puzzle.difficulty === 'Challenge';
@@ -361,8 +602,8 @@ export default function Profile() {
                                         puzzle.difficulty === 'Piece of Cake'
                                             ? { bg: 'bg-emerald-50 text-emerald-700 border-emerald-200', icon: <ChessCakeSliceIcon size={14} /> }
                                             : puzzle.difficulty === 'Hard Tart'
-                                            ? { bg: 'bg-amber-50 text-amber-700 border-amber-200', icon: <PieIcon size={14} /> }
-                                            : { bg: 'bg-berry/10 text-berry border-berry/20', icon: <CherryBombIcon size={14} /> };
+                                                ? { bg: 'bg-amber-50 text-amber-700 border-amber-200', icon: <PieIcon size={14} /> }
+                                                : { bg: 'bg-berry/10 text-berry border-berry/20', icon: <CherryBombIcon size={14} /> };
 
                                     return (
                                         <div

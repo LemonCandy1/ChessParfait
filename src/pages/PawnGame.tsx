@@ -787,8 +787,8 @@ const PawnGame: React.FC = () => {
 
                                 {/* Winner Overlay */}
                                 {winner && (
-                                    <div className="absolute inset-0 bg-plum/80 backdrop-blur-sm z-50 flex flex-col items-center justify-center p-8 text-center animate-in fade-in duration-500 rounded-lg">
-                                        <div className="w-20 h-20 bg-berry rounded-full flex items-center justify-center mb-6 shadow-2xl shadow-berry/40 text-white animate-bounce">
+                                    <div className="absolute inset-0 bg-plum/80 backdrop-blur-sm z-50 flex flex-col items-center justify-center p-8 text-center animate-in fade-in duration-200 rounded-lg">
+                                        <div className="w-20 h-20 bg-berry rounded-full flex items-center justify-center mb-6 shadow-2xl shadow-berry/40 text-white animate-in zoom-in-75 duration-260 ease-[cubic-bezier(0.34,1.56,0.64,1)]">
                                             <Trophy size={40} />
                                         </div>
                                         <h2 className="text-4xl font-serif font-black text-white mb-2">{winner} Wins!</h2>

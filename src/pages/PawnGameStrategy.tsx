@@ -16,8 +16,8 @@ const PawnGameStrategy: React.FC = () => {
                     <ChevronLeft size={16} /> Back to Game
                 </Link>
 
-                <header className="mb-16">
-                    <h1 className="text-5xl md:text-7xl font-black tracking-tight mb-6">
+                <header className="mb-12">
+                    <h1 className="text-4xl md:text-5xl font-black tracking-tight mb-4 text-plum">
                         Pawn Game <span className="text-berry italic">Strategy</span>
                     </h1>
                     <p className="text-xl text-plum/60 leading-relaxed font-medium">

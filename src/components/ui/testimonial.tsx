@@ -45,19 +45,15 @@ function ClientFeedback() {
       y: 0,
       opacity: 1,
       scale: 1,
-      filter: "blur(0px)",
       transition: {
-        type: "spring",
-        stiffness: 100,
-        damping: 15,
-        delay: i * 0.1,
-        duration: 0.5,
+        duration: 0.45,
+        ease: [0.23, 1, 0.32, 1], // Emil's signature --ease-out curve
+        delay: i * 0.08,
       },
     }),
     hidden: {
-      filter: "blur(10px)",
-      y: 30,
-      scale: 0.9,
+      y: 24,
+      scale: 0.98,
       opacity: 0,
     },
   };
@@ -65,14 +61,11 @@ function ClientFeedback() {
   return (
     <div className="w-full bg-cream/30 border-b border-plum/5 py-24 z-10 relative">
       <section className="relative h-full max-w-7xl mx-auto px-6 md:px-12" ref={testimonialRef}>
-        <article className="max-w-3xl text-left space-y-4 mb-16" >
-          <TimelineContent as="span" className="text-[10px] font-black bg-berry/10 text-berry border border-berry/20 px-3.5 py-1 rounded-full uppercase tracking-widest inline-block" animationNum={0} customVariants={revealVariants} timelineRef={testimonialRef}>
-            Student Success
+        <article className="max-w-3xl text-left space-y-3 mb-16">
+          <TimelineContent as="h2" className="text-4xl md:text-5xl font-black tracking-tight text-plum" animationNum={0} customVariants={revealVariants} timelineRef={testimonialRef}>
+            Student Reviews & Coaching Highlights
           </TimelineContent>
-          <TimelineContent as="h2" className="text-4xl md:text-5xl font-black tracking-tight text-plum" animationNum={1} customVariants={revealVariants} timelineRef={testimonialRef}>
-            Reviews from the Coaching Sessions
-          </TimelineContent>
-          <TimelineContent as="p" className="text-lg text-plum/60 font-medium leading-relaxed" animationNum={2} customVariants={revealVariants} timelineRef={testimonialRef}>
+          <TimelineContent as="p" className="text-lg text-plum/75 font-medium leading-relaxed" animationNum={1} customVariants={revealVariants} timelineRef={testimonialRef}>
             See how student players refined their chess intuition and broke rating plateaus under FM Luis Chan's guidance.
           </TimelineContent>
         </article>
@@ -86,10 +79,11 @@ function ClientFeedback() {
             return (
               <TimelineContent
                 key={index}
-                animationNum={3 + index}
+                animationNum={2 + index}
                 customVariants={revealVariants}
                 timelineRef={testimonialRef}
-                className={`flex flex-col justify-between relative ${cardBg} text-cream overflow-hidden rounded-[2.5rem] border p-8 shadow-xl min-h-[250px] transition-all hover:shadow-2xl hover:-translate-y-1 duration-300`}
+                whileHover={{ y: -4, transition: { duration: 0.2, ease: [0.23, 1, 0.32, 1] } }}
+                className={`flex flex-col justify-between relative ${cardBg} text-cream overflow-hidden rounded-[2.5rem] border p-8 shadow-xl min-h-[250px] transition-shadow duration-200 hover:shadow-2xl`}
               >
                 <div className="absolute bottom-0 left-0 right-0 top-0 bg-[linear-gradient(to_right,#ffffff1a_1px,transparent_1px),linear-gradient(to_bottom,#ffffff1a_1px,transparent_1px)] bg-[size:50px_56px] [mask-image:radial-gradient(ellipse_80%_50%_at_50%_0%,#000_70%,transparent_110%)] pointer-events-none"></div>
 
@@ -103,7 +97,7 @@ function ClientFeedback() {
                     <Quote className="text-white/10 w-8 h-8 transform -scale-x-100" />
                   </div>
 
-                  <p className="text-base md:text-lg leading-relaxed text-cream/90 font-medium italic whitespace-pre-line">
+                  <p className="text-base md:text-lg leading-relaxed text-cream/95 font-medium italic whitespace-pre-line">
                     "{t.quote}"
                   </p>
 
@@ -113,7 +107,7 @@ function ClientFeedback() {
                     </div>
                     <div>
                       <h3 className="font-serif font-black text-white text-lg leading-tight">{t.name}</h3>
-                      <p className="text-xs text-cream/60 font-bold uppercase tracking-widest mt-0.5">{t.role}</p>
+                      <p className="text-xs text-cream/85 font-bold uppercase tracking-wider mt-0.5">{t.role}</p>
                     </div>
                   </div>
                 </div>

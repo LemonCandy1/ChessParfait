@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Menu, X, User, LogOut, ChevronDown, Trophy, Sparkles, Cpu } from 'lucide-react';
 import logo from '../../assets/Logo-bg-removed.png';
@@ -10,6 +10,16 @@ const Navbar = () => {
     const { user, logout } = useAuth();
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const [isProfileOpen, setIsProfileOpen] = useState(false);
+    const [isProfileMounted, setIsProfileMounted] = useState(false);
+
+    useEffect(() => {
+        if (isProfileOpen) {
+            setIsProfileMounted(true);
+        } else {
+            const timer = setTimeout(() => setIsProfileMounted(false), 160);
+            return () => clearTimeout(timer);
+        }
+    }, [isProfileOpen]);
 
     const toggleMenu = () => setIsMobileMenuOpen(!isMobileMenuOpen);
     const closeMenu = () => setIsMobileMenuOpen(false);
@@ -135,7 +145,7 @@ const Navbar = () => {
 
 
                         {/* Profile Dropdown */}
-                        {isProfileOpen && (
+                        {isProfileMounted && (
                             <>
                                 {/* Overlay for click-away */}
                                 <div 
@@ -143,7 +153,11 @@ const Navbar = () => {
                                     onClick={() => setIsProfileOpen(false)}
                                 />
                                 
-                                <div className="absolute right-0 top-full mt-2.5 w-64 bg-white rounded-3xl shadow-2xl border-2 border-plum/15 p-4 z-[9999] animate-in fade-in slide-in-from-top-2 duration-300">
+                                <div className={`absolute right-0 top-full mt-2.5 w-64 bg-white rounded-3xl shadow-2xl border-2 border-plum/15 p-4 z-[9999] origin-top-right transition-[transform,opacity] ${
+                                    isProfileOpen
+                                        ? 'opacity-100 scale-100 translate-y-0 duration-180 ease-[cubic-bezier(0.23,1,0.32,1)]'
+                                        : 'opacity-0 scale-[0.97] -translate-y-1 duration-140 ease-[cubic-bezier(0.4,0,1,1)] pointer-events-none'
+                                }`}>
                                     <div className="px-2 py-1 border-b border-plum/10 pb-3 mb-2">
                                         <div className="flex items-center justify-between gap-2 mb-1">
                                             <p className="text-[9px] font-black uppercase tracking-widest text-plum/30">Logged in as</p>

@@ -68,73 +68,73 @@ export default function Register() {
             <Navbar />
 
             <main className="flex-1 flex items-center justify-center py-12 px-6">
-                <div className="w-full max-w-[420px] bg-white rounded-[2.5rem] border-2 border-plum/15 p-8 md:p-10 shadow-inner backdrop-blur-sm animate-in fade-in zoom-in-95 duration-500">
+                <div className="w-full max-w-[420px] bg-white rounded-[2.5rem] border-2 border-plum/15 p-8 md:p-10 shadow-lg shadow-plum/5 backdrop-blur-sm animate-fade-up">
                     <div className="mb-6">
                         <Link 
                             to="/" 
-                            className="inline-flex items-center gap-2 text-plum/40 hover:text-berry font-bold uppercase text-[10px] tracking-widest transition-colors mb-4"
+                            className="inline-flex items-center gap-2 text-plum/60 hover:text-berry font-bold uppercase text-[10px] tracking-widest transition-colors mb-4"
                         >
                             <ArrowLeft size={12} /> Back to home
                         </Link>
-                        <h2 className="text-4xl font-serif font-black tracking-tight mb-2">Create Account</h2>
-                        <p className="text-xs text-plum/50 font-bold">Register a new username and password. Saved locally in cache.</p>
+                        <h2 className="text-3xl md:text-4xl font-serif font-black tracking-tight mb-2 text-plum">Create Account</h2>
+                        <p className="text-xs text-plum/70 font-semibold">Register a new username and password.</p>
                     </div>
 
                     <form onSubmit={handleSubmit} className="space-y-4">
                         {errorMsg && (
-                            <div className="p-3 bg-red-50 text-red-600 rounded-xl border border-red-150 text-[11px] font-bold flex items-center gap-2">
+                            <div className="p-3.5 bg-rose-50 text-rose-700 rounded-xl border border-rose-200 text-xs font-bold flex items-center gap-2 animate-fade-up">
                                 <AlertCircle size={16} className="flex-shrink-0" />
                                 <span>{errorMsg}</span>
                             </div>
                         )}
                         {successMsg && (
-                            <div className="p-3 bg-emerald-50 text-emerald-600 rounded-xl border border-emerald-150 text-[11px] font-bold flex items-center gap-2">
+                            <div className="p-3.5 bg-emerald-50 text-emerald-800 rounded-xl border border-emerald-200 text-xs font-bold flex items-center gap-2 animate-fade-up">
                                 <Check size={16} className="flex-shrink-0" />
                                 <span>{successMsg}</span>
                             </div>
                         )}
 
                         <div className="space-y-1">
-                            <label className="block text-[9px] font-black uppercase tracking-widest text-plum/40 ml-2">Username</label>
+                            <label className="block text-[10px] font-bold uppercase tracking-wider text-plum/70 ml-2">Username</label>
                             <div className="relative">
-                                <User className="absolute left-3.5 top-1/2 -translate-y-1/2 text-plum/30" size={16} />
+                                <User className="absolute left-3.5 top-1/2 -translate-y-1/2 text-plum/45" size={16} />
                                 <input
                                     type="text"
                                     required
                                     placeholder="Choose username"
                                     value={username}
                                     onChange={(e) => setUsername(e.target.value)}
-                                    className="w-full bg-cream/50 border-2 border-plum/10 rounded-xl pl-10 pr-4 py-3 text-plum focus:outline-none focus:border-berry transition-all font-bold text-sm"
+                                    className="w-full bg-cream/40 border-2 border-plum/15 rounded-xl pl-10 pr-4 py-3 text-plum focus:outline-none focus:border-berry focus:ring-4 focus:ring-berry/15 focus:bg-white transition-[border-color,box-shadow,background-color] duration-150 font-semibold text-sm"
                                 />
                             </div>
                         </div>
 
                         <div className="space-y-1">
-                            <label className="block text-[9px] font-black uppercase tracking-widest text-plum/40 ml-2">Password</label>
+                            <label className="block text-[10px] font-bold uppercase tracking-wider text-plum/70 ml-2">Password</label>
                             <div className="relative">
-                                <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 text-plum/30" size={16} />
+                                <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 text-plum/45" size={16} />
                                 <input
                                     type="password"
                                     required
                                     placeholder="Create password"
                                     value={password}
                                     onChange={(e) => setPassword(e.target.value)}
-                                    className="w-full bg-cream/50 border-2 border-plum/10 rounded-xl pl-10 pr-4 py-3 text-plum focus:outline-none focus:border-berry transition-all font-bold text-sm"
+                                    className="w-full bg-cream/40 border-2 border-plum/15 rounded-xl pl-10 pr-4 py-3 text-plum focus:outline-none focus:border-berry focus:ring-4 focus:ring-berry/15 focus:bg-white transition-[border-color,box-shadow,background-color] duration-150 font-semibold text-sm"
                                 />
                             </div>
                         </div>
 
                         <div className="space-y-1">
-                            <label className="block text-[9px] font-black uppercase tracking-widest text-plum/40 ml-2">Confirm Password</label>
+                            <label className="block text-[10px] font-bold uppercase tracking-wider text-plum/70 ml-2">Confirm Password</label>
                             <div className="relative">
-                                <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 text-plum/30" size={16} />
+                                <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 text-plum/45" size={16} />
                                 <input
                                     type="password"
                                     required
                                     placeholder="Repeat password"
                                     value={confirmPassword}
                                     onChange={(e) => setConfirmPassword(e.target.value)}
-                                    className="w-full bg-cream/50 border-2 border-plum/10 rounded-xl pl-10 pr-4 py-3 text-plum focus:outline-none focus:border-berry transition-all font-bold text-sm"
+                                    className="w-full bg-cream/40 border-2 border-plum/15 rounded-xl pl-10 pr-4 py-3 text-plum focus:outline-none focus:border-berry focus:ring-4 focus:ring-berry/15 focus:bg-white transition-[border-color,box-shadow,background-color] duration-150 font-semibold text-sm"
                                 />
                             </div>
                         </div>
@@ -142,17 +142,17 @@ export default function Register() {
                         <button
                             type="submit"
                             disabled={loading}
-                            className="w-full py-4 soft-button-berry shadow-none hover:shadow-none flex items-center justify-center gap-2 text-xs font-bold disabled:opacity-50"
+                            className="w-full py-3.5 soft-button-berry flex items-center justify-center gap-2 text-sm font-bold disabled:opacity-50 mt-4 cursor-pointer"
                         >
                             {loading ? 'Registering...' : 'Register & Log In'}
                         </button>
                     </form>
 
                     <div className="text-center mt-6 border-t border-plum/10 pt-4">
-                        <span className="text-[10px] font-bold text-plum/40">Already have an account? </span>
+                        <span className="text-xs font-bold text-plum/70">Already have an account? </span>
                         <Link 
-                            to="/" 
-                            className="text-[10px] font-black text-berry hover:underline"
+                            to="/login" 
+                            className="text-xs font-black text-berry hover:underline"
                         >
                             Log in here
                         </Link>

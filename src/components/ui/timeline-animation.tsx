@@ -8,6 +8,9 @@ interface TimelineContentProps {
   customVariants?: any;
   timelineRef?: React.RefObject<HTMLDivElement | null>;
   children?: React.ReactNode;
+  whileHover?: any;
+  style?: React.CSSProperties;
+  [key: string]: any;
 }
 
 export function TimelineContent({
@@ -15,7 +18,8 @@ export function TimelineContent({
   className = "",
   animationNum = 0,
   customVariants,
-  children
+  children,
+  ...rest
 }: TimelineContentProps) {
   const MotionComponent = (motion as any)[as] || motion.div;
 
@@ -27,6 +31,7 @@ export function TimelineContent({
       whileInView="visible"
       viewport={{ once: true, margin: "-50px" }}
       custom={animationNum}
+      {...rest}
     >
       {children}
     </MotionComponent>

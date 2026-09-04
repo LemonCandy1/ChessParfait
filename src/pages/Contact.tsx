@@ -34,61 +34,61 @@ export default function Contact() {
             <div className="relative z-50">
                 <Navbar />
             </div>
-            <div className="flex-1 max-w-3xl mx-auto w-full px-6 py-24 relative z-10">
-                <div className="glass p-10 rounded-3xl border-2 border-plum/15 shadow-xl shadow-plum/5">
-                    <h1 className="text-4xl font-bold mb-6 text-center">Contact Me</h1>
-                    <p className="text-plum/70 mb-8 text-center text-lg">
+            <div className="flex-1 max-w-2xl mx-auto w-full px-6 py-16 md:py-24 relative z-10">
+                <div className="glass p-8 md:p-12 rounded-[2.5rem] border-2 border-plum/15 shadow-xl shadow-plum/5 animate-fade-up">
+                    <h1 className="text-4xl md:text-5xl font-bold mb-4 text-center">Contact Me</h1>
+                    <p className="text-plum/80 mb-8 text-center text-base md:text-lg">
                         Have a question or want to book a session? Fill out the form below.
                     </p>
                     
                     {status === 'success' && (
-                        <div className="mb-6 p-4 bg-green-100 text-green-800 rounded-xl font-medium text-center">
+                        <div className="mb-6 p-4 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-2xl font-medium text-center animate-fade-up">
                             Thank you! Your message has been sent successfully.
                         </div>
                     )}
                     
                     {status === 'error' && (
-                        <div className="mb-6 p-4 bg-red-100 text-red-800 rounded-xl font-medium text-center">
+                        <div className="mb-6 p-4 bg-rose-50 border border-rose-200 text-rose-800 rounded-2xl font-medium text-center animate-fade-up">
                             There was an error sending your message. Please try again.
                         </div>
                     )}
 
                     <form onSubmit={handleSubmit} className="space-y-6">
                         <div>
-                            <label htmlFor="name" className="block text-sm font-bold mb-2 ml-1">Name</label>
+                            <label htmlFor="name" className="block text-sm font-bold mb-2 ml-1 text-plum/90">Name</label>
                             <input
                                 id="name"
                                 type="text"
                                 required
                                 value={name}
                                 onChange={(e) => setName(e.target.value)}
-                                className="w-full px-4 py-3 rounded-xl border-2 border-plum/15 bg-white/50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-berry/50 transition-all"
+                                className="w-full px-4 py-3 rounded-xl border-2 border-plum/15 bg-white/60 focus:bg-white focus:outline-none focus:border-berry focus:ring-4 focus:ring-berry/15 transition-[border-color,box-shadow,background-color] duration-150"
                                 placeholder="Your name"
                             />
                         </div>
                         
                         <div>
-                            <label htmlFor="email" className="block text-sm font-bold mb-2 ml-1">Email</label>
+                            <label htmlFor="email" className="block text-sm font-bold mb-2 ml-1 text-plum/90">Email</label>
                             <input
                                 id="email"
                                 type="email"
                                 required
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
-                                className="w-full px-4 py-3 rounded-xl border-2 border-plum/15 bg-white/50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-berry/50 transition-all"
+                                className="w-full px-4 py-3 rounded-xl border-2 border-plum/15 bg-white/60 focus:bg-white focus:outline-none focus:border-berry focus:ring-4 focus:ring-berry/15 transition-[border-color,box-shadow,background-color] duration-150"
                                 placeholder="your@email.com"
                             />
                         </div>
                         
                         <div>
-                            <label htmlFor="question" className="block text-sm font-bold mb-2 ml-1">Question</label>
+                            <label htmlFor="question" className="block text-sm font-bold mb-2 ml-1 text-plum/90">Question</label>
                             <textarea
                                 id="question"
                                 required
                                 value={question}
                                 onChange={(e) => setQuestion(e.target.value)}
                                 rows={5}
-                                className="w-full px-4 py-3 rounded-xl border-2 border-plum/15 bg-white/50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-berry/50 transition-all resize-none"
+                                className="w-full px-4 py-3 rounded-xl border-2 border-plum/15 bg-white/60 focus:bg-white focus:outline-none focus:border-berry focus:ring-4 focus:ring-berry/15 transition-[border-color,box-shadow,background-color] duration-150 resize-none"
                                 placeholder="How can I help you?"
                             />
                         </div>
@@ -96,7 +96,7 @@ export default function Contact() {
                         <button
                             type="submit"
                             disabled={status === 'submitting'}
-                            className="w-full px-8 py-4 bg-berry text-white font-bold rounded-xl hover:bg-berry/90 transition-all transform hover:scale-[1.02] shadow-lg shadow-berry/20 disabled:opacity-50 disabled:hover:scale-100"
+                            className="w-full py-4 soft-button-berry text-base font-bold rounded-xl disabled:opacity-50 disabled:pointer-events-none"
                         >
                             {status === 'submitting' ? 'Sending...' : 'Send Message'}
                         </button>

@@ -27,42 +27,32 @@ export default function Home() {
                 <Navbar />
             </div>
 
-            {/* HERO SECTION WITH INTEGRATED INTUITION QUIZ */}
+            {/* HERO SECTION */}
             <header className="relative pt-16 pb-20 px-6 md:px-12 max-w-7xl mx-auto w-full z-10">
-                <div className="grid lg:grid-cols-12 gap-12 lg:gap-16 items-center">
+                <div className="flex flex-col items-center text-center max-w-3xl mx-auto">
+                    <h1 className="text-5xl md:text-7xl font-black mb-6 leading-[1.08] tracking-tight text-plum">
+                        Perfect Your <span className="text-berry">Chess Intuition</span>
+                    </h1>
 
-                    {/* Left Column: Core Value Proposition */}
-                    <div className="lg:col-span-12 flex flex-col items-center text-center">
+                    <p className="text-lg md:text-xl text-plum/80 font-medium mb-10 leading-relaxed max-w-2xl mx-auto">
+                        Welcome to <span className="font-serif font-black italic text-plum">ChessParfait</span> — a premier training space designed for chess players with interactive games, tactical puzzles, and masterclass instruction.
+                    </p>
 
-
-                        <h1 className="text-5xl md:text-7xl font-black mb-6 leading-[1.1] tracking-tight">
-                            Perfect Your <span className="text-berry">Chess Intuition</span>
-                        </h1>
-
-                        <p className="text-2xl md:text-3xl text-plum font-serif italic font-bold mb-4 leading-relaxed max-w-xl mx-auto">
-                            Welcome to ChessParfait.
-                        </p>
-                        <p className="text-lg md:text-xl text-plum/70 mb-10 leading-relaxed max-w-xl mx-auto">
-                            A premier training space designed for chess players with fun games, puzzles and instructive lessons.
-                        </p>
-
-                        <div className="flex flex-wrap justify-center gap-4 w-full sm:w-auto">
-                            <Link
-                                to="/games"
-                                className="px-8 py-4 bg-berry hover:bg-berry/90 text-white font-bold rounded-2xl transition-all transform hover:scale-[1.02] shadow-lg shadow-berry/20 flex items-center justify-center gap-2 group w-full sm:w-auto text-sm"
-                            >
-                                Play & Learn <ChevronRight size={18} className="group-hover:translate-x-1 transition-transform" />
-                            </Link>
-                            <Link
-                                to="/contact"
-                                className="px-8 py-4 bg-white/70 border-2 border-plum/15 text-plum font-bold rounded-2xl hover:bg-white hover:border-plum/30 transition-all flex items-center justify-center gap-2 w-full sm:w-auto text-sm"
-                            >
-                                Book a Session
-                            </Link>
-                        </div>
+                    <div className="flex flex-wrap justify-center gap-4 w-full sm:w-auto">
+                        <Link
+                            to="/games"
+                            className="soft-button-berry px-8 py-4 flex items-center justify-center gap-2 group w-full sm:w-auto text-sm"
+                        >
+                            <span>Play & Learn</span>
+                            <ChevronRight size={18} className="group-hover:translate-x-1 transition-transform" />
+                        </Link>
+                        <Link
+                            to="/contact"
+                            className="soft-button-outline px-8 py-4 flex items-center justify-center gap-2 w-full sm:w-auto text-sm"
+                        >
+                            <span>Book a Session</span>
+                        </Link>
                     </div>
-
-
                 </div>
             </header>
 
@@ -71,17 +61,17 @@ export default function Home() {
                 <div className="max-w-7xl mx-auto flex flex-wrap justify-around items-center gap-8 text-center">
                     <div className="space-y-1">
                         <span className="block text-4xl font-serif font-black text-white">7+ Years</span>
-                        <span className="text-[10px] uppercase font-black text-cream/50 tracking-widest block">Coaching Experience</span>
+                        <span className="text-[11px] uppercase font-black text-cream/75 tracking-wider block">Coaching Experience</span>
                     </div>
-                    <div className="hidden md:block h-10 w-px bg-white/10" />
+                    <div className="hidden md:block h-10 w-px bg-white/15" />
                     <div className="space-y-1">
                         <span className="block text-4xl font-serif font-black text-berry">5k+ Hrs</span>
-                        <span className="text-[10px] uppercase font-black text-cream/50 tracking-widest block">Instructional Time</span>
+                        <span className="text-[11px] uppercase font-black text-cream/75 tracking-wider block">Instructional Time</span>
                     </div>
-                    <div className="hidden md:block h-10 w-px bg-white/10" />
+                    <div className="hidden md:block h-10 w-px bg-white/15" />
                     <div className="space-y-1">
-                        <span className="block text-4xl font-serif font-black text-white">Online and Offline</span>
-                        <span className="text-[10px] uppercase font-black text-cream/50 tracking-widest block">Support</span>
+                        <span className="block text-4xl font-serif font-black text-white">Online & In-Person</span>
+                        <span className="text-[11px] uppercase font-black text-cream/75 tracking-wider block">Structured Support</span>
                     </div>
                 </div>
             </section>
@@ -89,20 +79,18 @@ export default function Home() {
             {/* COACHING REVIEWS SECTION */}
             <ClientFeedback />
 
-
-
             {/* COACH SHOWCASE: FM LUIS CHAN */}
-            <section className="py-24 px-6 md:px-12 bg-plum text-cream z-10 relative">
-                <div className="absolute inset-0 opacity-10 pointer-events-none">
-                    <div className="absolute top-10 left-10 w-64 h-64 border-4 border-white rounded-full" />
-                    <div className="absolute bottom-10 right-10 w-96 h-96 border-8 border-berry rounded-full" />
+            <section className="py-24 px-6 md:px-12 bg-plum text-cream z-10 relative overflow-hidden">
+                <div className="absolute inset-0 pointer-events-none">
+                    <div className="absolute top-0 right-0 w-96 h-96 bg-berry/15 rounded-full blur-3xl" />
+                    <div className="absolute bottom-0 left-0 w-96 h-96 bg-white/5 rounded-full blur-3xl" />
                 </div>
 
                 <div className="max-w-5xl mx-auto flex flex-col lg:flex-row items-center gap-16 relative z-10">
 
                     {/* Profile Picture Panel */}
                     <div className="relative order-2 lg:order-1 flex-shrink-0">
-                        <div className="w-72 h-[380px] bg-white/10 rounded-[3rem] shadow-2xl overflow-hidden border-8 border-cream transform rotate-2 hover:rotate-0 transition-transform duration-500">
+                        <div className="w-72 h-[380px] bg-white/10 rounded-[2.5rem] shadow-2xl overflow-hidden border-4 border-cream/30">
                             <img
                                 src={profilePicture}
                                 fetchPriority="high"
@@ -125,44 +113,44 @@ export default function Home() {
                             Meet Your Coach, <span className="text-berry">FM Luis Chan</span>
                         </h2>
 
-                        <blockquote className="border-l-4 border-berry pl-4 italic text-cream/80 text-lg leading-relaxed">
+                        <blockquote className="border-l-4 border-berry pl-4 italic text-cream/90 text-lg leading-relaxed">
                             "Chess is not just about memorising lines; it's about learning the subtle logic behind every position and refining your raw intuition."
                         </blockquote>
 
-                        <p className="text-cream/70 leading-relaxed text-sm">
-                            I am a FIDE Master based in Melbourne, Australia. Having coached for over 7 years, I have successfully trained players from complete beginners to competitive players achieving 2000+ FIDE rating milestones.
+                        <p className="text-cream/80 leading-relaxed text-sm">
+                            I am a FIDE Master based in Melbourne, Australia. Having coached for over 7 years, I have successfully trained players from complete beginners to competitive tournament players achieving 2000+ FIDE rating milestones.
                         </p>
 
                         {/* Stats blocks inside Coach section */}
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-6">
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-4">
                             <div className="p-4 bg-white/5 rounded-2xl border border-white/10 text-center">
                                 <span className="block text-2xl font-black text-berry">2280</span>
-                                <span className="text-[10px] text-cream/50 uppercase tracking-widest font-bold">FIDE Rating</span>
+                                <span className="text-[11px] text-cream/80 uppercase tracking-wider font-black">FIDE Rating</span>
                             </div>
                             <div className="p-4 bg-white/5 rounded-2xl border border-white/10 text-center">
                                 <span className="block text-2xl font-black text-white">2318</span>
-                                <span className="text-[10px] text-cream/50 uppercase tracking-widest font-bold">ACF Rating</span>
+                                <span className="text-[11px] text-cream/80 uppercase tracking-wider font-black">ACF Rating</span>
                             </div>
                             <div className="p-4 bg-white/5 rounded-2xl border border-white/10 text-center">
                                 <span className="block text-2xl font-black text-berry">7+ Yrs</span>
-                                <span className="text-[10px] text-cream/50 uppercase tracking-widest font-bold">Experience</span>
+                                <span className="text-[11px] text-cream/80 uppercase tracking-wider font-black">Experience</span>
                             </div>
                             <div className="p-4 bg-white/5 rounded-2xl border border-white/10 text-center">
                                 <span className="block text-2xl font-black text-white">#16</span>
-                                <span className="text-[10px] text-cream/50 uppercase tracking-widest font-bold">Active AUS Rank</span>
+                                <span className="text-[11px] text-cream/80 uppercase tracking-wider font-black">Active AUS Rank</span>
                             </div>
                         </div>
 
-                        <div className="pt-6 flex flex-wrap gap-4">
+                        <div className="pt-4 flex flex-wrap gap-4">
                             <Link
                                 to="/contact"
-                                className="px-8 py-4 bg-berry hover:bg-berry/95 text-white font-bold rounded-2xl transition-all transform hover:scale-[1.02] shadow-xl shadow-berry/30 text-sm"
+                                className="soft-button-berry px-8 py-4 text-sm"
                             >
                                 Secure a Coaching Slot
                             </Link>
                             <Link
                                 to="/about"
-                                className="px-8 py-4 bg-white/10 hover:bg-white/20 border border-white/15 text-white font-bold rounded-2xl transition-all text-sm"
+                                className="px-8 py-4 bg-white/10 hover:bg-white/20 border border-white/20 text-cream font-bold rounded-xl transition-colors text-sm active:scale-95"
                             >
                                 Read My Story
                             </Link>
@@ -173,26 +161,27 @@ export default function Home() {
 
             {/* CALL TO ACTION ZONE */}
             <section className="py-24 px-6 md:px-12 text-center relative z-10 max-w-4xl mx-auto">
-                <div className="space-y-8 bg-cream/30 backdrop-blur-md p-12 md:p-16 rounded-[4rem] border-2 border-plum/15 shadow-lg">
+                <div className="space-y-8 bg-cream/30 backdrop-blur-md p-10 md:p-14 rounded-[2.5rem] border-2 border-plum/15 shadow-lg">
                     <h2 className="text-4xl md:text-5xl font-black text-plum">Let's Perfect Your Chess!</h2>
-                    <p className="text-lg text-plum/70 max-w-xl mx-auto mx-auto leading-relaxed">
+                    <p className="text-lg text-plum/80 max-w-xl mx-auto leading-relaxed font-medium">
                         Improve your rating, solve weekly calculation challenges and prepare for upcoming tournaments with structured support.
                     </p>
                     <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
                         <Link
                             to="/contact"
-                            className="inline-flex items-center gap-3 bg-berry hover:bg-berry/90 text-white px-10 py-5 rounded-2xl font-bold transition-all transform hover:scale-105 shadow-xl shadow-berry/30 text-sm w-full sm:w-auto justify-center"
+                            className="soft-button-berry inline-flex items-center gap-2.5 px-9 py-4 text-sm w-full sm:w-auto justify-center"
                         >
-                            <Mail size={18} /> Contact for Booking
+                            <Mail size={18} />
+                            <span>Contact for Booking</span>
                         </Link>
                         <Link
                             to="/games"
-                            className="inline-flex items-center gap-2 bg-plum hover:bg-plum/90 text-cream px-10 py-5 rounded-2xl font-bold transition-all transform hover:scale-105 shadow-xl shadow-plum/20 text-sm w-full sm:w-auto justify-center"
+                            className="soft-button inline-flex items-center gap-2 px-9 py-4 text-sm w-full sm:w-auto justify-center"
                         >
-                            Explore Variant Games
+                            <span>Explore Variant Games</span>
                         </Link>
                     </div>
-                    <p className="text-xs text-plum/40 font-bold uppercase tracking-widest pt-2">
+                    <p className="text-xs text-plum/50 font-bold uppercase tracking-widest pt-2">
                         Based in Melbourne, Australia • Available Online & Face-to-Face
                     </p>
                 </div>

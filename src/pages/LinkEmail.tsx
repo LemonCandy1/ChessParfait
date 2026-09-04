@@ -71,11 +71,11 @@ export default function LinkEmail() {
             <Navbar />
 
             <main className="flex-1 flex items-center justify-center py-12 px-6">
-                <div className="w-full max-w-[420px] bg-white rounded-[2.5rem] border-2 border-plum/15 p-8 md:p-10 shadow-inner backdrop-blur-sm animate-in fade-in zoom-in-95 duration-500">
+                <div className="w-full max-w-[420px] bg-white rounded-[2.5rem] border-2 border-plum/15 p-8 md:p-10 shadow-lg shadow-plum/5 backdrop-blur-sm animate-fade-up">
                     <div className="mb-6">
                         <Link
                             to="/"
-                            className="inline-flex items-center gap-2 text-plum/40 hover:text-berry font-bold uppercase text-[10px] tracking-widest transition-colors mb-4"
+                            className="inline-flex items-center gap-2 text-plum/60 hover:text-berry font-bold uppercase text-[10px] tracking-widest transition-colors mb-4"
                         >
                             <ArrowLeft size={12} /> Back to home
                         </Link>
@@ -92,24 +92,24 @@ export default function LinkEmail() {
                                 )}
                             </div>
                             <div>
-                                <p className="text-[9px] font-black uppercase tracking-widest text-plum/30">Logged in as</p>
+                                <p className="text-[10px] font-bold uppercase tracking-wider text-plum/60">Logged in as</p>
                                 <h2 className="font-serif font-black text-plum text-xl leading-tight">{user.username}</h2>
                             </div>
                         </div>
-                        <h3 className="text-3xl font-serif font-black tracking-tight mt-3 mb-1">
+                        <h3 className="text-2xl md:text-3xl font-serif font-black tracking-tight mt-3 mb-1 text-plum">
                             {user.email ? 'Change Email' : 'Link Email'}
                         </h3>
                         {user.email ? (
                             <div className="space-y-1.5 mt-2">
-                                <p className="text-xs text-plum/50 font-bold">
+                                <p className="text-xs text-plum/70 font-bold">
                                     Current email: <span className="text-berry font-black">{user.email}</span>
                                 </p>
-                                <p className="text-[10px] text-plum/40 font-bold leading-normal">
+                                <p className="text-xs text-plum/60 font-medium leading-normal">
                                     To change your email, enter a new address below. A confirmation link will be sent to confirm and activate the new address.
                                 </p>
                             </div>
                         ) : (
-                            <p className="text-xs text-plum/50 font-bold">
+                            <p className="text-xs text-plum/70 font-medium">
                                 Add a real email to your account. You can use it to reset your password if you ever forget it.
                             </p>
                         )}
@@ -117,31 +117,31 @@ export default function LinkEmail() {
 
                     <form onSubmit={handleSubmit} className="space-y-4">
                         {errorMsg && (
-                            <div className="p-3 bg-red-50 text-red-600 rounded-xl border border-red-100 text-[11px] font-bold flex items-center gap-2">
+                            <div className="p-3.5 bg-rose-50 text-rose-700 rounded-xl border border-rose-200 text-xs font-bold flex items-center gap-2 animate-fade-up">
                                 <AlertCircle size={16} className="flex-shrink-0" />
                                 <span>{errorMsg}</span>
                             </div>
                         )}
                         {successMsg && (
-                            <div className="p-3 bg-emerald-50 text-emerald-600 rounded-xl border border-emerald-100 text-[11px] font-bold flex items-center gap-2">
+                            <div className="p-3.5 bg-emerald-50 text-emerald-800 rounded-xl border border-emerald-200 text-xs font-bold flex items-center gap-2 animate-fade-up">
                                 <Check size={16} className="flex-shrink-0" />
                                 <span>{successMsg}</span>
                             </div>
                         )}
 
                         <div className="space-y-1">
-                            <label className="block text-[9px] font-black uppercase tracking-widest text-plum/40 ml-2">
+                            <label className="block text-[10px] font-bold uppercase tracking-wider text-plum/70 ml-2">
                                 Email Address
                             </label>
                             <div className="relative">
-                                <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 text-plum/30" size={16} />
+                                <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 text-plum/45" size={16} />
                                 <input
                                     type="email"
                                     required
                                     placeholder="Enter your real email address"
                                     value={email}
                                     onChange={(e) => setEmail(e.target.value)}
-                                    className="w-full bg-cream/50 border-2 border-plum/10 rounded-xl pl-10 pr-4 py-3 text-plum focus:outline-none focus:border-berry transition-all font-bold text-sm"
+                                    className="w-full bg-cream/40 border-2 border-plum/15 rounded-xl pl-10 pr-4 py-3 text-plum focus:outline-none focus:border-berry focus:ring-4 focus:ring-berry/15 focus:bg-white transition-[border-color,box-shadow,background-color] duration-150 font-semibold text-sm"
                                 />
                             </div>
                         </div>
@@ -149,7 +149,7 @@ export default function LinkEmail() {
                         <button
                             type="submit"
                             disabled={loading}
-                            className="w-full py-4 soft-button-berry shadow-none hover:shadow-none flex items-center justify-center gap-2 text-xs font-bold disabled:opacity-50"
+                            className="w-full py-3.5 soft-button-berry flex items-center justify-center gap-2 text-sm font-bold disabled:opacity-50 mt-4 cursor-pointer"
                         >
                             {loading ? (user.email ? 'Updating...' : 'Linking...') : (user.email ? 'Update Email Address' : 'Link Email Address')}
                         </button>

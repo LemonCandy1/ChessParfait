@@ -9,6 +9,9 @@
   
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
   --font-serif: "Playfair Display", ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in: cubic-bezier(0.4, 0, 1, 1);
+  --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
 }
 
 @layer base {
@@ -35,15 +38,48 @@
   }
 
   .soft-button {
-    @apply bg-plum text-cream font-bold rounded-xl shadow-[0_4px_15px_rgb(74,21,75,0.2)] hover:shadow-[0_8px_25px_rgb(74,21,75,0.3)] hover:-translate-y-0.5 transition-all duration-300 active:scale-95 active:translate-y-0;
+    @apply bg-plum text-cream font-bold rounded-xl shadow-[0_4px_15px_rgb(74,21,75,0.2)] hover:shadow-[0_8px_25px_rgb(74,21,75,0.3)];
+    transition: transform 140ms var(--ease-out), box-shadow 140ms ease-out, background-color 140ms ease-out;
   }
 
   .soft-button-berry {
-    @apply bg-berry text-white font-bold rounded-xl shadow-[0_4px_15px_rgb(210,49,87,0.2)] hover:shadow-[0_8px_25px_rgb(210,49,87,0.3)] hover:-translate-y-0.5 transition-all duration-300 active:scale-95 active:translate-y-0;
+    @apply bg-berry text-white font-bold rounded-xl shadow-[0_4px_15px_rgb(210,49,87,0.2)] hover:shadow-[0_8px_25px_rgb(210,49,87,0.3)];
+    transition: transform 140ms var(--ease-out), box-shadow 140ms ease-out, background-color 140ms ease-out;
   }
 
   .soft-button-outline {
-    @apply bg-white border-2 border-plum/10 text-plum font-bold rounded-xl shadow-sm hover:border-berry hover:text-berry hover:shadow-[0_8px_25px_rgb(210,49,87,0.15)] hover:-translate-y-0.5 transition-all duration-300 active:scale-95 active:translate-y-0;
+    @apply bg-white border-2 border-plum/10 text-plum font-bold rounded-xl shadow-sm hover:border-berry hover:text-berry hover:shadow-[0_8px_25px_rgb(210,49,87,0.15)];
+    transition: transform 140ms var(--ease-out), box-shadow 140ms ease-out, border-color 140ms ease-out, color 140ms ease-out;
+  }
+
+  .soft-button:hover,
+  .soft-button-berry:hover,
+  .soft-button-outline:hover {
+    transform: translateY(-2px);
+  }
+
+  .soft-button:active,
+  .soft-button-berry:active,
+  .soft-button-outline:active {
+    transform: translateY(0) scale(0.975);
+    transition-duration: 80ms;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .soft-button,
+    .soft-button-berry,
+    .soft-button-outline {
+      transform: none !important;
+      transition: background-color 140ms ease-out, border-color 140ms ease-out, color 140ms ease-out !important;
+    }
+    .soft-button:hover,
+    .soft-button-berry:hover,
+    .soft-button-outline:hover,
+    .soft-button:active,
+    .soft-button-berry:active,
+    .soft-button-outline:active {
+      transform: none !important;
+    }
   }
 
   .pulse-dot {
@@ -73,4 +109,28 @@
     user-select: none !important;
   }
 }
+
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-up {
+  animation: fadeUp 280ms var(--ease-out) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-fade-up {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+}
+
 

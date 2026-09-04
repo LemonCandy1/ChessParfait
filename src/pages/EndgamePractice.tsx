@@ -555,8 +555,8 @@ export default function EndgamePractice() {
 
                                             {/* Solved Celebration Overlay */}
                                             {showSolvedOverlay && (
-                                                <div className="absolute inset-0 bg-emerald-950/75 backdrop-blur-[2px] z-40 flex flex-col items-center justify-center p-6 text-center animate-in fade-in duration-500">
-                                                    <div className="w-16 h-16 rounded-full bg-emerald-500 text-white flex items-center justify-center mb-3 shadow-xl animate-bounce">
+                                                <div className="absolute inset-0 bg-emerald-950/75 backdrop-blur-[2px] z-40 flex flex-col items-center justify-center p-6 text-center animate-in fade-in duration-200">
+                                                    <div className="w-16 h-16 rounded-full bg-emerald-500 text-white flex items-center justify-center mb-3 shadow-xl animate-in zoom-in-75 duration-260 ease-[cubic-bezier(0.34,1.56,0.64,1)]">
                                                         <PartyPopper size={32} />
                                                     </div>
                                                     <h3 className="font-serif font-black text-2xl text-white mb-1">Target Achieved!</h3>

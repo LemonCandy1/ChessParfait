@@ -1,7 +1,7 @@
 import React from 'react';
 import Navbar from '../components/Navbar/Navbar';
 import { Link } from 'react-router-dom';
-import { ChevronRight, Lock } from 'lucide-react';
+import { ChevronRight, Lock, Cpu } from 'lucide-react';
 import { ChessPawnIcon, PuzzleIcon, RouletteIcon, GhostChefIcon } from '../components/Icons';
 
 interface GameItem {
@@ -21,6 +21,20 @@ interface GameItem {
 
 export default function Games() {
     const gamesList: GameItem[] = [
+        {
+            id: 'endgame-practice',
+            title: 'Endgame Practice Arena',
+            description: 'Master theoretical and practical endgames with tablebase validation.',
+            longDescription: 'Practice Queen vs. Rook, Lucena bridge, Philidor rook defense, and King + Pawn opposition against 7-Piece Syzygy tablebases and masterclass lines.',
+            path: '/EndgamePractice',
+            icon: <Cpu size={48} />,
+            difficulty: 'Cherry Bomb',
+            difficultyColor: 'bg-rose-50 text-berry border-rose-200/50',
+            status: 'Playable',
+            statusColor: 'bg-emerald-50 text-emerald-600 border-emerald-200/50',
+            gradient: 'from-rose-500/10 to-berry/10 hover:from-rose-500/15 hover:to-berry/15',
+            highlightColor: 'group-hover:text-berry',
+        },
         {
             id: 'pawn-game',
             title: 'Pawn Game',
@@ -81,10 +95,6 @@ export default function Games() {
 
     return (
         <div className="min-h-screen bg-cream flex flex-col font-sans text-plum relative overflow-x-clip">
-            {/* Background Decorative Gradients */}
-            <div className="absolute top-0 right-0 -translate-y-1/2 translate-x-1/2 w-[600px] h-[600px] bg-berry/5 rounded-full blur-[120px] -z-10 pointer-events-none" />
-            <div className="absolute bottom-0 left-0 translate-y-1/2 -translate-x-1/2 w-[500px] h-[500px] bg-plum/5 rounded-full blur-[100px] -z-10 pointer-events-none" />
-
             <Navbar />
 
             <main className="flex-1 max-w-7xl mx-auto w-full px-6 py-16 md:py-24 relative z-10">
@@ -100,49 +110,57 @@ export default function Games() {
 
                 {/* Games Cards Grid */}
                 <div className="grid md:grid-cols-2 gap-8 md:gap-12 w-full">
-                    {gamesList.map((game) => {
+                    {gamesList.map((game, index) => {
                         const isComingSoon = game.status === 'Coming Soon';
-                        const cardClass = `group soft-card soft-card-hover rounded-[3rem] p-8 md:p-10 flex flex-col justify-between bg-white/40 backdrop-blur-xl border-2 border-plum/15 hover:-translate-y-2 duration-500 transition-all bg-gradient-to-br ${game.gradient} relative overflow-hidden`;
+                        const cardClass = `group soft-card rounded-[2.5rem] p-8 md:p-10 flex flex-col justify-between bg-white/50 backdrop-blur-xl border-2 border-plum/15 hover:-translate-y-1 hover:shadow-xl transition-[transform,box-shadow] duration-200 ease-out bg-gradient-to-br ${game.gradient} relative overflow-hidden animate-fade-up`;
 
                         const cardInner = (
                             <>
                                 {/* Glow element */}
-                                <div className="absolute -right-24 -top-24 w-48 h-48 bg-white/10 rounded-full blur-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
+                                <div className="absolute -right-24 -top-24 w-48 h-48 bg-white/20 rounded-full blur-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
 
                                 <div>
                                     {/* Header Row: Icon & Status badges */}
-                                    <div className="flex items-start mb-8">
-                                        <div className={`p-4 rounded-[2rem] bg-white shadow-md shadow-plum/5 border-2 border-plum/15 text-plum transition-transform duration-500 group-hover:scale-115 ${game.highlightColor}`}>
+                                    <div className="flex items-center justify-between gap-4 mb-8">
+                                        <div className={`p-4 rounded-2xl bg-white shadow-md shadow-plum/5 border-2 border-plum/15 text-plum transition-transform duration-200 ease-out group-hover:scale-105 ${game.highlightColor}`}>
                                             {game.icon}
+                                        </div>
+                                        <div className="flex flex-wrap items-center justify-end gap-2">
+                                            <span className={`px-3 py-1 rounded-full text-[11px] font-bold tracking-wide border ${game.difficultyColor}`}>
+                                                {game.difficulty}
+                                            </span>
+                                            <span className={`px-3 py-1 rounded-full text-[11px] font-bold tracking-wide border ${game.statusColor}`}>
+                                                {game.status}
+                                            </span>
                                         </div>
                                     </div>
 
                                     {/* Content Section */}
-                                    <div className="space-y-4 mb-8">
-                                        <h2 className="text-3xl font-serif font-black tracking-tight group-hover:text-berry transition-colors duration-300">
+                                    <div className="space-y-3 mb-8">
+                                        <h2 className="text-2xl md:text-3xl font-serif font-black tracking-tight text-plum group-hover:text-berry transition-colors duration-200">
                                             {game.title}
                                         </h2>
-                                        <p className="text-lg font-bold text-plum/70">
+                                        <p className="text-base font-bold text-plum/80 leading-snug">
                                             {game.description}
                                         </p>
-                                        <p className="text-sm leading-relaxed text-plum/50 font-medium">
+                                        <p className="text-sm leading-relaxed text-plum/70 font-normal">
                                             {game.longDescription}
                                         </p>
                                     </div>
                                 </div>
 
                                 {/* Footer Action Button */}
-                                <div className="pt-4 border-t border-plum/5 flex items-center justify-between mt-auto">
+                                <div className="pt-4 border-t border-plum/10 flex items-center justify-between mt-auto">
                                     {isComingSoon ? (
-                                        <span className="inline-flex items-center gap-2 text-plum/30 font-bold uppercase text-[10px] tracking-widest">
+                                        <span className="inline-flex items-center gap-2 text-plum/40 font-bold uppercase text-[11px] tracking-wider">
                                             <Lock size={14} /> Under Construction
                                         </span>
                                     ) : (
                                         <>
-                                            <span className="inline-flex items-center gap-2 text-berry group-hover:text-plum font-black uppercase text-[10px] tracking-widest transition-colors duration-300">
+                                            <span className="inline-flex items-center gap-2 text-berry group-hover:text-plum font-bold uppercase text-[11px] tracking-wider transition-colors duration-200">
                                                 Enter Game
                                             </span>
-                                            <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center text-plum shadow-sm group-hover:bg-berry group-hover:text-white transition-all duration-300 transform group-hover:translate-x-2 border-2 border-plum/15">
+                                            <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center text-plum shadow-sm group-hover:bg-berry group-hover:text-white transition-all duration-200 transform group-hover:translate-x-1 border-2 border-plum/15">
                                                 <ChevronRight size={18} />
                                             </div>
                                         </>
@@ -156,7 +174,7 @@ export default function Games() {
                                 <div
                                     key={game.id}
                                     className={cardClass}
-                                    style={{ cursor: 'default' }}
+                                    style={{ animationDelay: `${index * 60}ms`, cursor: 'default' }}
                                 >
                                     {cardInner}
                                 </div>
@@ -168,6 +186,7 @@ export default function Games() {
                                 key={game.id}
                                 to={game.path}
                                 className={cardClass}
+                                style={{ animationDelay: `${index * 60}ms` }}
                             >
                                 {cardInner}
                             </Link>

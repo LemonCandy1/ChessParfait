@@ -722,16 +722,26 @@ export default function TrainingPuzzles() {
                                         </p>
                                     </div>
 
-                                    {/* Hint Card */}
-                                    {showHint && (
-                                        <div className="p-4 rounded-2xl bg-amber-50 border-2 border-amber-200 text-amber-900 text-xs font-bold leading-relaxed flex items-start gap-2.5 animate-in fade-in duration-300">
-                                            <Lightbulb className="text-amber-600 shrink-0 mt-0.5" size={16} />
-                                            <div>
-                                                <span className="block font-black uppercase tracking-wider text-[10px] text-amber-700 mb-0.5">Tactical Clue</span>
-                                                <span>{currentHint}</span>
+                                    {/* Hint Card (Smooth Grid Accordion) */}
+                                    <div
+                                        className={`grid transition-[grid-template-rows] duration-200 ease-[cubic-bezier(0.23,1,0.32,1)] ${
+                                            showHint ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'
+                                        }`}
+                                    >
+                                        <div className="overflow-hidden">
+                                            <div
+                                                className={`p-4 rounded-2xl bg-amber-50 border-2 border-amber-200 text-amber-900 text-xs font-bold leading-relaxed flex items-start gap-2.5 transition-opacity duration-160 ${
+                                                    showHint ? 'opacity-100 delay-50' : 'opacity-0'
+                                                }`}
+                                            >
+                                                <Lightbulb className="text-amber-600 shrink-0 mt-0.5" size={16} />
+                                                <div>
+                                                    <span className="block font-black uppercase tracking-wider text-[10px] text-amber-700 mb-0.5">Tactical Clue</span>
+                                                    <span>{currentHint}</span>
+                                                </div>
                                             </div>
                                         </div>
-                                    )}
+                                    </div>
 
                                     {/* Solve Action summary */}
                                     {puzzleStatus === 'solved' && (
@@ -767,8 +777,13 @@ export default function TrainingPuzzles() {
             </main>
 
             {/* Success Toast */}
-            <div className={`fixed bottom-12 left-1/2 -translate-x-1/2 bg-plum text-cream px-8 py-4 rounded-3xl font-black shadow-2xl flex items-center gap-3.5 z-100 transition-all duration-700 border border-white/10 text-sm ${showSuccess ? 'opacity-100 translate-y-0 scale-100' : 'opacity-0 translate-y-12 scale-90 pointer-events-none'
-                }`}>
+            <div
+                className={`fixed bottom-12 left-1/2 -translate-x-1/2 bg-plum text-cream px-8 py-4 rounded-3xl font-black shadow-2xl flex items-center gap-3.5 z-100 border border-white/10 text-sm transition-[transform,opacity] ${
+                    showSuccess
+                        ? 'opacity-100 translate-y-0 scale-100 duration-200 ease-[cubic-bezier(0.23,1,0.32,1)]'
+                        : 'opacity-0 translate-y-4 scale-[0.96] duration-150 ease-[cubic-bezier(0.4,0,1,1)] pointer-events-none'
+                }`}
+            >
                 <Sparkles size={20} className="text-amber-300" />
                 <span>{successMessage}</span>
             </div>

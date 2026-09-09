@@ -7,7 +7,7 @@ import {
     ChevronRight,
     RotateCcw,
     Swords,
-    Sparkles,
+    Crown,
     Compass,
     CheckCircle2
 } from 'lucide-react';
@@ -401,7 +401,7 @@ export default function EndgameStrategyModal({
                                 : 'bg-white/80 hover:bg-white text-plum/70 border border-plum/10'
                         }`}
                     >
-                        <Sparkles size={14} />
+                        <Crown size={14} />
                         <span>Queen vs Rook (Philidor)</span>
                     </button>
 
@@ -488,7 +488,7 @@ export default function EndgameStrategyModal({
                             <div className="lg:col-span-6 space-y-4">
                                 <div>
                                     <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-berry/10 text-berry mb-2">
-                                        <Sparkles size={12} />
+                                        <BookOpen size={12} />
                                         <span>Diagram Walkthrough</span>
                                     </div>
                                     <h3 className="text-2xl font-serif font-black text-plum">

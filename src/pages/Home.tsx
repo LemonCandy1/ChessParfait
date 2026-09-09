@@ -29,8 +29,8 @@ export default function Home() {
 
             {/* HERO SECTION */}
             <header className="relative pt-16 pb-20 px-6 md:px-12 max-w-7xl mx-auto w-full z-10">
-                <div className="flex flex-col items-center text-center max-w-3xl mx-auto">
-                    <h1 className="text-5xl md:text-7xl font-black mb-6 leading-[1.08] tracking-tight text-plum">
+                <div className="flex flex-col items-center text-center max-w-5xl mx-auto">
+                    <h1 className="text-3xl sm:text-5xl md:text-6xl lg:text-[4.25rem] xl:text-7xl font-black mb-6 leading-[1.08] tracking-tight text-plum whitespace-nowrap">
                         Perfect Your <span className="text-berry">Chess Intuition</span>
                     </h1>
 

@@ -5,7 +5,6 @@ import {
     Award,
     Crown,
     Calendar,
-    Sparkles,
     CheckCircle2,
     Mail,
     LogOut,
@@ -198,7 +197,7 @@ export default function Profile() {
 
                                 {/* Level badge */}
                                 <div className="absolute -bottom-2 -right-2 bg-plum text-white text-[11px] font-black uppercase px-2.5 py-1 rounded-full shadow-md border-2 border-white flex items-center gap-1 z-10">
-                                    <Sparkles size={12} className="text-amber-300" />
+                                    <Award size={12} className="text-amber-300" />
                                     <span>Lvl {levelInfo.level}</span>
                                 </div>
 
@@ -378,7 +377,7 @@ export default function Profile() {
                                                 Lvl {tier.level}
                                             </span>
                                             {isCurrent ? (
-                                                <Sparkles size={14} className="text-berry" />
+                                                <Award size={14} className="text-berry" />
                                             ) : isUnlocked ? (
                                                 <CheckCircle2 size={14} className="text-emerald-500" />
                                             ) : (

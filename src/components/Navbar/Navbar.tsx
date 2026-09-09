@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Menu, X, User, LogOut, ChevronDown, Trophy, Sparkles, Cpu } from 'lucide-react';
+import { Menu, X, User, LogOut, ChevronDown, Trophy, Award, GraduationCap, BookOpen, Compass } from 'lucide-react';
 import logo from '../../assets/Logo-bg-removed.png';
 import { ChessPawnIcon, RouletteIcon, GhostChefIcon } from '../Icons';
 import { useAuth } from '../../context/AuthContext';
@@ -47,7 +47,7 @@ const Navbar = () => {
                 </div>
 
                 {/* Center: Desktop Navigation Links */}
-                <div className="hidden md:flex absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 items-center justify-center gap-8 lg:gap-10">
+                <div className="hidden md:flex absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 items-center justify-center gap-7 lg:gap-8">
                     <NavLink to="/" label="Home" />
                     
                     {/* Play Link with Dropdown */}
@@ -73,12 +73,6 @@ const Navbar = () => {
                                     icon={<ChessPawnIcon size={18} />} 
                                 />
                                 <DropdownItem 
-                                    to="/EndgamePractice" 
-                                    title="Endgame Practice" 
-                                    description="Tablebase & Stockfish trainer" 
-                                    icon={<Cpu size={18} />} 
-                                />
-                                <DropdownItem 
                                     to="/Challenge_Rulette" 
                                     title="Challenge Rulette" 
                                     description="Draw funny match handicaps" 
@@ -90,6 +84,44 @@ const Navbar = () => {
                                     description="Hidden-information variant" 
                                     icon={<GhostChefIcon size={18} />} 
                                     isComingSoon 
+                                />
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Learn Link with Dropdown */}
+                    <div className="relative group py-2">
+                        <Link
+                            to="/EndgamePractice"
+                            className="text-plum/70 font-bold hover:text-berry transition text-sm md:text-xs uppercase tracking-widest relative block"
+                        >
+                            Learn
+                            <span className="hidden md:block absolute -bottom-1 left-0 w-0 h-0.5 bg-berry transition-all group-hover:w-full"></span>
+                        </Link>
+                        
+                        {/* Dropdown Menu */}
+                        <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 w-72 bg-white rounded-2xl shadow-xl border-2 border-plum/15 py-2 px-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 transform -translate-y-2 group-hover:translate-y-0 z-[10000] before:absolute before:-top-2.5 before:left-0 before:w-full before:h-2.5 before:content-['']">
+                            {/* Arrow indicator */}
+                            <div className="absolute -top-1.5 w-3 h-3 bg-white border-t-2 border-l-2 border-plum/15 rotate-45 left-1/2 -translate-x-1/2" />
+                            
+                            <div className="relative z-10 space-y-0.5">
+                                <DropdownItem 
+                                    to="/EndgamePractice" 
+                                    title="Endgame Practice" 
+                                    description="Tablebase & Stockfish trainer" 
+                                    icon={<GraduationCap size={18} />} 
+                                />
+                                <DropdownItem 
+                                    to="/EndgameStrategy" 
+                                    title="Endgame Strategy" 
+                                    description="Interactive diagrams & master lines" 
+                                    icon={<BookOpen size={18} />} 
+                                />
+                                <DropdownItem 
+                                    to="/PawnGameStrategy" 
+                                    title="Pawn Strategy" 
+                                    description="Key squares, opposition & breaks" 
+                                    icon={<Compass size={18} />} 
                                 />
                             </div>
                         </div>
@@ -162,7 +194,7 @@ const Navbar = () => {
                                         <div className="flex items-center justify-between gap-2 mb-1">
                                             <p className="text-[9px] font-black uppercase tracking-widest text-plum/30">Logged in as</p>
                                             <span className="bg-berry/10 text-berry text-[9px] font-black uppercase px-2 py-0.5 rounded-full flex items-center gap-1">
-                                                <Sparkles size={10} />
+                                                <Award size={10} />
                                                 Lvl {levelInfo.level}
                                             </span>
                                         </div>
@@ -246,6 +278,7 @@ const Navbar = () => {
                 <div className="md:hidden absolute top-full left-0 w-full z-[9999] bg-cream/95 backdrop-blur-xl border-b border-plum/10 shadow-2xl py-8 px-6 flex flex-col items-center gap-6 animate-in slide-in-from-top-2 duration-300">
                     <NavLink to="/" label="Home" onClick={closeMenu} />
                     <NavLink to="/games" label="Play" onClick={closeMenu} />
+                    <NavLink to="/EndgamePractice" label="Learn" onClick={closeMenu} />
                     <NavLink to="/TrainingPuzzles" label="Puzzles" onClick={closeMenu} />
                     {user && (
                         <NavLink to="/profile" label={`Profile (Lvl ${levelInfo.level})`} onClick={closeMenu} />

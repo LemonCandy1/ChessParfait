@@ -5,7 +5,6 @@ import {
     Calendar,
     RotateCcw,
     Trophy,
-    Sparkles,
     LogIn,
     Lightbulb,
     ArrowRight,
@@ -14,7 +13,7 @@ import {
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Chess } from 'chess.js';
-import { Chessboard } from 'react-chessboard';
+import { Chessboard, defaultArrowOptions } from 'react-chessboard';
 import Navbar from '../components/Navbar/Navbar';
 import { supabase } from '../lib/supabaseClient';
 import { ChessCakeSliceIcon, PieIcon, CherryBombIcon } from '../components/Icons';
@@ -22,6 +21,15 @@ import { playMoveSound, playCaptureSound, playWinSound, playLoseSound } from '..
 import localPuzzlesData from '../data/puzzles.json';
 import { useAuth } from '../context/AuthContext';
 import { DIFFICULTY_POINTS } from '../lib/levelSystem';
+
+const customArrowOptions = {
+    ...defaultArrowOptions,
+    color: '#0284c7',
+    secondaryColor: '#ea580c',
+    tertiaryColor: '#059669',
+    opacity: 0.65,
+    activeOpacity: 0.55,
+};
 
 type Difficulty = 'Piece of Cake' | 'Hard Tart' | 'Cherry Bomb';
 
@@ -109,6 +117,9 @@ export default function TrainingPuzzles() {
     });
     const [showHint, setShowHint] = useState(false);
     const [showSolvedOverlay, setShowSolvedOverlay] = useState(false);
+    const [selectedSquare, setSelectedSquare] = useState<string | null>(null);
+    const [lastMove, setLastMove] = useState<{ from: string; to: string } | null>(null);
+    const [circledSquares, setCircledSquares] = useState<string[]>([]);
     const opponentTimerRef = useRef<number | null>(null);
     const solveRedirectTimerRef = useRef<number | null>(null);
 
@@ -215,6 +226,9 @@ export default function TrainingPuzzles() {
         }
         setShowSolvedOverlay(false);
         setWrongAttempts(0);
+        setSelectedSquare(null);
+        setLastMove(null);
+        setCircledSquares([]);
 
         if (selectedDifficulty && weeklyPuzzles && weeklyPuzzles[selectedDifficulty]) {
             setGame(new Chess(weeklyPuzzles[selectedDifficulty].fen));
@@ -239,6 +253,9 @@ export default function TrainingPuzzles() {
             solveRedirectTimerRef.current = null;
         }
         setShowSolvedOverlay(false);
+        setSelectedSquare(null);
+        setLastMove(null);
+        setCircledSquares([]);
 
         if (activePuzzle) {
             setGame(new Chess(activePuzzle.fen));
@@ -321,6 +338,7 @@ export default function TrainingPuzzles() {
 
     // Board Drop Handler
     const onDrop = ({ sourceSquare, targetSquare }: { sourceSquare: string, targetSquare: string | null }) => {
+        setCircledSquares([]);
         if (!targetSquare) return false;
         if (puzzleStatus === 'opponent_turn' || puzzleStatus === 'solved') return false;
 
@@ -371,6 +389,8 @@ export default function TrainingPuzzles() {
                 }
 
                 setGame(gameCopy);
+                setLastMove({ from: sourceSquare, to: targetSquare });
+                setSelectedSquare(null);
                 setShowHint(false);
 
                 const nextStep = stepIndex + 1;
@@ -402,6 +422,7 @@ export default function TrainingPuzzles() {
                                     playMoveSound();
                                 }
                                 setGame(oppGame);
+                                setLastMove({ from: oppMove.from, to: oppMove.to });
 
                                 const stepAfterOpponent = nextStep + 1;
                                 if (stepAfterOpponent < solutionSteps.length) {
@@ -447,6 +468,8 @@ export default function TrainingPuzzles() {
                     playMoveSound();
                 }
                 setGame(gameCopy);
+                setLastMove({ from: sourceSquare, to: targetSquare });
+                setSelectedSquare(null);
                 playWinSound();
                 setPuzzleStatus('solved');
                 setStatusFeedback({
@@ -460,6 +483,103 @@ export default function TrainingPuzzles() {
             return false;
         }
     };
+
+    // Right-click circle handler to toggle circles
+    const handleSquareRightClick = useCallback((square: string) => {
+        setCircledSquares((prev) =>
+            prev.includes(square) ? prev.filter((s) => s !== square) : [...prev, square]
+        );
+    }, []);
+
+    // Click handler for Click-to-Move
+    const handleSquareOrPieceClick = useCallback((square: string) => {
+        setCircledSquares([]);
+        if (puzzleStatus === 'opponent_turn' || puzzleStatus === 'solved') return;
+        const currentTurn = game.turn();
+
+        if (selectedSquare) {
+            if (square === selectedSquare) {
+                setSelectedSquare(null);
+                return;
+            }
+
+            const pieceOnSquare = game.get(square as any);
+            if (pieceOnSquare && pieceOnSquare.color === currentTurn) {
+                setSelectedSquare(square);
+                return;
+            }
+
+            const legalMoves = game.moves({ square: selectedSquare as any, verbose: true });
+            const isLegal = legalMoves.some((m) => m.to === square);
+
+            if (isLegal) {
+                onDrop({ sourceSquare: selectedSquare, targetSquare: square });
+            } else {
+                setSelectedSquare(null);
+            }
+            return;
+        }
+
+        const pieceOnSquare = game.get(square as any);
+        if (pieceOnSquare && pieceOnSquare.color === currentTurn) {
+            setSelectedSquare(square);
+        }
+    }, [game, puzzleStatus, selectedSquare]);
+
+    // Piece drag handler
+    const onPieceDrag = useCallback(({ square }: { square: string | null; isSparePiece?: boolean; piece?: any }) => {
+        setCircledSquares([]);
+        if (!square) return;
+        if (puzzleStatus === 'opponent_turn' || puzzleStatus === 'solved') return;
+        const pieceOnSquare = game.get(square as any);
+        if (pieceOnSquare && pieceOnSquare.color === game.turn()) {
+            setSelectedSquare(square);
+        }
+    }, [game, puzzleStatus]);
+
+    // Dynamic square styles matching endgame boards
+    const squareStyles = useMemo(() => {
+        const styles: Record<string, React.CSSProperties> = {};
+
+        if (lastMove) {
+            styles[lastMove.from] = { backgroundColor: 'rgba(205, 210, 106, 0.45)' };
+            styles[lastMove.to] = { backgroundColor: 'rgba(205, 210, 106, 0.45)' };
+        }
+
+        circledSquares.forEach((sq) => {
+            const existingBg = styles[sq]?.backgroundColor || 'transparent';
+            styles[sq] = {
+                ...styles[sq],
+                background: `radial-gradient(circle, transparent 58%, rgba(235, 87, 87, 0.85) 59%, rgba(235, 87, 87, 0.85) 78%, transparent 79%), ${existingBg}`
+            };
+        });
+
+        if (selectedSquare) {
+            styles[selectedSquare] = { backgroundColor: 'rgba(92, 140, 92, 0.6)' };
+
+            try {
+                const legalMoves = game.moves({ square: selectedSquare as any, verbose: true });
+                legalMoves.forEach((move) => {
+                    const isCapture = move.captured || Boolean(game.get(move.to as any)) || move.flags.includes('e');
+                    if (isCapture) {
+                        styles[move.to] = {
+                            background: 'radial-gradient(circle, transparent 52%, rgba(82, 116, 68, 0.6) 53%, rgba(82, 116, 68, 0.6) 72%, transparent 73%)',
+                            cursor: 'pointer'
+                        };
+                    } else {
+                        styles[move.to] = {
+                            background: 'radial-gradient(circle, rgba(92, 126, 78, 0.65) 19%, transparent 20%)',
+                            cursor: 'pointer'
+                        };
+                    }
+                });
+            } catch (e) {
+                console.error('Error generating legal moves:', e);
+            }
+        }
+
+        return styles;
+    }, [game, selectedSquare, lastMove, circledSquares]);
 
     // Hint generator
     const currentHint = useMemo(() => {
@@ -618,14 +738,26 @@ export default function TrainingPuzzles() {
 
                                 <div className="w-full aspect-square max-w-[440px] mx-auto relative group">
                                     <div className="p-4 soft-card shadow-2xl h-full flex flex-col relative overflow-hidden">
-                                        <div className="w-full h-full rounded-2xl overflow-hidden shadow-inner border-2 border-plum/15 bg-white translate-z-0 relative">
+                                        <div
+                                            className="w-full h-full rounded-2xl overflow-hidden shadow-inner border-2 border-plum/15 bg-white translate-z-0 relative"
+                                            onContextMenu={(e) => e.preventDefault()}
+                                            onClick={() => setCircledSquares([])}
+                                        >
                                             <Chessboard
                                                 options={{
                                                     position: game.fen(),
                                                     boardOrientation: puzzleOrientation,
                                                     onPieceDrop: onDrop,
+                                                    onPieceDrag: onPieceDrag,
+                                                    onPieceClick: ({ square }: any) => handleSquareOrPieceClick(square),
+                                                    onSquareClick: ({ square }: any) => handleSquareOrPieceClick(square),
+                                                    onSquareRightClick: ({ square }: any) => handleSquareRightClick(square),
+                                                    squareStyles: squareStyles,
                                                     darkSquareStyle: { backgroundColor: '#b58863' },
                                                     lightSquareStyle: { backgroundColor: '#f0d9b5' },
+                                                    allowDrawingArrows: true,
+                                                    clearArrowsOnClick: true,
+                                                    arrowOptions: customArrowOptions,
                                                     animationDurationInMs: 250
                                                 }}
                                             />
@@ -711,7 +843,7 @@ export default function TrainingPuzzles() {
                                                 : 'bg-plum/5 border-plum/15 text-plum'
                                         }`}>
                                         {statusFeedback.type === 'celebrate' ? (
-                                            <Sparkles className="text-amber-500 shrink-0" size={20} />
+                                            <Trophy className="text-amber-500 shrink-0" size={20} />
                                         ) : statusFeedback.type === 'error' ? (
                                             <HelpCircle className="text-rose-500 shrink-0" size={20} />
                                         ) : (
@@ -748,7 +880,10 @@ export default function TrainingPuzzles() {
                                         <div className="pt-2 flex flex-col gap-3">
                                             <div className="flex items-center justify-between text-xs font-bold text-plum/70 px-1">
                                                 <span>Calculation complete!</span>
-                                                <span className="text-emerald-600 font-black">All moves verified ✓</span>
+                                                <span className="text-emerald-600 font-black flex items-center gap-1.5">
+                                                    <span>All moves verified</span>
+                                                    <CheckCircle2 size={14} className="text-emerald-600" />
+                                                </span>
                                             </div>
                                             <button
                                                 onClick={() => setSelectedDifficulty(null)}
@@ -784,7 +919,7 @@ export default function TrainingPuzzles() {
                         : 'opacity-0 translate-y-4 scale-[0.96] duration-150 ease-[cubic-bezier(0.4,0,1,1)] pointer-events-none'
                 }`}
             >
-                <Sparkles size={20} className="text-amber-300" />
+                <Trophy size={20} className="text-amber-300" />
                 <span>{successMessage}</span>
             </div>
         </div>

@@ -16,6 +16,7 @@ import Login from './pages/Login';
 import SetupProfile from './pages/SetupProfile';
 import Profile from './pages/Profile';
 import EndgamePractice from './pages/EndgamePractice';
+import EndgameStrategy from './pages/EndgameStrategy';
 import ScrollToTop from './components/ScrollToTop';
 import { AuthProvider } from './context/AuthContext';
 import { GoogleOAuthProvider } from '@react-oauth/google';
@@ -32,6 +33,7 @@ export default function App() {
           <Route path="/Challenge_Rulette" element={<Challenge_Rulette />} />
           <Route path="/TrainingPuzzles" element={<TrainingPuzzles />} />
           <Route path="/EndgamePractice" element={<EndgamePractice />} />
+          <Route path="/EndgameStrategy" element={<EndgameStrategy />} />
           <Route path="/ImposterChess" element={<ImposterChess />} />
           <Route path="/PawnGame" element={<PawnGame />} />
           <Route path="/PawnGameStrategy" element={<PawnGameStrategy />} />

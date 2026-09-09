@@ -2,8 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Chessboard, defaultArrowOptions } from 'react-chessboard';
 
 // High-contrast, uniform square highlights for White and Black pieces
-const WHITE_SQUARE_STYLE: React.CSSProperties = { backgroundColor: 'rgba(16, 185, 129, 0.75)' };
-const BLACK_SQUARE_STYLE: React.CSSProperties = { backgroundColor: 'rgba(220, 38, 38, 0.75)' };
+export const WHITE_SQUARE_STYLE: React.CSSProperties = { backgroundColor: 'rgba(16, 185, 129, 0.75)' };
+export const BLACK_SQUARE_STYLE: React.CSSProperties = { backgroundColor: 'rgba(220, 38, 38, 0.75)' };
 
 const customArrowOptions = {
     ...defaultArrowOptions,
@@ -22,12 +22,13 @@ import {
     Pause,
     Crosshair,
     Swords,
-    Sparkles,
+    Lightbulb,
+    Target,
     AlertTriangle,
     CheckCircle2
 } from 'lucide-react';
 
-interface MoveStep {
+export interface MoveStep {
     san: string;
     moveNumber: string;
     fen: string;
@@ -37,7 +38,7 @@ interface MoveStep {
     arrows?: Array<{ startSquare: string; endSquare: string; color: string }>;
 }
 
-interface DiagramVariation {
+export interface DiagramVariation {
     id: string;
     name: string;
     summary: string;
@@ -51,18 +52,12 @@ interface QueenVsRookGuideProps {
 }
 
 // 1. Philidor 1777 Triangulation Steps
-const TRIANGULATION_STEPS: MoveStep[] = [
+export const TRIANGULATION_STEPS: MoveStep[] = [
     {
         moveNumber: 'Initial Position',
         san: 'Start',
         fen: '1k6/1r6/2K5/Q7/8/8/8/8 w - - 0 1',
-        comment: "Philidor (1777): White's king and queen are optimally placed. The Black king is confined to the rim, and the rook guards the 7th rank. But it is White to move! If it were Black to move, Black would be in zugzwang. White must transfer the turn to Black via triangulation.",
-        highlights: {
-            a5: WHITE_SQUARE_STYLE,
-            c6: WHITE_SQUARE_STYLE,
-            b8: BLACK_SQUARE_STYLE,
-            b7: BLACK_SQUARE_STYLE
-        }
+        comment: "Philidor (1777): White's king and queen are optimally placed. The Black king is confined to the rim, and the rook guards the 7th rank. But it is White to move! If it were Black to move, Black would be in zugzwang. White must transfer the turn to Black via triangulation."
     },
     {
         moveNumber: '1',
@@ -115,7 +110,7 @@ const TRIANGULATION_STEPS: MoveStep[] = [
 ];
 
 // 2. Fork Variations after 3. Qa5
-const FORK_VARIATIONS: DiagramVariation[] = [
+export const FORK_VARIATIONS: DiagramVariation[] = [
     {
         id: 'rb1',
         name: '3... Rb1 (Main Fork on h7)',
@@ -417,19 +412,13 @@ const FORK_VARIATIONS: DiagramVariation[] = [
     }
 ];
 
-// 3. Center to Edge: Herding the Solitary Rook (Dvoretsky 13-3)
-const HERDING_STEPS: MoveStep[] = [
+// 3. Center to Edge: Herding the Solitary Rook (Master Technique 13-3)
+export const HERDING_STEPS: MoveStep[] = [
     {
         moveNumber: 'Initial Position',
-        san: 'FEN 13-3',
+        san: 'Position 13-3',
         fen: '8/8/8/2K5/5r2/4k3/8/Q7 b - - 0 1',
-        comment: 'Dvoretsky 13-3: Black has king on e3 and rook on f4 in the open board. Under time controls (e.g. Svidler vs Gelfand 2001 Moscow World Championship), grandmasters often fail to outplay the rook within 50 moves without strict geometric technique.',
-        highlights: {
-            a1: WHITE_SQUARE_STYLE,
-            c5: WHITE_SQUARE_STYLE,
-            e3: BLACK_SQUARE_STYLE,
-            f4: BLACK_SQUARE_STYLE
-        }
+        comment: 'Master Technique 13-3: Black has king on e3 and rook on f4 in the open board. Under time controls (e.g. Svidler vs Gelfand 2001 Moscow World Championship), grandmasters often fail to outplay the rook within 50 moves without strict geometric technique.'
     },
     {
         moveNumber: '1...',
@@ -594,6 +583,122 @@ const HERDING_STEPS: MoveStep[] = [
             f4: BLACK_SQUARE_STYLE,
             g3: BLACK_SQUARE_STYLE
         }
+    },
+    {
+        moveNumber: '12...',
+        san: '12... Rg4',
+        fen: '8/8/8/7Q/6r1/4K1k1/8/8 w - - 1 2',
+        comment: '12... Rg4 (Another possibility is 12...Ra4; White cannot win the rook by force immediately, but must drive the black king away to an edge, place the queen optimally, and then advance the king).',
+        highlights: { g4: BLACK_SQUARE_STYLE }
+    },
+    {
+        moveNumber: '13',
+        san: '13. Qe5+',
+        fen: '8/8/8/4Q3/6r1/4K1k1/8/8 b - - 2 2',
+        comment: '13. Qe5+! Checking the Black King and driving it further toward the corner.',
+        highlights: { e5: WHITE_SQUARE_STYLE }
+    },
+    {
+        moveNumber: '13...',
+        san: '13... Kg2',
+        fen: '8/8/8/4Q3/6r1/4K3/6k1/8 w - - 3 3',
+        comment: '13... Kg2. Defending king steps toward the g2 square.',
+        highlights: { g2: BLACK_SQUARE_STYLE }
+    },
+    {
+        moveNumber: '14',
+        san: '14. Ke2',
+        fen: '8/8/8/4Q3/6r1/8/4K1k1/8 b - - 4 3',
+        comment: '14. Ke2! Zugzwang. White patiently steps the King up, leaving Black with no productive moves.',
+        highlights: { e2: WHITE_SQUARE_STYLE }
+    },
+    {
+        moveNumber: '14...',
+        san: '14... Rg3',
+        fen: '8/8/8/4Q3/8/6r1/4K1k1/8 w - - 5 4',
+        comment: '14... Rg3. The rook is forced to move along the 3rd rank.',
+        highlights: { g3: BLACK_SQUARE_STYLE }
+    },
+    {
+        moveNumber: '15',
+        san: '15. Qh5',
+        fen: '8/8/8/7Q/8/6r1/4K1k1/8 b - - 6 4',
+        comment: '15. Qh5! Squeezing Black further. The Black King is trapped on the rim.',
+        highlights: { h5: WHITE_SQUARE_STYLE }
+    },
+    {
+        moveNumber: '15...',
+        san: '15... Kg1',
+        fen: '8/8/8/7Q/8/6r1/4K3/6k1 w - - 7 5',
+        comment: '15... Kg1. Black King drops to the bottom rank.',
+        highlights: { g1: BLACK_SQUARE_STYLE }
+    },
+    {
+        moveNumber: '16',
+        san: '16. Qd5',
+        fen: '8/8/8/3Q4/8/6r1/4K3/6k1 b - - 8 5',
+        comment: '16. Qd5! Zugzwang. Quiet moves that limit the mobility of enemy pieces or create a zugzwang situation are often much more effective than checks.',
+        highlights: { d5: WHITE_SQUARE_STYLE }
+    },
+    {
+        moveNumber: '16...',
+        san: '16... Rg6',
+        fen: '8/8/6r1/3Q4/8/8/4K3/6k1 w - - 9 6',
+        comment: '16... Rg6 (In case of 16...Rg2+ 17.Kf3 Kh2 18.Qh5+ Kg1 19.Qh4 we arrive at the exact same Philidor position).',
+        highlights: { g6: BLACK_SQUARE_STYLE }
+    },
+    {
+        moveNumber: '17',
+        san: '17. Qd4+',
+        fen: '8/8/6r1/8/3Q4/8/4K3/6k1 b - - 10 6',
+        comment: '17. Qd4+! Central diagonal check, cutting off the King.',
+        highlights: { d4: WHITE_SQUARE_STYLE }
+    },
+    {
+        moveNumber: '17...',
+        san: '17... Kh2',
+        fen: '8/8/6r1/8/3Q4/8/4K2k/8 w - - 11 7',
+        comment: '17... Kh2.',
+        highlights: { h2: BLACK_SQUARE_STYLE }
+    },
+    {
+        moveNumber: '18',
+        san: '18. Qf4+',
+        fen: '8/8/6r1/8/5Q2/8/4K2k/8 b - - 12 7',
+        comment: '18. Qf4+! Driving the King back onto g1.',
+        highlights: { f4: WHITE_SQUARE_STYLE }
+    },
+    {
+        moveNumber: '18...',
+        san: '18... Kg1',
+        fen: '8/8/6r1/8/5Q2/8/4K3/6k1 w - - 13 8',
+        comment: '18... Kg1.',
+        highlights: { g1: BLACK_SQUARE_STYLE }
+    },
+    {
+        moveNumber: '19',
+        san: '19. Kf3',
+        fen: '8/8/6r1/8/5Q2/5K2/8/6k1 b - - 14 8',
+        comment: '19. Kf3! Decisive king opposition. Black is completely paralyzed.',
+        highlights: { f3: WHITE_SQUARE_STYLE }
+    },
+    {
+        moveNumber: '19...',
+        san: '19... Rg2',
+        fen: '8/8/8/8/5Q2/5K2/6r1/6k1 w - - 15 9',
+        comment: '19... Rg2. The only legal move to defend against mate.',
+        highlights: { g2: BLACK_SQUARE_STYLE }
+    },
+    {
+        moveNumber: '20',
+        san: '20. Qh4',
+        fen: '8/8/8/8/7Q/5K2/6r1/6k1 b - - 16 9',
+        comment: '20. Qh4! White wins! Black is in zugzwang in the classic Philidor Position. Any king move or rook move along the 2nd rank loses immediately to Queen double attacks.',
+        highlights: {
+            h4: WHITE_SQUARE_STYLE,
+            g1: BLACK_SQUARE_STYLE,
+            g2: BLACK_SQUARE_STYLE
+        }
     }
 ];
 
@@ -710,7 +815,7 @@ export default function QueenVsRookGuide({ onLoadPosition, onClose }: QueenVsRoo
                         How to Win <span className="text-berry italic">Queen vs. Rook</span>
                     </h2>
                     <p className="text-xs md:text-sm text-plum/70 font-medium max-w-2xl">
-                        Based on François-André Danican Philidor (1777) and Mark Dvoretsky's Endgame Manual (Chapter 13). Master triangulation, zugzwang, and geometric royal forks.
+                        Based on François-André Danican Philidor (1777) and classical endgame theory. Master triangulation, zugzwang, and geometric royal forks.
                     </p>
                 </div>
 
@@ -751,7 +856,7 @@ export default function QueenVsRookGuide({ onLoadPosition, onClose }: QueenVsRoo
                         : 'bg-white text-plum/70 border-plum/15 hover:bg-cream'
                         }`}
                 >
-                    3. Herding to Edge (13-3)
+                    3. Herding to Edge (13-3 & 13-4)
                 </button>
                 <button
                     onClick={() => setActiveTab('rules')}
@@ -771,7 +876,7 @@ export default function QueenVsRookGuide({ onLoadPosition, onClose }: QueenVsRoo
                         {/* Diagram Interactive Board */}
                         <div className="lg:col-span-6 flex flex-col items-center">
                             <div className="flex items-center gap-1.5 text-[10px] font-bold text-plum/60 bg-cream/80 px-2.5 py-1 rounded-lg border border-plum/10 mb-2">
-                                <Sparkles size={12} className="text-berry shrink-0" />
+                                <Target size={12} className="text-berry shrink-0" />
                                 <span>Right-click & drag to draw arrows • Left-click to clear all arrows</span>
                             </div>
                             <div
@@ -892,9 +997,31 @@ export default function QueenVsRookGuide({ onLoadPosition, onClose }: QueenVsRoo
                                 </div>
                             </div>
 
+                            {/* Clickable Move Notation on the right */}
+                            <div className="space-y-1.5">
+                                <div className="text-[11px] font-black uppercase tracking-wider text-plum/50">
+                                    Interactive Move Notation (Click to Jump)
+                                </div>
+                                <div className="flex flex-wrap gap-1 p-2.5 bg-white rounded-xl border border-plum/10 shadow-inner">
+                                    {TRIANGULATION_STEPS.map((step, idx) => (
+                                        <button
+                                            key={idx}
+                                            onClick={() => { setIsTriPlaying(false); setTriStepIndex(idx); }}
+                                            className={`px-2.5 py-1 rounded-lg text-xs font-mono font-bold transition-all ${
+                                                triStepIndex === idx
+                                                    ? 'bg-[#0284c7] text-white shadow-xs'
+                                                    : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200'
+                                            }`}
+                                        >
+                                            {step.san}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
                             <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200/80 text-xs text-amber-900 space-y-2">
                                 <div className="flex items-center gap-2 font-black text-amber-800 uppercase tracking-wider">
-                                    <Sparkles size={14} />
+                                    <Lightbulb size={14} />
                                     <span>Why Triangulation Works</span>
                                 </div>
                                 <p className="leading-relaxed">
@@ -938,17 +1065,12 @@ export default function QueenVsRookGuide({ onLoadPosition, onClose }: QueenVsRoo
                         {/* Interactive Board */}
                         <div className="lg:col-span-6 flex flex-col items-center">
                             <div className="flex items-center gap-1.5 text-[10px] font-bold text-plum/60 bg-cream/80 px-2.5 py-1 rounded-lg border border-plum/10 mb-2">
-                                <Sparkles size={12} className="text-berry shrink-0" />
+                                <Target size={12} className="text-berry shrink-0" />
                                 <span>Right-click & drag to draw arrows • Left-click to clear all arrows</span>
                             </div>
                             <div
                                 className="w-full aspect-square max-w-[380px] bg-white rounded-2xl border-2 border-plum/15 shadow-inner p-3 overflow-hidden relative select-none cursor-pointer"
                                 onContextMenu={(e) => e.preventDefault()}
-                                onMouseDown={(e) => {
-                                    if (e.button === 0) {
-                                        setForkArrows([]);
-                                    }
-                                }}
                             >
                                 <Chessboard
                                     options={{
@@ -961,12 +1083,6 @@ export default function QueenVsRookGuide({ onLoadPosition, onClose }: QueenVsRoo
                                         arrows: forkArrows,
                                         allowDrawingArrows: true,
                                         clearArrowsOnClick: true,
-                                        onSquareClick: () => {
-                                            setForkArrows([]);
-                                        },
-                                        onPieceClick: () => {
-                                            setForkArrows([]);
-                                        },
                                         arrowOptions: customArrowOptions,
                                         alphaNotationStyle: {
                                             fontSize: '9px',
@@ -1026,7 +1142,7 @@ export default function QueenVsRookGuide({ onLoadPosition, onClose }: QueenVsRoo
                                 </button>
                                 {onLoadPosition && (
                                     <button
-                                        onClick={() => onLoadPosition(activeForkStep.fen, 'w', `Refutation: ${currentForkVariation.name}`)}
+                                        onClick={() => onLoadPosition(activeForkStep.fen, 'w', `Fork Variation (${currentForkVariation.name})`)}
                                         className="px-3 py-2 rounded-xl border-2 border-emerald-600 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-black text-xs uppercase tracking-wider transition-colors shadow-sm"
                                         title="Practice on Trainer Board"
                                     >
@@ -1071,13 +1187,35 @@ export default function QueenVsRookGuide({ onLoadPosition, onClose }: QueenVsRoo
                                 </div>
                             </div>
 
+                            {/* Clickable Move Notation for Fork steps */}
+                            <div className="space-y-1.5">
+                                <div className="text-[11px] font-black uppercase tracking-wider text-plum/50">
+                                    Interactive Move Notation (Click to Jump)
+                                </div>
+                                <div className="flex flex-wrap gap-1 p-2.5 bg-white rounded-xl border border-plum/10 shadow-inner">
+                                    {currentForkVariation.steps.map((step, idx) => (
+                                        <button
+                                            key={idx}
+                                            onClick={() => { setIsForkPlaying(false); setForkStepIndex(idx); }}
+                                            className={`px-2.5 py-1 rounded-lg text-xs font-mono font-bold transition-all ${
+                                                forkStepIndex === idx
+                                                    ? 'bg-[#0284c7] text-white shadow-xs'
+                                                    : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200'
+                                            }`}
+                                        >
+                                            {step.san}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
                             <div className="p-4 rounded-2xl bg-emerald-50 border border-emerald-200/80 text-xs text-emerald-900 space-y-2">
                                 <div className="flex items-center gap-2 font-black text-emerald-800 uppercase tracking-wider">
                                     <Crosshair size={14} />
                                     <span>Geometry of the Double Attack</span>
                                 </div>
                                 <p className="leading-relaxed">
-                                    Because Black's king is pinned on the rim, the Queen coordinates checks on the open board while aligning with the abandoned rook. The rook cannot protect itself from diagonal + horizontal attacks!
+                                    Because Black&apos;s king is pinned on the rim, the Queen coordinates checks on the open board while aligning with the abandoned rook. The rook cannot protect itself from diagonal + horizontal attacks!
                                 </p>
                             </div>
                         </div>
@@ -1096,7 +1234,7 @@ export default function QueenVsRookGuide({ onLoadPosition, onClose }: QueenVsRoo
                         {/* Interactive Board */}
                         <div className="lg:col-span-6 flex flex-col items-center">
                             <div className="flex items-center gap-1.5 text-[10px] font-bold text-plum/60 bg-cream/80 px-2.5 py-1 rounded-lg border border-plum/10 mb-2">
-                                <Sparkles size={12} className="text-berry shrink-0" />
+                                <Target size={12} className="text-berry shrink-0" />
                                 <span>Right-click & drag to draw arrows • Left-click to clear all arrows</span>
                             </div>
                             <div
@@ -1208,10 +1346,32 @@ export default function QueenVsRookGuide({ onLoadPosition, onClose }: QueenVsRoo
                                     </span>
                                 </div>
                                 <h3 className="text-xl font-serif font-black text-plum">
-                                    Herding Black's King to the Flank
+                                    Herding Black&apos;s King to the Flank (13-3 & 13-4)
                                 </h3>
                                 <div className="p-4 rounded-2xl bg-cream border border-plum/10 text-xs font-medium leading-relaxed text-plum/80">
                                     {activeHerdStep.comment}
+                                </div>
+                            </div>
+
+                            {/* Clickable Move Notation for Herding */}
+                            <div className="space-y-1.5">
+                                <div className="text-[11px] font-black uppercase tracking-wider text-plum/50">
+                                    Interactive Move Notation (Click to Jump)
+                                </div>
+                                <div className="flex flex-wrap gap-1 max-h-36 overflow-y-auto p-2.5 bg-white rounded-xl border border-plum/10 shadow-inner">
+                                    {HERDING_STEPS.map((step, idx) => (
+                                        <button
+                                            key={idx}
+                                            onClick={() => { setIsHerdPlaying(false); setHerdStepIndex(idx); }}
+                                            className={`px-2.5 py-1 rounded-lg text-xs font-mono font-bold transition-all ${
+                                                herdStepIndex === idx
+                                                    ? 'bg-[#0284c7] text-white shadow-xs'
+                                                    : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200'
+                                            }`}
+                                        >
+                                            {step.san}
+                                        </button>
+                                    ))}
                                 </div>
                             </div>
 
@@ -1222,8 +1382,8 @@ export default function QueenVsRookGuide({ onLoadPosition, onClose }: QueenVsRoo
                                 </div>
                                 <ul className="space-y-1.5 list-disc pl-4 text-plum/70">
                                     <li><strong>Diagonal Restriction:</strong> Queen moves like 2.Qd4+, 3.Qg4+, and 9.Qh5+ slice the board into smaller boxes.</li>
-                                    <li><strong>King Advance:</strong> Only step your King up when the defending King cannot escape (e.g. 5.Kd4, 10.Kd3, 11.Ke4).</li>
-                                    <li><strong>Double Attack Threats:</strong> Moves like 7.Qc6+ prevent defensive counterplay like 7...Ke3 because 8.Qc5+ forks king and rook.</li>
+                                    <li><strong>King Advance:</strong> Only step your King up when the defending King cannot escape (e.g. 5.Kd4, 10.Kd3, 11.Ke4, 14.Ke2, 19.Kf3).</li>
+                                    <li><strong>Zugzwang Squeezes:</strong> Moves like 14.Ke2, 16.Qd5, and 20.Qh4 place Black into zugzwang where any move loses.</li>
                                 </ul>
                             </div>
                         </div>

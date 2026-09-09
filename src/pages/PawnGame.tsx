@@ -48,6 +48,7 @@ const PawnGame: React.FC = () => {
     const [winner, setWinner] = useState<string | null>(null);
     const [isThinking, setIsThinking] = useState(false);
     const [lastMove, setLastMove] = useState<Move | null>(null);
+    const [circledSquares, setCircledSquares] = useState<string[]>([]);
     const [history, setHistory] = useState<{ board: Board, turn: typeof WHITE | typeof BLACK, ep: [number, number] | null, lastMove: Move | null }[]>([]);
     const [loadedPieces, setLoadedPieces] = useState<Record<string, boolean>>({});
     const hasRecordedRef = useRef(false);
@@ -64,10 +65,18 @@ const PawnGame: React.FC = () => {
         setEnPassantTarget(null);
         setSelectedSquare(null);
         setLastMove(null);
+        setCircledSquares([]);
         setWinner(null);
         setHistory([]);
         setLoadedPieces({});
         hasRecordedRef.current = false;
+    }, []);
+
+    const handleSquareRightClick = useCallback((r: number, c: number) => {
+        const key = `${r}-${c}`;
+        setCircledSquares((prev) =>
+            prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key]
+        );
     }, []);
 
     useEffect(() => {
@@ -461,6 +470,7 @@ const PawnGame: React.FC = () => {
 
     // Human Interaction
     const handleSquareClick = (r: number, c: number) => {
+        setCircledSquares([]);
         if (winner || isThinking || turn !== userColor) return;
 
         if (selectedSquare) {
@@ -587,6 +597,7 @@ const PawnGame: React.FC = () => {
     };
 
     const handleDragStart = (r: number, c: number) => {
+        setCircledSquares([]);
         if (winner || isThinking || turn !== userColor) return;
         if (board[r][c] === userColor) {
             setSelectedSquare([r, c]);
@@ -594,6 +605,7 @@ const PawnGame: React.FC = () => {
     };
 
     const handleDrop = (r: number, c: number) => {
+        setCircledSquares([]);
         if (winner || isThinking || turn !== userColor || !selectedSquare) return;
         
         const [sr, sc] = selectedSquare;
@@ -694,7 +706,11 @@ const PawnGame: React.FC = () => {
                                 </div>
                             </div>
 
-                            <div className="relative aspect-square w-full max-w-[min(800px,calc(100vh-250px))] shadow-2xl rounded-sm overflow-hidden border-2 border-plum/15">
+                            <div 
+                                onContextMenu={(e) => e.preventDefault()}
+                                onClick={() => setCircledSquares([])}
+                                className="relative aspect-square w-full max-w-[min(800px,calc(100vh-250px))] shadow-2xl rounded-sm overflow-hidden border-2 border-plum/15"
+                            >
                                 <div className="grid grid-cols-8 grid-rows-8 h-full w-full">
                                     {board.map((_row, ri) => {
                                         // If user is Black, we flip the rows (visual only)
@@ -713,6 +729,7 @@ const PawnGame: React.FC = () => {
                                                 (lastMove[2] === displayRi && lastMove[3] === displayCi)
                                             );
                                             const isTarget = legalMovesForSelected.some(m => m[2] === displayRi && m[3] === displayCi);
+                                            const isCircled = circledSquares.includes(`${displayRi}-${displayCi}`);
                                             const hasPiece = currentSquare !== EMPTY;
                                             const pieceKey = `${currentSquare}-${displayRi}-${displayCi}`;
                                             const isPieceLoaded = loadedPieces[pieceKey];
@@ -721,6 +738,10 @@ const PawnGame: React.FC = () => {
                                                 <div 
                                                     key={`${displayRi}-${displayCi}`}
                                                     onClick={() => handleSquareClick(displayRi, displayCi)}
+                                                    onContextMenu={(e) => {
+                                                        e.preventDefault();
+                                                        handleSquareRightClick(displayRi, displayCi);
+                                                    }}
                                                     onDragOver={(e) => e.preventDefault()}
                                                     onDrop={() => handleDrop(displayRi, displayCi)}
                                                     className={`relative flex items-center justify-center cursor-pointer select-none
@@ -729,21 +750,31 @@ const PawnGame: React.FC = () => {
                                                 >
                                                     {/* Last Move Highlight */}
                                                     {isLastMove && (
-                                                        <div className="absolute inset-0 bg-[rgba(155,199,0,0.41)]" />
+                                                        <div className="absolute inset-0 bg-[rgba(205,210,106,0.45)] pointer-events-none" />
                                                     )}
 
                                                     {/* Selected Square Highlight */}
                                                     {isSelected && (
-                                                        <div className="absolute inset-0 bg-[rgba(20,85,30,0.5)]" />
+                                                        <div className="absolute inset-0 bg-[rgba(92,140,92,0.6)] pointer-events-none" />
+                                                    )}
+
+                                                    {/* Right-click circle highlight */}
+                                                    {isCircled && (
+                                                        <div 
+                                                            className="absolute inset-0 pointer-events-none z-30" 
+                                                            style={{
+                                                                background: 'radial-gradient(circle, transparent 58%, rgba(235, 87, 87, 0.85) 59%, rgba(235, 87, 87, 0.85) 78%, transparent 79%)'
+                                                            }} 
+                                                        />
                                                     )}
 
                                                     {/* Capture/Move Indicators */}
                                                     {isTarget && (
-                                                        <div className={`absolute inset-0 flex items-center justify-center z-30 pointer-events-none`}>
+                                                        <div className={`absolute inset-0 flex items-center justify-center z-20 pointer-events-none`}>
                                                             {hasPiece ? (
-                                                                <div className="w-[85%] h-[85%] rounded-full border-[6px] border-[rgba(0,0,0,0.1)]" />
+                                                                <div className="w-[85%] h-[85%] rounded-full border-[5px] border-[rgba(82,116,68,0.6)]" />
                                                             ) : (
-                                                                <div className="w-[25%] h-[25%] rounded-full bg-[rgba(0,0,0,0.1)]" />
+                                                                <div className="w-[28%] h-[28%] rounded-full bg-[rgba(92,126,78,0.65)]" />
                                                             )}
                                                         </div>
                                                     )}

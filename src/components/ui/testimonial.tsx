@@ -24,7 +24,7 @@ const testimonials: Testimonial[] = [
     initials: "LX",
   },
   {
-    quote: "My son absolutely loves his chess coaching with Luis. Every class begins with an interesting puzzle that immediately gets him thinking and sets the tone for an engaging lesson. What impresses us most is how well he understands each child and adapts his teaching to keep every session challenging, interactive, and enjoyable.\n\nHe encourages curiosity, critical thinking, and independent problem solving instead of simply teaching moves. My son genuinely looks forward to every lesson because the classes are interactive, thought-provoking, and fun.\n\nHe is an amazing coach with so much knowledge, and his way of teaching inspires kids to enjoy chess and think for themselves. Definitely from us! 👍👍 A well deserved 5/5 stars. We highly recommend him.",
+    quote: "My son absolutely loves his chess coaching with Luis. Every class begins with an interesting puzzle that immediately gets him thinking and sets the tone for an engaging lesson. What impresses us most is how well he understands each child and adapts his teaching to keep every session challenging, interactive, and enjoyable.\n\nHe encourages curiosity, critical thinking, and independent problem solving instead of simply teaching moves. My son genuinely looks forward to every lesson because the classes are interactive, thought-provoking, and fun.\n\nHe is an amazing coach with so much knowledge, and his way of teaching inspires kids to enjoy chess and think for themselves. Definitely from us! A well deserved 5/5 stars. We highly recommend him.",
     name: "SV",
     role: "Parent",
     initials: "SV",

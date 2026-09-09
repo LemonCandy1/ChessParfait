@@ -1,34 +1,33 @@
-import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
+import { useState, useCallback, useMemo, useRef, useEffect, type CSSProperties } from 'react';
 import { Chess } from 'chess.js';
 import { Chessboard, defaultArrowOptions } from 'react-chessboard';
 import {
     RotateCcw,
-    Sparkles,
     CheckCircle2,
     HelpCircle,
     PartyPopper,
     BookOpen,
     ArrowRight,
+    ArrowLeft,
     Compass,
     Settings,
     Volume2,
     VolumeX,
     Maximize2,
-    Eye,
-    Bot,
     Bell,
-    Check,
     PanelLeftClose,
     PanelLeftOpen,
-    Star,
-    Layers,
-    Lightbulb
+    Search,
+    X,
+    Lightbulb,
+    Star
 } from 'lucide-react';
+import { useSearchParams, Link } from 'react-router-dom';
 import Navbar from '../components/Navbar/Navbar';
 import { playMoveSound, playCaptureSound, playWinSound, playLoseSound } from '../lib/soundEffects';
 import endgamesData from '../data/endgames.json';
 import { endgameEngine, type EngineDefenseMode } from '../lib/stockfishEngine';
-import EndgameStrategyModal from '../components/EndgameStrategyModal';
+import { useAuth } from '../context/AuthContext';
 
 const customArrowOptions = {
     ...defaultArrowOptions,
@@ -43,22 +42,157 @@ export interface EndgamePosition {
     id: string;
     category: string;
     title: string;
+    subtitle?: string;
     fen: string;
     playerColor: 'w' | 'b';
     target: 'win' | 'draw';
     difficulty: 'Piece of Cake' | 'Hard Tart' | 'Cherry Bomb';
+    totalDrills?: number;
+    iconType?: string;
     description: string;
     theoryNotes: string;
     keyTip: string;
 }
 
+// ── Silhouette SVG Icons matching the ChessParfait design ──
+const KeyIcon = () => (
+    <svg viewBox="0 0 64 64" className="w-10 h-10 md:w-11 md:h-11 fill-plum/80 group-hover:fill-berry transition-colors shrink-0">
+        <path d="M48.5 7.5a12.5 12.5 0 0 0-11.8 16.7L11.4 49.5l-3.9 10.6 10.6-3.9 3.5-3.5 4.2 4.2 5.7-5.7-4.2-4.2 5-5 5.7 5.7 5.7-5.7-5.7-5.7 2.3-2.3A12.5 12.5 0 1 0 48.5 7.5zm4 11.5a4 4 0 1 1 0-8 4 4 0 0 1 0 8z" />
+    </svg>
+);
+
+const OppositionIcon = () => (
+    <svg viewBox="0 0 64 64" className="w-10 h-10 md:w-11 md:h-11 fill-plum/80 group-hover:fill-berry transition-colors shrink-0">
+        <rect x="42" y="16" width="12" height="42" rx="3" />
+        <circle cx="20" cy="18" r="6" />
+        <path d="M26 27l-8 7-5-5-4 4 7 7 6-5 4 12h5l-4-15 5-3 10 3v-5l-11-5z" />
+        <path d="M19 45l-7 13h5l4-7 4 7h5l-6-13z" />
+        <path d="M38 20l-4-3m4 8l-5-1m5 8l-5 1" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />
+    </svg>
+);
+
+const RookCastleIcon = () => (
+    <svg viewBox="0 0 64 64" className="w-10 h-10 md:w-11 md:h-11 fill-plum/80 group-hover:fill-berry transition-colors shrink-0">
+        <path d="M14 54h36v-6H14v6zm4-10h28l-3-18H25l-3 18zm26-22v-8h-6v4h-4v-4h-8v4h-4v-4h-6v8h28z" />
+        <path d="M10 58h44v-3H10v3z" />
+    </svg>
+);
+
+const RookTowerIcon = () => (
+    <svg viewBox="0 0 64 64" className="w-10 h-10 md:w-11 md:h-11 fill-plum/80 group-hover:fill-berry transition-colors shrink-0">
+        <path d="M16 12h32v8H16zm4 8l-3 32h20l-3-32zm4 6h16v4H24zm-1 8h18v4H23zm-1 8h20v4H22zM12 56h40v6H12z" />
+    </svg>
+);
+
+const RookKeyholeIcon = () => (
+    <svg viewBox="0 0 64 64" className="w-10 h-10 md:w-11 md:h-11 fill-plum/80 group-hover:fill-berry transition-colors shrink-0">
+        <path d="M14 54h36v-6H14v6zm4-10h28l-3-18H25l-3 18zm14-14a4 4 0 0 0-3 3.9c0 1.5.8 2.8 2 3.5v3.6h2v-3.6c1.2-.7 2-2 2-3.5a4 4 0 0 0-3-3.9zm12-8v-8h-6v4h-4v-4h-8v4h-4v-4h-6v8h28z" />
+        <path d="M10 58h44v-3H10v3z" />
+    </svg>
+);
+
+const RookBreakIcon = () => (
+    <svg viewBox="0 0 64 64" className="w-10 h-10 md:w-11 md:h-11 fill-plum/80 group-hover:fill-berry transition-colors shrink-0">
+        <path d="M14 54h24v-6H14v6zm4-10h18l-1-6-6-2 3-10H25l-3 18zm26-22v-8h-6v4h-4v-4h-8v4h-4v-4h-6v8h28z" />
+        <rect x="42" y="44" width="7" height="6" rx="1" />
+        <rect x="51" y="47" width="5" height="5" rx="1" />
+        <rect x="46" y="34" width="6" height="6" rx="1" />
+        <rect x="53" y="38" width="5" height="5" rx="1" />
+    </svg>
+);
+
+const QueenCrownIcon = () => (
+    <svg viewBox="0 0 64 64" className="w-10 h-10 md:w-11 md:h-11 fill-plum/80 group-hover:fill-berry transition-colors shrink-0">
+        <circle cx="12" cy="18" r="3" />
+        <circle cx="22" cy="14" r="3" />
+        <circle cx="32" cy="12" r="3.5" />
+        <circle cx="42" cy="14" r="3" />
+        <circle cx="52" cy="18" r="3" />
+        <path d="M12 24l5 22h30l5-22-9 9-11-13-11 13z" />
+        <rect x="15" y="48" width="34" height="6" rx="2" />
+    </svg>
+);
+
+const BishopKnightIcon = () => (
+    <svg viewBox="0 0 64 64" className="w-10 h-10 md:w-11 md:h-11 fill-plum/80 group-hover:fill-berry transition-colors shrink-0">
+        <path d="M32 10c-5.5 0-10 6-10 13 0 4.5 2.5 8.5 6 10.8V40h8v-6.2c3.5-2.3 6-6.3 6-10.8 0-7-4.5-13-10-13zm-2 6h4v4h-4zm0 6h4v7h-4zM22 44h20v4H22zm-4 6h28v6H18z" />
+    </svg>
+);
+
+const renderEndgameIcon = (iconType?: string, category?: string) => {
+    switch (iconType) {
+        case 'key':
+            return <KeyIcon />;
+        case 'opposition':
+            return <OppositionIcon />;
+        case 'rook-pawn':
+        case 'rook-passive':
+            return <RookCastleIcon />;
+        case 'rook-tower':
+            return <RookTowerIcon />;
+        case 'rook-key':
+            return <RookKeyholeIcon />;
+        case 'rook-break':
+            return <RookBreakIcon />;
+        case 'queen':
+        case 'queen-herd':
+            return <QueenCrownIcon />;
+        case 'bishop-knight':
+        case 'bishops':
+        case 'rook-bishop':
+            return <BishopKnightIcon />;
+        default:
+            if (category?.includes('Pawn')) return <KeyIcon />;
+            if (category?.includes('Rook')) return <RookCastleIcon />;
+            if (category?.includes('Queen')) return <QueenCrownIcon />;
+            return <BishopKnightIcon />;
+    }
+};
+
 export default function EndgamePractice() {
     const endgames = endgamesData as EndgamePosition[];
+    const [searchParams, setSearchParams] = useSearchParams();
+    const { user } = useAuth();
 
-    // Active endgame selection (defaults to first endgame)
-    const [activeEndgame, setActiveEndgame] = useState<EndgamePosition>(endgames[0]);
-    const [game, setGame] = useState<Chess>(() => new Chess(endgames[0].fen));
-    const [playerColor, setPlayerColor] = useState<'w' | 'b'>(endgames[0].playerColor);
+    // Determine initial endgame from URL param or default
+    const paramId = searchParams.get('id');
+    const matchedEndgame = paramId ? endgames.find(e => e.id === paramId) : null;
+
+    // View Mode: 'catalog' for home selection, 'arena' for 3-column practice
+    const [viewMode, setViewMode] = useState<'catalog' | 'arena'>(matchedEndgame ? 'arena' : 'catalog');
+    const [activeEndgame, setActiveEndgame] = useState<EndgamePosition>(matchedEndgame || endgames[0]);
+
+    // Search and filter state for Catalog
+    const [searchQuery, setSearchQuery] = useState('');
+    const [categoryFilter, setCategoryFilter] = useState<string>('All');
+
+    // Storage Key for user account progress persistence
+    const storageKey = useMemo(() => {
+        return user?.username ? `chessparfait_endgame_progress_${user.username}` : 'chessparfait_endgame_progress_guest';
+    }, [user]);
+
+    // Solved drills count per endgame: { [endgameId: string]: number }
+    const [drillProgress, setDrillProgress] = useState<Record<string, number>>(() => {
+        try {
+            const saved = localStorage.getItem(storageKey);
+            if (saved) return JSON.parse(saved);
+            const guestSaved = localStorage.getItem('chessparfait_endgame_progress_guest');
+            if (guestSaved) return JSON.parse(guestSaved);
+        } catch {}
+        return {};
+    });
+
+    // Reload progress when user logs in/out
+    useEffect(() => {
+        try {
+            const saved = localStorage.getItem(storageKey);
+            if (saved) setDrillProgress(JSON.parse(saved));
+        } catch {}
+    }, [storageKey]);
+
+    // Chess board and calculation state
+    const [game, setGame] = useState<Chess>(() => new Chess((matchedEndgame || endgames[0]).fen));
+    const [playerColor, setPlayerColor] = useState<'w' | 'b'>((matchedEndgame || endgames[0]).playerColor);
     const [defenseMode, setDefenseMode] = useState<EngineDefenseMode>('tablebase_stubborn');
     const [isAiThinking, setIsAiThinking] = useState(false);
     const [liveEval, setLiveEval] = useState<string>('Calculating...');
@@ -69,24 +203,16 @@ export default function EndgamePractice() {
     const [moveCount, setMoveCount] = useState(0);
     const [isSolved, setIsSolved] = useState(false);
     const [showSolvedOverlay, setShowSolvedOverlay] = useState(false);
+    const [selectedSquare, setSelectedSquare] = useState<string | null>(null);
+    const [lastMove, setLastMove] = useState<{ from: string; to: string } | null>(null);
+    const [circledSquares, setCircledSquares] = useState<string[]>([]);
 
     // Layout states
     const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
     const [activeTab, setActiveTab] = useState<'learn' | 'review'>('learn');
-    const [showStrategyModal, setShowStrategyModal] = useState(false);
     const [isSoundMuted, setIsSoundMuted] = useState(false);
     const [showSettingsDropdown, setShowSettingsDropdown] = useState(false);
     const [revealedHint, setRevealedHint] = useState<string | null>(null);
-
-    // Solved & Ratings persistence
-    const [solvedIds, setSolvedIds] = useState<string[]>(() => {
-        try {
-            const saved = localStorage.getItem('chessparfait_solved_endgames');
-            return saved ? JSON.parse(saved) : [];
-        } catch {
-            return [];
-        }
-    });
 
     const [userRatings, setUserRatings] = useState<Record<string, number>>(() => {
         try {
@@ -99,9 +225,26 @@ export default function EndgamePractice() {
 
     const aiTimerRef = useRef<number | null>(null);
 
-    // Group endgames by category
+    // Sync URL parameter with active endgame
+    useEffect(() => {
+        const id = searchParams.get('id');
+        if (id) {
+            const eg = endgames.find(e => e.id === id);
+            if (eg && eg.id !== activeEndgame.id) {
+                setActiveEndgame(eg);
+                setPlayerColor(eg.playerColor);
+                setGame(new Chess(eg.fen));
+                setViewMode('arena');
+            }
+        }
+    }, [searchParams, endgames, activeEndgame.id]);
+
+    // Group endgames by category in strict order
+    const orderedCategoryKeys = ['Pawn Endgames', 'Rook Endgames', 'Queen Endgames', 'Minor Piece Endgames'];
+
     const categorizedEndgames = useMemo(() => {
         const groups: Record<string, EndgamePosition[]> = {};
+        orderedCategoryKeys.forEach(cat => { groups[cat] = []; });
         endgames.forEach((eg) => {
             if (!groups[eg.category]) groups[eg.category] = [];
             groups[eg.category].push(eg);
@@ -109,8 +252,52 @@ export default function EndgamePractice() {
         return groups;
     }, [endgames]);
 
-    // Categories list
-    const categories = useMemo(() => Object.keys(categorizedEndgames), [categorizedEndgames]);
+    // Overall user account progress calculation
+    const progressStats = useMemo(() => {
+        let totalDrills = 0;
+        let completedDrills = 0;
+        let fullyCompletedEndgames = 0;
+
+        endgames.forEach((eg) => {
+            const max = eg.totalDrills || 10;
+            totalDrills += max;
+            const completed = Math.min(max, drillProgress[eg.id] || 0);
+            completedDrills += completed;
+            if (completed >= max) fullyCompletedEndgames++;
+        });
+
+        const percent = totalDrills > 0 ? Math.round((completedDrills / totalDrills) * 100) : 0;
+        return { totalDrills, completedDrills, fullyCompletedEndgames, percent };
+    }, [endgames, drillProgress]);
+
+    // Filter endgames for catalog search
+    const filteredCategorizedEndgames = useMemo(() => {
+        const query = searchQuery.toLowerCase().trim();
+        const filteredGroups: Record<string, EndgamePosition[]> = {};
+
+        orderedCategoryKeys.forEach((cat) => {
+            if (categoryFilter !== 'All' && categoryFilter !== cat) {
+                return;
+            }
+            const list = categorizedEndgames[cat] || [];
+            const matching = list.filter((eg) => {
+                if (!query) return true;
+                return (
+                    eg.title.toLowerCase().includes(query) ||
+                    (eg.subtitle && eg.subtitle.toLowerCase().includes(query)) ||
+                    eg.description.toLowerCase().includes(query) ||
+                    eg.theoryNotes.toLowerCase().includes(query) ||
+                    eg.keyTip.toLowerCase().includes(query) ||
+                    eg.difficulty.toLowerCase().includes(query)
+                );
+            });
+            if (matching.length > 0) {
+                filteredGroups[cat] = matching;
+            }
+        });
+
+        return filteredGroups;
+    }, [categorizedEndgames, searchQuery, categoryFilter]);
 
     // Update live evaluation
     const updateEvaluation = useCallback(async (fen: string) => {
@@ -124,10 +311,12 @@ export default function EndgamePractice() {
 
     // Initial evaluation
     useEffect(() => {
-        updateEvaluation(activeEndgame.fen);
-    }, [activeEndgame, updateEvaluation]);
+        if (viewMode === 'arena') {
+            updateEvaluation(activeEndgame.fen);
+        }
+    }, [activeEndgame, updateEvaluation, viewMode]);
 
-    // Select position
+    // Select position and open practice arena
     const handleSelectEndgame = (endgame: EndgamePosition) => {
         if (aiTimerRef.current) clearTimeout(aiTimerRef.current);
         setActiveEndgame(endgame);
@@ -135,7 +324,11 @@ export default function EndgamePractice() {
         const newGame = new Chess(endgame.fen);
         setGame(newGame);
         setMoveCount(0);
-        setIsSolved(solvedIds.includes(endgame.id));
+        setSelectedSquare(null);
+        setLastMove(null);
+        setCircledSquares([]);
+        const isAlreadyDone = (drillProgress[endgame.id] || 0) >= (endgame.totalDrills || 10);
+        setIsSolved(isAlreadyDone);
         setShowSolvedOverlay(false);
         setIsAiThinking(false);
         setRevealedHint(null);
@@ -147,6 +340,15 @@ export default function EndgamePractice() {
                 : 'Your goal: Defend precisely and hold the theoretical draw!'
         });
         updateEvaluation(endgame.fen);
+        setViewMode('arena');
+        setSearchParams({ id: endgame.id });
+    };
+
+    // Return to catalog
+    const handleReturnToCatalog = () => {
+        if (aiTimerRef.current) clearTimeout(aiTimerRef.current);
+        setViewMode('catalog');
+        setSearchParams({});
     };
 
     // Reset current position
@@ -155,6 +357,9 @@ export default function EndgamePractice() {
         const newGame = new Chess(activeEndgame.fen);
         setGame(newGame);
         setMoveCount(0);
+        setSelectedSquare(null);
+        setLastMove(null);
+        setCircledSquares([]);
         setIsSolved(false);
         setShowSolvedOverlay(false);
         setIsAiThinking(false);
@@ -165,35 +370,6 @@ export default function EndgamePractice() {
         });
         updateEvaluation(activeEndgame.fen);
     }, [activeEndgame, updateEvaluation]);
-
-    // Load position from strategy guide diagrams
-    const handleLoadGuidePosition = (fen: string, color: 'w' | 'b', title: string) => {
-        if (aiTimerRef.current) clearTimeout(aiTimerRef.current);
-        const newEndgame: EndgamePosition = {
-            ...activeEndgame,
-            title: title,
-            fen,
-            playerColor: color,
-            description: `Practice variation: ${title}`,
-        };
-        setActiveEndgame(newEndgame);
-        setPlayerColor(color);
-        const newGame = new Chess(fen);
-        setGame(newGame);
-        setMoveCount(0);
-        setIsSolved(false);
-        setShowSolvedOverlay(false);
-        setIsAiThinking(false);
-        setRevealedHint(null);
-        setStatusMessage({
-            type: 'info',
-            text: `Position loaded: ${title}. ${newGame.turn() === color ? 'Your turn!' : 'Opponent is calculating defense...'}`
-        });
-        updateEvaluation(fen);
-        if (newGame.turn() !== color) {
-            triggerAiResponse(newGame);
-        }
-    };
 
     // Advance to next endgame
     const handleNextEndgame = () => {
@@ -206,6 +382,9 @@ export default function EndgamePractice() {
     const handleToggleColor = () => {
         const nextColor = playerColor === 'w' ? 'b' : 'w';
         setPlayerColor(nextColor);
+        setSelectedSquare(null);
+        setLastMove(null);
+        setCircledSquares([]);
         handleResetPosition();
     };
 
@@ -243,17 +422,27 @@ export default function EndgamePractice() {
         } catch {}
     };
 
-    // Mark endgame solved
+    // Save drill completion rate directly to user's account
     const markSolved = useCallback((id: string) => {
-        setSolvedIds((prev) => {
-            if (prev.includes(id)) return prev;
-            const updated = [...prev, id];
+        setDrillProgress((prev) => {
+            const cur = prev[id] || 0;
+            const targetEg = endgames.find(e => e.id === id);
+            const max = targetEg?.totalDrills || 10;
+            const next = Math.min(max, cur + 1);
+            const updated = { ...prev, [id]: next };
             try {
-                localStorage.setItem('chessparfait_solved_endgames', JSON.stringify(updated));
+                localStorage.setItem(storageKey, JSON.stringify(updated));
+                // Sync legacy key
+                const legacy = localStorage.getItem('chessparfait_solved_endgames');
+                const list: string[] = legacy ? JSON.parse(legacy) : [];
+                if (!list.includes(id)) {
+                    list.push(id);
+                    localStorage.setItem('chessparfait_solved_endgames', JSON.stringify(list));
+                }
             } catch {}
             return updated;
         });
-    }, []);
+    }, [endgames, storageKey]);
 
     // Check end condition
     const evaluateEndCondition = useCallback((currentGame: Chess) => {
@@ -327,6 +516,8 @@ export default function EndgamePractice() {
                         }
 
                         setGame(gameCopy);
+                        setLastMove({ from: move.from, to: move.to });
+                        setSelectedSquare(null);
                         updateEvaluation(gameCopy.fen());
 
                         const gameOver = evaluateEndCondition(gameCopy);
@@ -346,9 +537,9 @@ export default function EndgamePractice() {
         }, 400);
     }, [activeEndgame, evaluateEndCondition, isSoundMuted, updateEvaluation]);
 
-    // Drop piece handler
-    const onDrop = ({ sourceSquare, targetSquare }: { sourceSquare: string; targetSquare: string | null }) => {
-        if (!targetSquare || isAiThinking || isSolved) return false;
+    // Shared move executor for Click-to-Move and Drag-and-Drop
+    const executeMove = useCallback((sourceSquare: string, targetSquare: string): boolean => {
+        if (isAiThinking || isSolved) return false;
         if (game.turn() !== playerColor) return false;
 
         try {
@@ -368,6 +559,8 @@ export default function EndgamePractice() {
 
             setGame(gameCopy);
             setMoveCount((prev) => prev + 1);
+            setLastMove({ from: move.from, to: move.to });
+            setSelectedSquare(null);
             updateEvaluation(gameCopy.fen());
 
             const isEnd = evaluateEndCondition(gameCopy);
@@ -383,157 +576,446 @@ export default function EndgamePractice() {
         } catch {
             return false;
         }
-    };
+    }, [evaluateEndCondition, game, isAiThinking, isSolved, isSoundMuted, playerColor, triggerAiResponse, updateEvaluation]);
+
+    // Click handler for Click-to-Move (clicking piece then clicking target square)
+    const handleSquareOrPieceClick = useCallback((square: string) => {
+        // Left click removes all circled squares
+        setCircledSquares([]);
+
+        if (isAiThinking || isSolved) return;
+        if (game.turn() !== playerColor) return;
+
+        if (selectedSquare) {
+            // Clicking the same square toggles/deselects
+            if (square === selectedSquare) {
+                setSelectedSquare(null);
+                return;
+            }
+
+            // Clicking another friendly piece switches selection
+            const pieceOnSquare = game.get(square as any);
+            if (pieceOnSquare && pieceOnSquare.color === playerColor) {
+                setSelectedSquare(square);
+                return;
+            }
+
+            // Check if the destination is a legal move
+            const legalMoves = game.moves({ square: selectedSquare as any, verbose: true });
+            const isLegal = legalMoves.some((m) => m.to === square);
+
+            if (isLegal) {
+                executeMove(selectedSquare, square);
+            } else {
+                setSelectedSquare(null);
+            }
+            return;
+        }
+
+        // No piece selected: select if square contains the player's piece
+        const pieceOnSquare = game.get(square as any);
+        if (pieceOnSquare && pieceOnSquare.color === playerColor) {
+            setSelectedSquare(square);
+        }
+    }, [executeMove, game, isAiThinking, isSolved, playerColor, selectedSquare]);
+
+    // Piece drag handler to immediately show legal moves while dragging
+    const onPieceDrag = useCallback(({ square }: { square: string | null; isSparePiece?: boolean; piece?: any }) => {
+        setCircledSquares([]);
+        if (!square) return;
+        if (isAiThinking || isSolved) return;
+        if (game.turn() !== playerColor) return;
+        const pieceOnSquare = game.get(square as any);
+        if (pieceOnSquare && pieceOnSquare.color === playerColor) {
+            setSelectedSquare(square);
+        }
+    }, [game, isAiThinking, isSolved, playerColor]);
+
+    // Drop piece handler for Drag-and-Drop
+    const onPieceDrop = useCallback(({ sourceSquare, targetSquare }: { sourceSquare: string; targetSquare: string | null }): boolean => {
+        setCircledSquares([]);
+        if (!targetSquare) {
+            setSelectedSquare(null);
+            return false;
+        }
+        const success = executeMove(sourceSquare, targetSquare);
+        setSelectedSquare(null);
+        return success;
+    }, [executeMove]);
+
+    // Right-click square handler to toggle circle on/off
+    const handleSquareRightClick = useCallback((square: string) => {
+        setCircledSquares((prev) =>
+            prev.includes(square) ? prev.filter((s) => s !== square) : [...prev, square]
+        );
+    }, []);
+
+    // Dynamic square styles: Last move + Right-click circles + Selected piece + ONLY its current legal moves
+    const squareStyles = useMemo(() => {
+        const styles: Record<string, CSSProperties> = {};
+
+        // 1. Previous move highlight (lastMove from and to)
+        if (lastMove) {
+            styles[lastMove.from] = {
+                backgroundColor: 'rgba(205, 210, 106, 0.45)'
+            };
+            styles[lastMove.to] = {
+                backgroundColor: 'rgba(205, 210, 106, 0.45)'
+            };
+        }
+
+        // 2. Right-click circled squares (toggleable circles)
+        circledSquares.forEach((sq) => {
+            const existingBg = styles[sq]?.backgroundColor || 'transparent';
+            styles[sq] = {
+                ...styles[sq],
+                background: `radial-gradient(circle, transparent 58%, rgba(235, 87, 87, 0.85) 59%, rgba(235, 87, 87, 0.85) 78%, transparent 79%), ${existingBg}`
+            };
+        });
+
+        // 3. Currently selected piece and ONLY its current legal moves
+        if (selectedSquare) {
+            styles[selectedSquare] = {
+                backgroundColor: 'rgba(92, 140, 92, 0.6)'
+            };
+
+            try {
+                const legalMoves = game.moves({ square: selectedSquare as any, verbose: true });
+                legalMoves.forEach((move) => {
+                    const isCapture = move.captured || Boolean(game.get(move.to as any)) || move.flags.includes('e');
+                    if (isCapture) {
+                        styles[move.to] = {
+                            background: 'radial-gradient(circle, transparent 52%, rgba(82, 116, 68, 0.6) 53%, rgba(82, 116, 68, 0.6) 72%, transparent 73%)',
+                            cursor: 'pointer'
+                        };
+                    } else {
+                        styles[move.to] = {
+                            background: 'radial-gradient(circle, rgba(92, 126, 78, 0.65) 19%, transparent 20%)',
+                            cursor: 'pointer'
+                        };
+                    }
+                });
+            } catch (e) {
+                console.error('Error generating legal moves:', e);
+            }
+        }
+
+        return styles;
+    }, [game, selectedSquare, lastMove, circledSquares]);
 
     // Current endgame rating
     const currentRating = userRatings[activeEndgame.id] || 5;
 
     // Filter endgames for Review tab
-    const displayedEndgames = activeTab === 'review'
-        ? endgames.filter((e) => solvedIds.includes(e.id))
-        : endgames;
+    const solvedIds = useMemo(() => {
+        return Object.keys(drillProgress).filter(id => (drillProgress[id] || 0) > 0);
+    }, [drillProgress]);
+
+    const displayedReviewEndgames = useMemo(() => {
+        return endgames.filter((e) => solvedIds.includes(e.id));
+    }, [endgames, solvedIds]);
 
     return (
         <div className="h-screen flex flex-col bg-[#FAF1DB] font-sans text-plum overflow-hidden">
             {/* Top Navbar */}
             <Navbar />
 
-            {/* Main Single-Screen 3-Column Arena */}
-            <div className="flex-1 flex flex-col md:flex-row overflow-hidden relative bg-[#FAF1DB]">
-                
-                {/* ── LEFT COLUMN: Endgames List & Course Hierarchy ── */}
-                <aside
-                    className={`shrink-0 border-r-2 border-plum/15 bg-white flex flex-col h-full overflow-hidden transition-all duration-300 z-20 ${
-                        isSidebarCollapsed ? 'w-14' : 'w-full md:w-[280px] lg:w-[320px]'
-                    }`}
-                >
-                    {/* Sidebar Tabs (Learn / Review) */}
-                    <div className="flex items-center border-b-2 border-plum/10 bg-white">
-                        {!isSidebarCollapsed ? (
-                            <>
-                                <button
-                                    onClick={() => setActiveTab('learn')}
-                                    className={`flex-1 py-3 text-xs font-black uppercase tracking-wider transition-all text-center relative ${
-                                        activeTab === 'learn'
-                                            ? 'text-[#0284c7] font-black'
-                                            : 'text-plum/50 hover:text-plum'
-                                    }`}
-                                >
-                                    Learn
-                                    {activeTab === 'learn' && (
-                                        <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#0284c7]" />
-                                    )}
-                                </button>
-                                <button
-                                    onClick={() => setActiveTab('review')}
-                                    className={`flex-1 py-3 text-xs font-black uppercase tracking-wider transition-all text-center flex items-center justify-center gap-1.5 relative ${
-                                        activeTab === 'review'
-                                            ? 'text-[#0284c7] font-black'
-                                            : 'text-plum/50 hover:text-plum'
-                                    }`}
-                                >
-                                    <span>Review</span>
-                                    <span className="px-1.5 py-0.5 rounded-full text-[10px] bg-slate-100 text-slate-700 font-bold border border-slate-200">
-                                        {solvedIds.length}
-                                    </span>
-                                    {activeTab === 'review' && (
-                                        <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#0284c7]" />
-                                    )}
-                                </button>
-                            </>
-                        ) : null}
+            {/* ══════════════════════════════════════════════════════════════
+                VIEW 1: HOME CATALOG SELECTION VIEW (Matching reference image)
+               ══════════════════════════════════════════════════════════════ */}
+            {viewMode === 'catalog' ? (
+                <div className="flex-1 overflow-y-auto px-4 py-6 md:px-8 bg-[#FAF1DB]">
+                    <div className="max-w-5xl mx-auto space-y-6">
 
-                        {/* Sidebar Collapse Toggle Button */}
-                        <button
-                            onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
-                            className="p-3 text-plum/60 hover:text-plum hover:bg-slate-50 transition-colors shrink-0"
-                            title={isSidebarCollapsed ? 'Expand Sidebar' : 'Collapse Sidebar'}
-                        >
-                            {isSidebarCollapsed ? <PanelLeftOpen size={18} /> : <PanelLeftClose size={18} />}
-                        </button>
-                    </div>
-
-                    {!isSidebarCollapsed && (
-                        <>
-                            {/* Course / Arena Header Card */}
-                            <div className="p-3.5 border-b border-plum/10 bg-slate-50/60 flex items-center gap-3">
-                                <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-berry to-plum text-white flex items-center justify-center font-black shadow-sm shrink-0">
-                                    <Layers size={20} />
-                                </div>
-                                <div className="min-w-0 flex-1">
-                                    <h3 className="font-serif font-black text-xs text-plum truncate leading-tight">
-                                        Endgame Arena: GM Technique
-                                    </h3>
-                                    <p className="text-[10px] text-plum/60 font-medium truncate mt-0.5">
-                                        Tablebases & Grandmaster Theory
+                        {/* Top Hero / Search Banner */}
+                        <div className="bg-white/80 backdrop-blur-md rounded-3xl p-6 md:p-8 border-2 border-plum/15 shadow-sm space-y-5">
+                            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                                <div>
+                                    <h1 className="text-2xl md:text-3xl font-serif font-black text-plum">
+                                        Select an Endgame to Practice
+                                    </h1>
+                                    <p className="text-xs md:text-sm text-plum/70 font-medium mt-1">
+                                        Train theoretical positions against tablebase precision. Progress is automatically saved to your account.
                                     </p>
+                                </div>
+
+                                {/* User Progress Summary Badge */}
+                                <div className="bg-[#FAF1DB] border-2 border-plum/15 rounded-2xl p-3.5 min-w-[220px] text-right">
+                                    <div className="text-[10px] font-black uppercase tracking-wider text-plum/60 flex items-center justify-end gap-1.5">
+                                        <CheckCircle2 size={13} className="text-emerald-600" />
+                                        <span>{user?.username ? `@${user.username}` : 'Local Account'}</span>
+                                    </div>
+                                    <div className="text-lg font-black font-mono text-plum mt-0.5">
+                                        {progressStats.completedDrills} / {progressStats.totalDrills} <span className="text-xs font-bold text-plum/60">Drills ({progressStats.percent}%)</span>
+                                    </div>
+                                    <div className="w-full bg-slate-200 h-2 rounded-full mt-2 overflow-hidden">
+                                        <div
+                                            className="bg-emerald-500 h-full rounded-full transition-all duration-500"
+                                            style={{ width: `${progressStats.percent}%` }}
+                                        />
+                                    </div>
                                 </div>
                             </div>
 
-                            {/* Scrollable Chapter & Exercises List */}
-                            <div className="flex-1 overflow-y-auto px-2 py-3 space-y-4 select-none">
-                                {categories.map((category) => {
-                                    const items = (activeTab === 'review'
-                                        ? categorizedEndgames[category].filter((e) => solvedIds.includes(e.id))
-                                        : categorizedEndgames[category]) || [];
+                            {/* Comprehensive Search Bar */}
+                            <div className="relative">
+                                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                                <input
+                                    type="text"
+                                    value={searchQuery}
+                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                    placeholder="Search endgames (e.g. Key Squares, Opposition, 7th-Rank, Lucena, Philidor, Herding...)"
+                                    className="w-full pl-11 pr-10 py-3.5 rounded-2xl bg-white border-2 border-plum/20 focus:border-berry focus:ring-2 focus:ring-berry/20 outline-none text-plum font-medium text-sm transition-all shadow-xs placeholder:text-plum/40"
+                                />
+                                {searchQuery && (
+                                    <button
+                                        onClick={() => setSearchQuery('')}
+                                        className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1"
+                                        title="Clear search"
+                                    >
+                                        <X size={16} />
+                                    </button>
+                                )}
+                            </div>
 
-                                    if (items.length === 0 && activeTab === 'review') return null;
+                            {/* Category Filter Pills */}
+                            <div className="flex flex-wrap items-center gap-2 pt-1">
+                                <span className="text-[11px] font-black uppercase tracking-wider text-plum/50 mr-1">
+                                    Filter:
+                                </span>
+                                {['All', 'Pawn Endgames', 'Rook Endgames', 'Queen Endgames', 'Minor Piece Endgames'].map((cat) => (
+                                    <button
+                                        key={cat}
+                                        onClick={() => setCategoryFilter(cat)}
+                                        className={`px-3.5 py-1.5 rounded-xl text-xs font-serif font-black transition-all ${
+                                            categoryFilter === cat
+                                                ? 'bg-berry text-white shadow-xs'
+                                                : 'bg-white hover:bg-berry/5 text-plum/80 border-2 border-plum/15'
+                                        }`}
+                                    >
+                                        {cat}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
 
-                                    const totalCategoryItems = categorizedEndgames[category].length;
-                                    const solvedCategoryItems = categorizedEndgames[category].filter((e) => solvedIds.includes(e.id)).length;
-                                    const categoryPercent = totalCategoryItems > 0
-                                        ? Math.round((solvedCategoryItems / totalCategoryItems) * 100)
-                                        : 0;
+                        {/* Endgame Sections Ordered by Type */}
+                        <div className="space-y-8 pb-12">
+                            {orderedCategoryKeys.map((catKey) => {
+                                const items = filteredCategorizedEndgames[catKey];
+                                if (!items || items.length === 0) return null;
+
+                                // Format category title with spaced out letters: P A W N   E N D G A M E S
+                                const spacedTitle = catKey.toUpperCase().split('').join(' ');
+
+                                return (
+                                    <div key={catKey} className="space-y-4">
+                                        {/* Centered Spaced Section Header in ChessParfait brand styling */}
+                                        <h2 className="text-center font-serif font-black text-sm md:text-base tracking-[0.25em] text-plum uppercase select-none pt-4 pb-1">
+                                            {spacedTitle}
+                                        </h2>
+
+                                        {/* 2-Column Cards Grid */}
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            {items.map((endgame) => {
+                                                const completed = drillProgress[endgame.id] || 0;
+                                                const total = endgame.totalDrills || 10;
+                                                const hasProgress = completed > 0;
+
+                                                return (
+                                                    <div
+                                                        key={endgame.id}
+                                                        onClick={() => handleSelectEndgame(endgame)}
+                                                        className={`relative rounded-2xl border-2 p-4 md:p-5 flex items-center justify-between gap-4 cursor-pointer transition-all duration-200 group select-none shadow-xs hover:shadow-md hover:-translate-y-0.5 active:scale-[0.99] ${
+                                                            hasProgress
+                                                                ? 'bg-white/95 border-berry/30 hover:border-berry'
+                                                                : 'bg-white/80 border-plum/15 hover:border-plum/30'
+                                                        }`}
+                                                    >
+                                                        {/* Top-Right Angled Completion Rate Ribbon */}
+                                                        <div className="absolute top-0 right-0 overflow-hidden rounded-tr-2xl pointer-events-none">
+                                                            <div
+                                                                className={`px-4 py-1 text-xs font-black font-mono tracking-tight shadow-xs ${
+                                                                    hasProgress
+                                                                        ? 'bg-berry text-cream'
+                                                                        : 'bg-plum/10 text-plum/70'
+                                                                }`}
+                                                                style={{
+                                                                    clipPath: 'polygon(20% 0%, 100% 0%, 100% 100%, 0% 100%)'
+                                                                }}
+                                                            >
+                                                                {completed} / {total}
+                                                            </div>
+                                                        </div>
+
+                                                        {/* Card Content (Icon + Title + Subtitle) */}
+                                                        <div className="flex items-center gap-3.5 min-w-0 pr-14">
+                                                            {/* Silhouette Icon */}
+                                                            <div className="shrink-0 transition-transform group-hover:scale-105 duration-200">
+                                                                {renderEndgameIcon(endgame.iconType, endgame.category)}
+                                                            </div>
+
+                                                            {/* Text info in ChessParfait font & colours */}
+                                                            <div className="min-w-0">
+                                                                <h3 className="text-base md:text-lg font-serif font-black text-plum group-hover:text-berry transition-colors tracking-tight leading-snug truncate">
+                                                                    {endgame.title}
+                                                                </h3>
+                                                                <p className="text-xs md:text-sm text-plum/70 font-medium truncate mt-0.5">
+                                                                    {endgame.subtitle || endgame.description}
+                                                                </p>
+                                                            </div>
+                                                        </div>
+
+                                                        {/* Hover Arrow Hint */}
+                                                        <div className="shrink-0 opacity-0 group-hover:opacity-100 transition-opacity text-berry">
+                                                            <ArrowRight size={18} />
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+                                );
+                            })}
+
+                            {/* Empty state for search */}
+                            {Object.keys(filteredCategorizedEndgames).length === 0 && (
+                                <div className="bg-white/80 rounded-3xl p-12 text-center space-y-3 border-2 border-plum/15">
+                                    <div className="w-12 h-12 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center mx-auto">
+                                        <Search size={22} />
+                                    </div>
+                                    <h3 className="text-base font-bold text-slate-800">No endgames match &quot;{searchQuery}&quot;</h3>
+                                    <p className="text-xs text-slate-500 max-w-sm mx-auto">
+                                        Try searching for another keyword like &quot;Lucena&quot;, &quot;Opposition&quot;, &quot;Queen&quot;, or &quot;Pawn&quot;.
+                                    </p>
+                                    <button
+                                        onClick={() => { setSearchQuery(''); setCategoryFilter('All'); }}
+                                        className="mt-2 py-2 px-4 rounded-xl bg-berry text-cream font-bold text-xs hover:bg-berry/90 transition-colors shadow-xs"
+                                    >
+                                        Clear Search
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            ) : (
+                /* ══════════════════════════════════════════════════════════════
+                    VIEW 2: 3-COLUMN ARENA (Single-screen layout, fits on screen)
+                   ══════════════════════════════════════════════════════════════ */
+                <div className="flex-1 flex flex-col md:flex-row overflow-hidden relative bg-[#FAF1DB]">
+                    
+                    {/* ── LEFT COLUMN: Endgames List & Course Hierarchy ── */}
+                    <aside
+                        className={`shrink-0 border-r-2 border-plum/15 bg-white flex flex-col h-full overflow-hidden transition-all duration-300 z-20 ${
+                            isSidebarCollapsed ? 'w-14' : 'w-full md:w-[280px] lg:w-[320px]'
+                        }`}
+                    >
+                        {/* Top Back to Catalog Bar */}
+                        {!isSidebarCollapsed && (
+                            <div className="p-2.5 border-b border-plum/10 bg-slate-50 flex items-center justify-between">
+                                <button
+                                    onClick={handleReturnToCatalog}
+                                    className="flex items-center gap-1.5 text-xs font-bold text-slate-600 hover:text-plum px-2.5 py-1.5 rounded-lg hover:bg-slate-200/70 transition-colors"
+                                    title="Back to Endgame Selector"
+                                >
+                                    <ArrowLeft size={14} />
+                                    <span>All Endgames</span>
+                                </button>
+                                <span className="text-[10px] font-mono font-bold text-slate-500 bg-white px-2 py-0.5 rounded border border-slate-200">
+                                    {progressStats.completedDrills}/{progressStats.totalDrills}
+                                </span>
+                            </div>
+                        )}
+
+                        {/* Sidebar Tabs (Learn / Review) */}
+                        <div className="flex items-center border-b-2 border-plum/10 bg-white">
+                            {!isSidebarCollapsed ? (
+                                <>
+                                    <button
+                                        onClick={() => setActiveTab('learn')}
+                                        className={`flex-1 py-3 text-xs font-black uppercase tracking-wider transition-all text-center relative ${
+                                            activeTab === 'learn'
+                                                ? 'text-berry font-black'
+                                                : 'text-plum/50 hover:text-plum'
+                                        }`}
+                                    >
+                                        Learn
+                                        {activeTab === 'learn' && (
+                                            <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-berry" />
+                                        )}
+                                    </button>
+                                    <button
+                                        onClick={() => setActiveTab('review')}
+                                        className={`flex-1 py-3 text-xs font-black uppercase tracking-wider transition-all text-center flex items-center justify-center gap-1.5 relative ${
+                                            activeTab === 'review'
+                                                ? 'text-berry font-black'
+                                                : 'text-plum/50 hover:text-plum'
+                                        }`}
+                                    >
+                                        <span>Review</span>
+                                        <span className="px-1.5 py-0.5 rounded-full text-[10px] bg-slate-100 text-slate-700 font-bold border border-slate-200">
+                                            {solvedIds.length}
+                                        </span>
+                                        {activeTab === 'review' && (
+                                            <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-berry" />
+                                        )}
+                                    </button>
+                                </>
+                            ) : null}
+
+                            {/* Sidebar Collapse Toggle Button */}
+                            <button
+                                onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+                                className="p-3 text-plum/60 hover:text-plum hover:bg-slate-50 transition-colors shrink-0"
+                                title={isSidebarCollapsed ? 'Expand Sidebar' : 'Collapse Sidebar'}
+                            >
+                                {isSidebarCollapsed ? <PanelLeftOpen size={18} /> : <PanelLeftClose size={18} />}
+                            </button>
+                        </div>
+
+                        {!isSidebarCollapsed && (
+                            <div className="flex-1 overflow-y-auto divide-y divide-slate-100">
+                                {orderedCategoryKeys.map((category) => {
+                                    const categoryItems = activeTab === 'review'
+                                        ? displayedReviewEndgames.filter(e => e.category === category)
+                                        : (categorizedEndgames[category] || []);
+
+                                    if (categoryItems.length === 0) return null;
 
                                     return (
-                                        <div key={category} className="space-y-1.5">
-                                            {/* Chapter / Category Header */}
-                                            <div className="flex items-center justify-between px-2.5 py-1 text-slate-700">
-                                                <span className="font-bold text-xs tracking-tight">
-                                                    {category}
-                                                </span>
-                                                <span className={`text-[10px] font-black px-1.5 py-0.5 rounded-full border ${
-                                                    categoryPercent === 100
-                                                        ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                                                        : 'bg-slate-100 text-slate-600 border-slate-200'
-                                                }`}>
-                                                    {categoryPercent}%
-                                                </span>
+                                        <div key={category} className="p-3 space-y-1">
+                                            <div className="px-2 py-1 text-[11px] font-serif font-black uppercase tracking-wider text-plum/70">
+                                                {category}
                                             </div>
-
-                                            {/* Vertical Timeline Items */}
-                                            <div className="space-y-0.5 relative pl-2">
-                                                {/* Connecting timeline dotted line */}
-                                                <div className="absolute left-[19px] top-3 bottom-3 w-0.5 border-l-2 border-dotted border-slate-300 z-0" />
-
-                                                {items.map((endgame) => {
-                                                    const isActive = activeEndgame.id === endgame.id;
-                                                    const isItemSolved = solvedIds.includes(endgame.id);
+                                            <div className="space-y-0.5">
+                                                {categoryItems.map((item) => {
+                                                    const isSelected = activeEndgame.id === item.id;
+                                                    const drillsDone = drillProgress[item.id] || 0;
+                                                    const isItemSolved = drillsDone >= (item.totalDrills || 10);
 
                                                     return (
                                                         <button
-                                                            key={endgame.id}
-                                                            onClick={() => handleSelectEndgame(endgame)}
-                                                            className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-left transition-all relative z-10 ${
-                                                                isActive
-                                                                    ? 'bg-[#0085ff] text-white font-black shadow-sm'
-                                                                    : 'hover:bg-slate-100/90 text-slate-700 font-medium'
+                                                            key={item.id}
+                                                            onClick={() => handleSelectEndgame(item)}
+                                                            className={`w-full text-left p-2.5 rounded-xl text-xs transition-all flex items-center justify-between group ${
+                                                                isSelected
+                                                                    ? 'bg-berry/10 text-berry font-black border border-berry/30'
+                                                                    : 'hover:bg-berry/5 text-plum/80 font-medium'
                                                             }`}
                                                         >
-                                                            {/* Checkpoint Dot */}
-                                                            <div className={`w-4 h-4 rounded-full flex items-center justify-center shrink-0 text-[10px] transition-all ${
-                                                                isActive
-                                                                    ? 'bg-white text-[#0085ff] shadow'
-                                                                    : isItemSolved
-                                                                        ? 'bg-[#0085ff] text-white shadow-xs'
-                                                                        : 'border-2 border-slate-300 bg-white'
-                                                            }`}>
-                                                                {(isActive || isItemSolved) ? <Check size={11} strokeWidth={3.5} /> : null}
+                                                            <div className="flex items-center gap-2 min-w-0 pr-2">
+                                                                {isItemSolved ? (
+                                                                    <CheckCircle2 size={14} className="text-emerald-500 shrink-0" />
+                                                                ) : (
+                                                                    <div className={`w-2 h-2 rounded-full shrink-0 ${
+                                                                        isSelected ? 'bg-berry' : 'bg-plum/30'
+                                                                    }`} />
+                                                                )}
+                                                                <span className="truncate">{item.title}</span>
                                                             </div>
-
-                                                            {/* Title */}
-                                                            <span className="text-xs truncate flex-1 leading-snug">
-                                                                {endgame.title}
+                                                            <span className="text-[10px] font-mono text-plum/50 shrink-0">
+                                                                {drillsDone}/{item.totalDrills || 10}
                                                             </span>
                                                         </button>
                                                     );
@@ -543,376 +1025,365 @@ export default function EndgamePractice() {
                                     );
                                 })}
 
-                                {activeTab === 'review' && displayedEndgames.length === 0 && (
+                                {activeTab === 'review' && displayedReviewEndgames.length === 0 && (
                                     <div className="p-6 text-center text-slate-400 space-y-2">
                                         <p className="text-xs font-bold">No completed endgames to review yet.</p>
                                         <p className="text-[11px]">Solve endgames in the Learn tab to build your review deck!</p>
                                     </div>
                                 )}
                             </div>
-                        </>
-                    )}
-                </aside>
+                        )}
+                    </aside>
 
-                {/* ── CENTER COLUMN: Centered Chessboard ── */}
-                <main className="flex-1 flex flex-col items-center justify-center p-2 md:p-3 relative h-full min-w-0 bg-[#f8fafc] overflow-hidden">
-                    {/* Chessboard Container - tightly sized to maximize space without overflow */}
-                    <div className="w-full max-w-[min(calc(100vh-175px),calc(100vw-680px),540px)] aspect-square relative flex items-center justify-center">
-                        <div
-                            className="w-full h-full rounded-xl overflow-hidden shadow-xl border-2 border-slate-300/80 bg-white select-none relative"
-                            onContextMenu={(e) => e.preventDefault()}
-                        >
-                            <Chessboard
-                                options={{
-                                    position: game.fen(),
-                                    boardOrientation: playerColor === 'w' ? 'white' : 'black',
-                                    onPieceDrop: onDrop,
-                                    darkSquareStyle: { backgroundColor: '#b58863' },
-                                    lightSquareStyle: { backgroundColor: '#f0d9b5' },
-                                    allowDrawingArrows: true,
-                                    clearArrowsOnClick: true,
-                                    arrowOptions: customArrowOptions,
-                                    alphaNotationStyle: {
-                                        fontSize: '9.5px',
-                                        fontWeight: 'bold',
-                                        lineHeight: 1,
-                                        bottom: 2,
-                                        right: 3,
-                                        zIndex: 15,
-                                        pointerEvents: 'none',
-                                        userSelect: 'none'
-                                    },
-                                    numericNotationStyle: {
-                                        fontSize: '9.5px',
-                                        fontWeight: 'bold',
-                                        lineHeight: 1,
-                                        top: 2,
-                                        left: 3,
-                                        zIndex: 15,
-                                        pointerEvents: 'none',
-                                        userSelect: 'none'
-                                    },
-                                    animationDurationInMs: 180
-                                }}
-                            />
-
-                            {/* Solved Celebration Overlay */}
-                            {showSolvedOverlay && (
-                                <div className="absolute inset-0 bg-emerald-950/80 backdrop-blur-[2px] z-40 flex flex-col items-center justify-center p-6 text-center animate-in fade-in duration-200">
-                                    <div className="w-14 h-14 rounded-full bg-emerald-500 text-white flex items-center justify-center mb-3 shadow-xl animate-in zoom-in-75 duration-260">
-                                        <PartyPopper size={28} />
-                                    </div>
-                                    <h3 className="font-serif font-black text-2xl text-white mb-1">Target Achieved!</h3>
-                                    <p className="text-emerald-200 text-xs font-bold uppercase tracking-wider mb-4">
-                                        {activeEndgame.target === 'win' ? 'Checkmate Delivered' : 'Draw Successfully Held'}
-                                    </p>
-                                    <div className="flex items-center gap-3">
-                                        <button
-                                            onClick={() => setShowSolvedOverlay(false)}
-                                            className="py-2 px-4 rounded-xl border border-white/40 text-white font-black text-xs uppercase tracking-wider hover:bg-white/10 transition-colors"
-                                        >
-                                            Review Board
-                                        </button>
-                                        <button
-                                            onClick={handleNextEndgame}
-                                            className="py-2 px-5 rounded-xl bg-white text-emerald-950 font-black text-xs uppercase tracking-wider hover:bg-emerald-50 transition-colors shadow-md flex items-center gap-1.5"
-                                        >
-                                            <span>Next Exercise</span>
-                                            <ArrowRight size={14} />
-                                        </button>
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-                    </div>
-
-                    {/* Bottom Status Bar Under Board (matching screenshot Hint & Turn Indicator) */}
-                    <div className="w-full max-w-[min(calc(100vh-175px),calc(100vw-680px),540px)] flex items-center justify-between mt-2.5 px-2 py-1 text-slate-600 select-none">
-                        {/* Hint Button */}
-                        <button
-                            onClick={handleToggleHint}
-                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-black transition-all border ${
-                                revealedHint
-                                    ? 'bg-amber-100 text-amber-900 border-amber-300'
-                                    : 'bg-white hover:bg-slate-100 text-slate-700 border-slate-200 shadow-xs'
-                            }`}
-                        >
-                            <Bell size={13} className="text-amber-500" />
-                            <span>Hint</span>
-                        </button>
-
-                        {/* Turn & Status Message */}
-                        <div className="flex items-center gap-2">
-                            <div className={`w-2.5 h-2.5 rounded-full ${game.turn() === 'w' ? 'bg-white border border-slate-400' : 'bg-slate-800'}`} />
-                            <span className="text-xs font-black text-slate-700">
-                                {isAiThinking
-                                    ? 'Opponent Calculating...'
-                                    : game.turn() === playerColor
-                                        ? 'Your Move'
-                                        : 'Opponent Turn'}
+                    {/* ── CENTER COLUMN: Centered Chessboard ── */}
+                    <main className="flex-1 flex flex-col items-center justify-center p-2 md:p-3 relative h-full min-w-0 bg-[#f8fafc] overflow-hidden">
+                        {/* Top quick navigation to return to catalog */}
+                        <div className="w-full max-w-[min(calc(100vh-175px),calc(100vw-680px),540px)] flex items-center justify-between mb-1.5 px-1">
+                            <button
+                                onClick={handleReturnToCatalog}
+                                className="inline-flex items-center gap-1.5 text-xs font-bold text-plum/70 hover:text-berry transition-colors"
+                            >
+                                <ArrowLeft size={14} />
+                                <span>Back to Endgames Catalog</span>
+                            </button>
+                            <span className="text-[11px] font-bold text-slate-400 font-mono">
+                                Drill Progress: {drillProgress[activeEndgame.id] || 0} / {activeEndgame.totalDrills || 10}
                             </span>
                         </div>
 
-                        {/* Moves count */}
-                        <span className="text-[11px] font-bold text-slate-500">
-                            Moves: {moveCount}
-                        </span>
-                    </div>
+                        {/* Chessboard Container - fits completely on one screen */}
+                        <div className="w-full max-w-[min(calc(100vh-175px),calc(100vw-680px),540px)] aspect-square relative flex items-center justify-center">
+                            <div
+                                className="w-full h-full rounded-xl overflow-hidden shadow-xl border-2 border-slate-300/80 bg-white select-none relative"
+                                onContextMenu={(e) => e.preventDefault()}
+                                onClick={() => setCircledSquares([])}
+                            >
+                                <Chessboard
+                                    options={{
+                                        position: game.fen(),
+                                        boardOrientation: playerColor === 'w' ? 'white' : 'black',
+                                        onPieceDrop: onPieceDrop,
+                                        onPieceDrag: onPieceDrag,
+                                        onPieceClick: ({ square }: any) => handleSquareOrPieceClick(square),
+                                        onSquareClick: ({ square }: any) => handleSquareOrPieceClick(square),
+                                        onSquareRightClick: ({ square }: any) => handleSquareRightClick(square),
+                                        squareStyles: squareStyles,
+                                        darkSquareStyle: { backgroundColor: '#b58863' },
+                                        lightSquareStyle: { backgroundColor: '#f0d9b5' },
+                                        allowDrawingArrows: true,
+                                        clearArrowsOnClick: true,
+                                        arrowOptions: customArrowOptions,
+                                        alphaNotationStyle: {
+                                            fontSize: '9.5px',
+                                            fontWeight: 'bold',
+                                            lineHeight: 1,
+                                            bottom: 2,
+                                            right: 3,
+                                            zIndex: 15,
+                                            pointerEvents: 'none',
+                                            userSelect: 'none'
+                                        },
+                                        numericNotationStyle: {
+                                            fontSize: '9.5px',
+                                            fontWeight: 'bold',
+                                            lineHeight: 1,
+                                            top: 2,
+                                            left: 3,
+                                            zIndex: 15,
+                                            pointerEvents: 'none',
+                                            userSelect: 'none'
+                                        },
+                                        animationDurationInMs: 180
+                                    }}
+                                />
 
-                    {/* Hint reveal banner if active */}
-                    {revealedHint && (
-                        <div className="w-full max-w-[min(calc(100vh-175px),calc(100vw-680px),540px)] mt-1.5 p-2.5 rounded-xl bg-amber-50/95 border border-amber-200 text-amber-900 text-xs flex items-start gap-2 shadow-sm animate-in fade-in duration-150">
-                            <Lightbulb size={16} className="text-amber-600 shrink-0 mt-0.5" />
-                            <div className="flex-1">
-                                <span className="font-black">Key Hint: </span>
-                                <span>{revealedHint}</span>
+                                {/* Solved Celebration Overlay */}
+                                {showSolvedOverlay && (
+                                    <div className="absolute inset-0 bg-emerald-950/85 backdrop-blur-[2px] z-40 flex flex-col items-center justify-center p-6 text-center animate-in fade-in duration-200">
+                                        <div className="w-14 h-14 rounded-full bg-emerald-500 text-white flex items-center justify-center mb-3 shadow-xl animate-in zoom-in-75 duration-260">
+                                            <PartyPopper size={28} />
+                                        </div>
+                                        <h3 className="font-serif font-black text-2xl text-white mb-1">Target Achieved!</h3>
+                                        <p className="text-emerald-200 text-xs font-bold uppercase tracking-wider mb-4">
+                                            {activeEndgame.target === 'win' ? 'Checkmate Delivered' : 'Draw Successfully Held'}
+                                        </p>
+                                        <div className="flex items-center gap-3">
+                                            <button
+                                                onClick={() => setShowSolvedOverlay(false)}
+                                                className="py-2 px-4 rounded-xl border border-white/40 text-white font-black text-xs uppercase tracking-wider hover:bg-white/10 transition-colors"
+                                            >
+                                                Review Board
+                                            </button>
+                                            <button
+                                                onClick={handleNextEndgame}
+                                                className="py-2 px-5 rounded-xl bg-white text-emerald-950 font-black text-xs uppercase tracking-wider hover:bg-emerald-50 transition-colors shadow-md flex items-center gap-1.5"
+                                            >
+                                                <span>Next Exercise</span>
+                                                <ArrowRight size={14} />
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         </div>
-                    )}
-                </main>
 
-                {/* ── RIGHT COLUMN: Simple Explanations, Strategy Link & Toolbar ── */}
-                <aside className="w-full md:w-[310px] lg:w-[350px] shrink-0 border-l-2 border-plum/15 bg-white flex flex-col h-full overflow-hidden justify-between z-20">
-                    
-                    {/* Header: Title and Book/Actions */}
-                    <div className="p-4 border-b border-slate-100 flex items-start justify-between gap-3">
-                        <div className="min-w-0 flex-1">
-                            <h2 className="font-bold text-slate-900 text-sm md:text-base leading-snug">
-                                {activeEndgame.title}
-                            </h2>
-                            <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 mt-0.5 block">
-                                {activeEndgame.category} • {activeEndgame.difficulty}
-                            </span>
-                        </div>
-
-                        {/* Top Right Quick Actions */}
-                        <div className="flex items-center gap-1 shrink-0 text-slate-400">
+                        {/* Bottom Status Bar Under Board */}
+                        <div className="w-full max-w-[min(calc(100vh-175px),calc(100vw-680px),540px)] flex items-center justify-between mt-2 px-2 py-1 text-slate-600 select-none">
+                            {/* Hint Button */}
                             <button
-                                onClick={() => setShowStrategyModal(true)}
-                                className="p-1.5 rounded-lg hover:bg-slate-100 hover:text-berry transition-colors"
-                                title="Open Strategy Diagrams"
-                            >
-                                <BookOpen size={17} />
-                            </button>
-                            <button
-                                onClick={() => markSolved(activeEndgame.id)}
-                                className={`p-1.5 rounded-lg transition-colors ${
-                                    isSolved ? 'text-emerald-600' : 'hover:bg-slate-100 hover:text-slate-600'
+                                onClick={handleToggleHint}
+                                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-black transition-all border ${
+                                    revealedHint
+                                        ? 'bg-amber-100 text-amber-900 border-amber-300'
+                                        : 'bg-white hover:bg-slate-100 text-slate-700 border-slate-200 shadow-xs'
                                 }`}
-                                title={isSolved ? 'Completed' : 'Mark as Solved'}
                             >
-                                <CheckCircle2 size={17} />
+                                <Bell size={13} className="text-amber-500" />
+                                <span>Hint</span>
                             </button>
-                        </div>
-                    </div>
 
-                    {/* Explanations Body Content (Scrollable if height constrained) */}
-                    <div className="flex-1 overflow-y-auto p-4 space-y-4">
-                        {/* Simple Explanations (Crisp text matching screenshot) */}
-                        <div className="space-y-2">
-                            <p className="text-xs md:text-sm text-slate-700 leading-relaxed font-normal">
-                                {activeEndgame.description}
-                            </p>
-                        </div>
-
-                        {/* Prominent "Learn Strategy" Button linking to Diagrams */}
-                        <button
-                            onClick={() => setShowStrategyModal(true)}
-                            className="w-full flex items-center justify-between p-3 rounded-xl bg-gradient-to-r from-berry/10 via-amber-50 to-berry/10 border-2 border-berry/30 hover:border-berry text-plum hover:shadow-md transition-all group active:scale-[0.98]"
-                        >
-                            <div className="flex items-center gap-2.5">
-                                <div className="w-8 h-8 rounded-lg bg-berry text-white flex items-center justify-center shadow-xs shrink-0">
-                                    <BookOpen size={16} />
-                                </div>
-                                <div className="text-left">
-                                    <div className="text-xs font-black uppercase tracking-wider text-berry flex items-center gap-1">
-                                        <span>Learn Strategy</span>
-                                        <Sparkles size={12} />
-                                    </div>
-                                    <div className="text-[11px] font-medium text-plum/70">
-                                        View interactive diagrams & masterclass
-                                    </div>
-                                </div>
+                            {/* Turn & Status Message */}
+                            <div className="flex items-center gap-2">
+                                <div className={`w-2.5 h-2.5 rounded-full ${game.turn() === 'w' ? 'bg-white border border-slate-400' : 'bg-slate-800'}`} />
+                                <span className="text-xs font-black text-slate-700">
+                                    {isAiThinking
+                                        ? 'Opponent Calculating...'
+                                        : game.turn() === playerColor
+                                            ? 'Your Move'
+                                            : 'Opponent Turn'}
+                                </span>
                             </div>
-                            <ArrowRight size={16} className="text-berry group-hover:translate-x-0.5 transition-transform" />
-                        </button>
 
-                        {/* Quiz & Objective Callout */}
-                        <div className="space-y-1 pt-1">
-                            <div className="text-[11px] font-black uppercase tracking-wider text-slate-400">
-                                Quiz
-                            </div>
-                            <div className="text-sm font-bold text-slate-800">
-                                {playerColor === 'w' ? 'White to play!' : 'Black to play!'}
-                            </div>
-                            <p className="text-xs text-slate-500 font-medium">
-                                {activeEndgame.target === 'win'
-                                    ? 'Convert the advantage and force checkmate.'
-                                    : 'Hold the theoretical draw against the tablebase engine.'}
-                            </p>
+                            {/* Moves count */}
+                            <span className="text-[11px] font-bold text-slate-500">
+                                Moves: {moveCount}
+                            </span>
                         </div>
 
-                        {/* Live Feedback / Move Status alert */}
-                        <div className={`p-3 rounded-xl border text-xs flex items-center gap-2.5 ${
-                            statusMessage.type === 'celebrate'
-                                ? 'bg-emerald-50 border-emerald-300 text-emerald-900 font-bold'
-                                : statusMessage.type === 'error'
-                                    ? 'bg-rose-50 border-rose-300 text-rose-900 font-medium'
-                                    : 'bg-slate-50 border-slate-200 text-slate-700 font-medium'
-                        }`}>
-                            {statusMessage.type === 'celebrate' ? (
-                                <Sparkles size={16} className="text-emerald-600 shrink-0" />
-                            ) : statusMessage.type === 'error' ? (
-                                <HelpCircle size={16} className="text-rose-600 shrink-0" />
-                            ) : (
-                                <CheckCircle2 size={16} className="text-slate-500 shrink-0" />
-                            )}
-                            <span className="leading-snug">{statusMessage.text}</span>
-                        </div>
-
-                        {/* Live Engine Eval Badge */}
-                        <div className="flex items-center justify-between px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs">
-                            <span className="font-bold text-slate-500">Live Evaluation:</span>
-                            <span className="font-black text-slate-800 font-mono">{liveEval}</span>
-                        </div>
-                    </div>
-
-                    {/* Bottom Action Controls Toolbar (Matching Screenshot Icons) */}
-                    <div className="border-t border-slate-100 bg-white p-3 space-y-2 select-none relative">
-                        {/* Engine Mode Settings Dropdown Popup */}
-                        {showSettingsDropdown && (
-                            <div className="absolute bottom-16 left-3 right-3 bg-white border-2 border-slate-200 rounded-2xl p-3 shadow-xl z-50 space-y-2 animate-in fade-in slide-in-from-bottom-2 duration-150">
-                                <div className="text-xs font-black text-slate-700 uppercase tracking-wider">
-                                    Engine Defense Mode
-                                </div>
-                                <div className="space-y-1.5">
-                                    <button
-                                        onClick={() => handleDefenseModeChange('tablebase_stubborn')}
-                                        className={`w-full py-2 px-3 rounded-xl text-left text-xs font-bold transition-colors ${
-                                            defenseMode === 'tablebase_stubborn'
-                                                ? 'bg-[#0085ff] text-white'
-                                                : 'hover:bg-slate-100 text-slate-700'
-                                        }`}
-                                    >
-                                        Tablebase (Syzygy Max Defense)
-                                    </button>
-                                    <button
-                                        onClick={() => handleDefenseModeChange('stockfish_gm')}
-                                        className={`w-full py-2 px-3 rounded-xl text-left text-xs font-bold transition-colors ${
-                                            defenseMode === 'stockfish_gm'
-                                                ? 'bg-[#0085ff] text-white'
-                                                : 'hover:bg-slate-100 text-slate-700'
-                                        }`}
-                                    >
-                                        Stockfish GM (Maximum Depth)
-                                    </button>
+                        {/* Hint reveal banner */}
+                        {revealedHint && (
+                            <div className="w-full max-w-[min(calc(100vh-175px),calc(100vw-680px),540px)] mt-1.5 p-2.5 rounded-xl bg-amber-50/95 border border-amber-200 text-amber-900 text-xs flex items-start gap-2 shadow-sm animate-in fade-in duration-150">
+                                <Lightbulb size={16} className="text-amber-600 shrink-0 mt-0.5" />
+                                <div className="flex-1">
+                                    <span className="font-black">Key Hint: </span>
+                                    <span>{revealedHint}</span>
                                 </div>
                             </div>
                         )}
+                    </main>
 
-                        {/* Toolbar Icons Row */}
-                        <div className="flex items-center justify-between text-slate-500">
-                            {/* Settings */}
-                            <button
-                                onClick={() => setShowSettingsDropdown(!showSettingsDropdown)}
-                                className={`p-2 rounded-lg transition-colors ${showSettingsDropdown ? 'bg-slate-100 text-slate-800' : 'hover:bg-slate-100 hover:text-slate-800'}`}
-                                title="Engine & Board Settings"
-                            >
-                                <Settings size={17} />
-                            </button>
+                    {/* ── RIGHT COLUMN: Explanations, Strategy Link & Toolbar ── */}
+                    <aside className="w-full md:w-[310px] lg:w-[350px] shrink-0 border-l-2 border-plum/15 bg-white flex flex-col h-full overflow-hidden justify-between z-20">
+                        
+                        {/* Header: Title and Actions */}
+                        <div className="p-4 border-b border-slate-100 flex items-start justify-between gap-3">
+                            <div className="min-w-0 flex-1">
+                                <h2 className="font-serif font-black text-plum text-base md:text-lg leading-snug">
+                                    {activeEndgame.title}
+                                </h2>
+                                <span className="text-[10px] font-black uppercase tracking-wider text-berry mt-0.5 block">
+                                    {activeEndgame.category} • {activeEndgame.difficulty}
+                                </span>
+                            </div>
 
-                            {/* Next move / Next endgame */}
-                            <button
-                                onClick={handleNextEndgame}
-                                className="p-2 rounded-lg hover:bg-slate-100 hover:text-slate-800 transition-colors"
-                                title="Next Endgame Exercise"
-                            >
-                                <ArrowRight size={17} />
-                            </button>
-
-                            {/* Sound Toggle */}
-                            <button
-                                onClick={() => setIsSoundMuted(!isSoundMuted)}
-                                className="p-2 rounded-lg hover:bg-slate-100 hover:text-slate-800 transition-colors"
-                                title={isSoundMuted ? 'Unmute Sound' : 'Mute Sound'}
-                            >
-                                {isSoundMuted ? <VolumeX size={17} /> : <Volume2 size={17} />}
-                            </button>
-
-                            {/* Fullscreen */}
-                            <button
-                                onClick={handleToggleFullscreen}
-                                className="p-2 rounded-lg hover:bg-slate-100 hover:text-slate-800 transition-colors"
-                                title="Toggle Fullscreen"
-                            >
-                                <Maximize2 size={17} />
-                            </button>
-
-                            {/* Hint / Peek */}
-                            <button
-                                onClick={handleToggleHint}
-                                className={`p-2 rounded-lg transition-colors ${revealedHint ? 'text-amber-600 bg-amber-50' : 'hover:bg-slate-100 hover:text-slate-800'}`}
-                                title="Show Hint"
-                            >
-                                <Eye size={17} />
-                            </button>
-
-                            {/* Bot Engine Toggle */}
-                            <button
-                                onClick={() => handleDefenseModeChange(defenseMode === 'tablebase_stubborn' ? 'stockfish_gm' : 'tablebase_stubborn')}
-                                className="p-2 rounded-lg hover:bg-slate-100 hover:text-slate-800 transition-colors"
-                                title={`Engine: ${defenseMode === 'tablebase_stubborn' ? 'Tablebase' : 'Stockfish'}`}
-                            >
-                                <Bot size={17} />
-                            </button>
-
-                            {/* Flip Board */}
-                            <button
-                                onClick={handleToggleColor}
-                                className="p-2 rounded-lg hover:bg-slate-100 hover:text-slate-800 transition-colors"
-                                title="Flip Sides (Switch White/Black)"
-                            >
-                                <Compass size={17} />
-                            </button>
-
-                            {/* Reset Position */}
-                            <button
-                                onClick={handleResetPosition}
-                                className="p-2 rounded-lg hover:bg-slate-100 hover:text-slate-800 transition-colors"
-                                title="Reset Position"
-                            >
-                                <RotateCcw size={17} />
-                            </button>
-                        </div>
-
-                        {/* Interactive Rating Stars Footer */}
-                        <div className="flex items-center justify-between pt-2 border-t border-slate-100 text-xs text-slate-400">
-                            <span className="font-bold">Rate this endgame:</span>
-                            <div className="flex items-center gap-0.5">
-                                {[1, 2, 3, 4, 5].map((star) => (
-                                    <button
-                                        key={star}
-                                        onClick={() => handleRate(star)}
-                                        className={`p-0.5 transition-colors ${
-                                            star <= currentRating ? 'text-amber-400' : 'text-slate-200 hover:text-amber-300'
-                                        }`}
-                                    >
-                                        <Star size={14} fill={star <= currentRating ? 'currentColor' : 'none'} />
-                                    </button>
-                                ))}
+                            {/* Top Right Quick Actions */}
+                            <div className="flex items-center gap-1 shrink-0 text-slate-400">
+                                <Link
+                                    to={`/EndgameStrategy?endgame=${activeEndgame.id}&returnId=${activeEndgame.id}`}
+                                    className="p-1.5 rounded-lg hover:bg-slate-100 hover:text-berry transition-colors"
+                                    title="Open Strategy Diagrams"
+                                >
+                                    <BookOpen size={17} />
+                                </Link>
+                                <button
+                                    onClick={() => markSolved(activeEndgame.id)}
+                                    className={`p-1.5 rounded-lg transition-colors ${
+                                        isSolved ? 'text-emerald-600' : 'hover:bg-slate-100 hover:text-slate-600'
+                                    }`}
+                                    title={isSolved ? 'Completed' : 'Mark as Solved'}
+                                >
+                                    <CheckCircle2 size={17} />
+                                </button>
                             </div>
                         </div>
-                    </div>
-                </aside>
-            </div>
 
-            {/* ── Interactive Strategy & Diagrams Modal ── */}
-            <EndgameStrategyModal
-                isOpen={showStrategyModal}
-                onClose={() => setShowStrategyModal(false)}
-                activeEndgameId={activeEndgame.id}
-                onLoadPosition={handleLoadGuidePosition}
-            />
+                        {/* Explanations Body Content */}
+                        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                            {/* Simple Explanations */}
+                            <div className="space-y-2">
+                                <p className="text-xs md:text-sm text-slate-700 leading-relaxed font-normal">
+                                    {activeEndgame.description}
+                                </p>
+                            </div>
+
+                            {/* Prominent "Learn Strategy" Button linking to Diagrams */}
+                            <Link
+                                to={`/EndgameStrategy?endgame=${activeEndgame.id}&returnId=${activeEndgame.id}`}
+                                className="w-full flex items-center justify-between p-3 rounded-xl bg-gradient-to-r from-berry/10 via-amber-50 to-berry/10 border-2 border-berry/30 hover:border-berry text-plum hover:shadow-md transition-all group active:scale-[0.98]"
+                            >
+                                <div className="flex items-center gap-2.5">
+                                    <div className="w-8 h-8 rounded-lg bg-berry text-white flex items-center justify-center shadow-xs shrink-0">
+                                        <BookOpen size={16} />
+                                    </div>
+                                    <div className="text-left">
+                                        <div className="text-xs font-black uppercase tracking-wider text-berry flex items-center gap-1">
+                                            <span>Learn Strategy</span>
+                                        </div>
+                                        <div className="text-[11px] font-medium text-plum/70">
+                                            View interactive diagrams & masterclass
+                                        </div>
+                                    </div>
+                                </div>
+                                <ArrowRight size={16} className="text-berry group-hover:translate-x-0.5 transition-transform" />
+                            </Link>
+
+                            {/* Objective Callout */}
+                            <div className="space-y-1 pt-1">
+                                <div className="text-[11px] font-black uppercase tracking-wider text-slate-400">
+                                    Objective
+                                </div>
+                                <div className="text-sm font-bold text-slate-800">
+                                    {playerColor === 'w' ? 'White to play!' : 'Black to play!'}
+                                </div>
+                                <p className="text-xs text-slate-500 font-medium">
+                                    {activeEndgame.target === 'win'
+                                        ? 'Convert the advantage and force checkmate.'
+                                        : 'Hold the theoretical draw against the tablebase engine.'}
+                                </p>
+                            </div>
+
+                            {/* Live Move Status alert */}
+                            <div className={`p-3 rounded-xl border text-xs flex items-center gap-2.5 ${
+                                statusMessage.type === 'celebrate'
+                                    ? 'bg-emerald-50 border-emerald-300 text-emerald-900 font-bold'
+                                    : statusMessage.type === 'error'
+                                        ? 'bg-rose-50 border-rose-300 text-rose-900 font-medium'
+                                        : 'bg-slate-50 border-slate-200 text-slate-700 font-medium'
+                            }`}>
+                                {statusMessage.type === 'celebrate' ? (
+                                    <PartyPopper size={16} className="text-emerald-600 shrink-0" />
+                                ) : statusMessage.type === 'error' ? (
+                                    <HelpCircle size={16} className="text-rose-600 shrink-0" />
+                                ) : (
+                                    <CheckCircle2 size={16} className="text-slate-500 shrink-0" />
+                                )}
+                                <span className="leading-snug">{statusMessage.text}</span>
+                            </div>
+
+                            {/* Live Engine Eval Badge */}
+                            <div className="flex items-center justify-between px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs">
+                                <span className="font-bold text-slate-500">Live Evaluation:</span>
+                                <span className="font-black text-slate-800 font-mono">{liveEval}</span>
+                            </div>
+                        </div>
+
+                        {/* Bottom Action Controls Toolbar */}
+                        <div className="border-t border-slate-100 bg-white p-3 space-y-2 select-none relative">
+                            {/* Settings Dropdown Popup */}
+                            {showSettingsDropdown && (
+                                <div className="absolute bottom-16 left-3 right-3 bg-white border-2 border-slate-200 rounded-2xl p-3 shadow-xl z-50 space-y-2 animate-in fade-in slide-in-from-bottom-2 duration-150">
+                                    <div className="text-xs font-black text-slate-700 uppercase tracking-wider">
+                                        Engine Defense Mode
+                                    </div>
+                                    <div className="space-y-1.5">
+                                        <button
+                                            onClick={() => handleDefenseModeChange('tablebase_stubborn')}
+                                            className={`w-full py-2 px-3 rounded-xl text-left text-xs font-bold transition-colors ${
+                                                defenseMode === 'tablebase_stubborn'
+                                                    ? 'bg-[#0085ff] text-white'
+                                                    : 'hover:bg-slate-100 text-slate-700'
+                                            }`}
+                                        >
+                                            Tablebase (Syzygy Max Defense)
+                                        </button>
+                                        <button
+                                            onClick={() => handleDefenseModeChange('stockfish_gm')}
+                                            className={`w-full py-2 px-3 rounded-xl text-left text-xs font-bold transition-colors ${
+                                                defenseMode === 'stockfish_gm'
+                                                    ? 'bg-[#0085ff] text-white'
+                                                    : 'hover:bg-slate-100 text-slate-700'
+                                            }`}
+                                        >
+                                            Stockfish GM (Maximum Depth)
+                                        </button>
+                                        <button
+                                            onClick={() => handleDefenseModeChange('practice_adaptive')}
+                                            className={`w-full py-2 px-3 rounded-xl text-left text-xs font-bold transition-colors ${
+                                                defenseMode === 'practice_adaptive'
+                                                    ? 'bg-[#0085ff] text-white'
+                                                    : 'hover:bg-slate-100 text-slate-700'
+                                            }`}
+                                        >
+                                            Practice Adaptive (Dynamic Defense)
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Toolbar Buttons */}
+                            <div className="flex items-center justify-between gap-1 text-slate-500">
+                                <button
+                                    onClick={handleToggleColor}
+                                    className="p-2.5 rounded-xl hover:bg-slate-100 hover:text-slate-800 transition-colors"
+                                    title="Flip Playing Color"
+                                >
+                                    <Compass size={17} />
+                                </button>
+                                <button
+                                    onClick={handleResetPosition}
+                                    className="p-2.5 rounded-xl hover:bg-slate-100 hover:text-slate-800 transition-colors"
+                                    title="Reset Position"
+                                >
+                                    <RotateCcw size={17} />
+                                </button>
+                                <button
+                                    onClick={() => setShowSettingsDropdown(!showSettingsDropdown)}
+                                    className={`p-2.5 rounded-xl transition-colors ${
+                                        showSettingsDropdown ? 'bg-slate-100 text-slate-900' : 'hover:bg-slate-100 hover:text-slate-800'
+                                    }`}
+                                    title="Engine Settings"
+                                >
+                                    <Settings size={17} />
+                                </button>
+                                <button
+                                    onClick={handleToggleFullscreen}
+                                    className="p-2.5 rounded-xl hover:bg-slate-100 hover:text-slate-800 transition-colors"
+                                    title="Fullscreen"
+                                >
+                                    <Maximize2 size={17} />
+                                </button>
+                                <button
+                                    onClick={() => setIsSoundMuted(!isSoundMuted)}
+                                    className="p-2.5 rounded-xl hover:bg-slate-100 hover:text-slate-800 transition-colors"
+                                    title={isSoundMuted ? 'Unmute Sound' : 'Mute Sound'}
+                                >
+                                    {isSoundMuted ? <VolumeX size={17} /> : <Volume2 size={17} />}
+                                </button>
+                            </div>
+
+                            {/* Difficulty Rating Stars */}
+                            <div className="flex items-center justify-between pt-1 border-t border-slate-100 text-xs">
+                                <span className="text-[11px] font-bold text-slate-400">Rate exercise:</span>
+                                <div className="flex items-center gap-1">
+                                    {[1, 2, 3, 4, 5].map((star) => (
+                                        <button
+                                            key={star}
+                                            onClick={() => handleRate(star)}
+                                            className="p-0.5 transition-transform hover:scale-125 focus:outline-none"
+                                            aria-label={`Rate ${star} stars`}
+                                        >
+                                            <Star
+                                                size={14}
+                                                className={star <= currentRating ? 'fill-amber-400 text-amber-400' : 'text-slate-300'}
+                                            />
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+                    </aside>
+                </div>
+            )}
         </div>
     );
 }

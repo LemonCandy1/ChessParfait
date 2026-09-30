@@ -26,7 +26,7 @@ import {
     Target,
     AlertTriangle,
     CheckCircle2
-} from 'lucide-react';
+} from '@/lib/lucideOriginal';
 
 export interface MoveStep {
     san: string;
@@ -127,7 +127,7 @@ export const FORK_VARIATIONS: DiagramVariation[] = [
             {
                 moveNumber: '4',
                 san: '4. Qd8+',
-                fen: '3Q4/k7/2K5/8/8/8/8/1r6 b - - 7 4',
+                fen: '1k1Q4/8/2K5/8/8/8/8/1r6 b - - 7 4',
                 comment: '4. Qd8+! Back-rank check. The Black king is forced out to a7.',
                 highlights: {
                     d8: WHITE_SQUARE_STYLE,
@@ -186,8 +186,8 @@ export const FORK_VARIATIONS: DiagramVariation[] = [
             },
             {
                 moveNumber: '8',
-                san: '8. Qxb1',
-                fen: '8/k7/2K5/8/8/8/8/1Q6 b - - 0 8',
+                san: '7... Kb8 8. Qxb1+',
+                fen: '1k6/8/2K5/8/8/8/8/1Q6 b - - 0 8',
                 comment: '8. Qxb1! The rook falls. White mates on the next move (e.g. 8...Ka8 9.Qb7#).',
                 highlights: { b1: WHITE_SQUARE_STYLE }
             }
@@ -251,9 +251,9 @@ export const FORK_VARIATIONS: DiagramVariation[] = [
             },
             {
                 moveNumber: '7',
-                san: '7. Qxh7',
-                fen: '1k6/7Q/2K5/8/8/8/8/8 b - - 0 7',
-                comment: '7. Qxh7! Rook captured with mate to follow on b7 or c7.',
+                san: '6... Ka7 7. Qxh7+',
+                fen: '8/k6Q/2K5/8/8/8/8/8 b - - 0 7',
+                comment: '6... Ka7 7. Qxh7+! Rook captured with check; White mates shortly.',
                 highlights: { h7: WHITE_SQUARE_STYLE }
             }
         ]
@@ -274,7 +274,7 @@ export const FORK_VARIATIONS: DiagramVariation[] = [
             {
                 moveNumber: '4',
                 san: '4. Qd8+',
-                fen: '3Q4/8/2K5/8/8/1r6/8/8 b - - 7 4',
+                fen: '1k1Q4/8/2K5/8/8/1r6/8/8 b - - 7 4',
                 comment: '4. Qd8+! Back-rank check.',
                 highlights: { d8: WHITE_SQUARE_STYLE }
             },
@@ -316,8 +316,8 @@ export const FORK_VARIATIONS: DiagramVariation[] = [
             },
             {
                 moveNumber: '7',
-                san: '7. Qxb3',
-                fen: 'k7/8/2K5/8/8/1Q6/8/8 b - - 0 7',
+                san: '6... Kb8 7. Qxb3+',
+                fen: '1k6/8/2K5/8/8/1Q6/8/8 b - - 0 7',
                 comment: '7. Qxb3. Decisive win.',
                 highlights: { b3: WHITE_SQUARE_STYLE }
             }
@@ -339,7 +339,7 @@ export const FORK_VARIATIONS: DiagramVariation[] = [
             {
                 moveNumber: '4',
                 san: '4. Qd8+',
-                fen: '3Q4/8/2K5/8/8/8/1r6/8 b - - 7 4',
+                fen: '1k1Q4/8/2K5/8/8/8/1r6/8 b - - 7 4',
                 comment: '4. Qd8+ Ka7',
                 highlights: { d8: WHITE_SQUARE_STYLE }
             },
@@ -367,8 +367,8 @@ export const FORK_VARIATIONS: DiagramVariation[] = [
             },
             {
                 moveNumber: '6',
-                san: '6. Qxb2',
-                fen: '8/k7/2K5/8/8/8/1Q6/8 b - - 0 6',
+                san: '5... Kb8 6. Qxb2+',
+                fen: '1k6/8/2K5/8/8/8/1Q6/8 b - - 0 6',
                 comment: '6. Qxb2. Rook won.',
                 highlights: { b2: WHITE_SQUARE_STYLE }
             }

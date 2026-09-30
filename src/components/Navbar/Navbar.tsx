@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Menu, X, User, LogOut, ChevronDown, Trophy, Award, GraduationCap, BookOpen, Compass } from 'lucide-react';
+import { Menu, X, User, LogOut, ChevronDown, Trophy, Award } from 'lucide-react';
+import { ChessKnight, Book } from '../../lib/lucideOriginal';
 import logo from '../../assets/Logo-bg-removed.png';
 import { ChessPawnIcon, RouletteIcon, GhostChefIcon } from '../Icons';
 import { useAuth } from '../../context/AuthContext';
@@ -27,7 +28,7 @@ const Navbar = () => {
     const levelInfo = calculateLevelInfo(user?.points || 0);
 
     return (
-        <nav className="sticky top-0 z-[9999] bg-cream border-b-2 border-plum/15 py-3 px-6 shadow-sm">
+        <nav className="sticky top-0 z-[9999] bg-cream border-b-2 border-plum/15 pt-[max(0.75rem,env(safe-area-inset-top))] pb-3 px-4 md:px-6 shadow-sm">
             <div className="relative max-w-7xl mx-auto flex items-center justify-between">
 
                 {/* Left: Logo */}
@@ -83,7 +84,6 @@ const Navbar = () => {
                                     title="Imposter Chess" 
                                     description="Hidden-information variant" 
                                     icon={<GhostChefIcon size={18} />} 
-                                    isComingSoon 
                                 />
                             </div>
                         </div>
@@ -108,20 +108,14 @@ const Navbar = () => {
                                 <DropdownItem 
                                     to="/EndgamePractice" 
                                     title="Endgame Practice" 
-                                    description="Tablebase & Stockfish trainer" 
-                                    icon={<GraduationCap size={18} />} 
+                                    description="Drill endgames against Maia or Stockfish" 
+                                    icon={<ChessKnight size={18} strokeWidth={1.75} />} 
                                 />
                                 <DropdownItem 
                                     to="/EndgameStrategy" 
                                     title="Endgame Strategy" 
                                     description="Interactive diagrams & master lines" 
-                                    icon={<BookOpen size={18} />} 
-                                />
-                                <DropdownItem 
-                                    to="/PawnGameStrategy" 
-                                    title="Pawn Strategy" 
-                                    description="Key squares, opposition & breaks" 
-                                    icon={<Compass size={18} />} 
+                                    icon={<Book size={18} strokeWidth={1.75} />} 
                                 />
                             </div>
                         </div>
@@ -275,10 +269,10 @@ const Navbar = () => {
 
             {/* Mobile Menu Dropdown */}
             {isMobileMenuOpen && (
-                <div className="md:hidden absolute top-full left-0 w-full z-[9999] bg-cream/95 backdrop-blur-xl border-b border-plum/10 shadow-2xl py-8 px-6 flex flex-col items-center gap-6 animate-in slide-in-from-top-2 duration-300">
+                <div className="md:hidden absolute top-full left-0 w-full z-[9999] bg-cream/95 backdrop-blur-xl border-b border-plum/10 shadow-2xl py-6 px-6 flex flex-col items-center gap-5 max-h-[calc(100dvh-5rem)] overflow-y-auto animate-in slide-in-from-top-2 duration-300">
                     <NavLink to="/" label="Home" onClick={closeMenu} />
                     <NavLink to="/games" label="Play" onClick={closeMenu} />
-                    <NavLink to="/EndgamePractice" label="Learn" onClick={closeMenu} />
+                    <NavLink to="/EndgamePractice" label="Endgame" onClick={closeMenu} />
                     <NavLink to="/TrainingPuzzles" label="Puzzles" onClick={closeMenu} />
                     {user && (
                         <NavLink to="/profile" label={`Profile (Lvl ${levelInfo.level})`} onClick={closeMenu} />
@@ -319,7 +313,7 @@ const DropdownItem = ({
         to={to}
         className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-berry/5 transition-all text-left group/item"
     >
-        <div className="p-2 rounded-lg bg-cream text-plum group-hover/item:text-berry group-hover/item:bg-white shadow-sm border-2 border-plum/15 transition-all duration-300 flex-shrink-0">
+        <div className="w-9 h-9 flex items-center justify-center rounded-xl bg-plum/5 text-plum group-hover/item:text-berry group-hover/item:bg-berry/10 transition-colors duration-200 flex-shrink-0">
             {icon}
         </div>
         <div className="flex-1 min-w-0">

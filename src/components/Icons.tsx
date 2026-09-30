@@ -268,3 +268,7 @@ export function PuzzleIcon({ size = 24, ...props }: CustomIconProps) {
         </svg>
     );
 }
+
+// Re-export Uxercon Line Icons
+export * from './icons/uxercon';
+

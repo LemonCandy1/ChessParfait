@@ -26,8 +26,9 @@ export async function onRequestGet(context: any) {
         const refreshToken = cookies['refresh_token'];
 
         if (!token) {
-            return new Response(JSON.stringify({ message: 'No session token found.' }), {
-                status: 401,
+            // Signed-out visitors are normal, not an error: answer 200 so the browser console stays clean.
+            return new Response(JSON.stringify({ user: null, message: 'No session token found.' }), {
+                status: 200,
                 headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' }
             });
         }

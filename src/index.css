@@ -15,8 +15,39 @@
 }
 
 @layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+    -webkit-tap-highlight-color: transparent;
+  }
+
   body {
     @apply font-sans bg-cream text-plum selection:bg-berry/30;
+    overscroll-behavior-y: none;
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+  }
+
+  /* Native-feeling touch targets: no double-tap zoom delay, no accidental text selection on controls */
+  button,
+  a,
+  select,
+  [role="button"] {
+    touch-action: manipulation;
+  }
+
+  button {
+    -webkit-user-select: none;
+    user-select: none;
+  }
+
+  /* Prevent iOS zoom-on-focus for form controls */
+  @media (max-width: 767px) {
+    input,
+    select,
+    textarea {
+      font-size: 16px;
+    }
   }
 
   h1, h2, h3, h4, h5, h6 {

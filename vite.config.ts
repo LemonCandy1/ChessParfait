@@ -4,11 +4,25 @@ import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import path from 'path'
 
+// onnxruntime-web ships a ~27 MB wasm binary that Vite copies into dist, but Cloudflare Pages
+// rejects files over 25 MiB. The app loads that binary from a CDN at runtime
+// (ort.env.wasm.wasmPaths in src/lib/maiaOnnxService.ts), so drop the bundled copy.
+const dropOrtWasm = () => ({
+  name: 'drop-ort-wasm',
+  apply: 'build' as const,
+  generateBundle(_options: unknown, bundle: Record<string, unknown>) {
+    for (const fileName of Object.keys(bundle)) {
+      if (/ort-wasm[^/]*\.wasm$/.test(fileName)) delete bundle[fileName]
+    }
+  },
+})
+
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [
     react(),
     tailwindcss(),
+    dropOrtWasm(),
   ],
   resolve: {
     alias: {

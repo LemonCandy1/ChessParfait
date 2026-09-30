@@ -20,7 +20,9 @@
     "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"],
-      "next/image": ["./src/components/ui/NextImageShim.tsx"]
+      "next/image": ["./src/components/ui/NextImageShim.tsx"],
+      "lucide-original": ["./node_modules/lucide-react/dist/lucide-react.d.ts"],
+      "lucide-react": ["./src/components/icons/uxercon.tsx"]
     },
 
     /* Linting */

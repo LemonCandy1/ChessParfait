@@ -8,6 +8,7 @@ import { Link } from 'react-router-dom';
 import profilePicture from '../assets/Profile Photo.jpeg';
 import ClientFeedback from '@/components/ui/testimonial';
 import ParallaxBackground from '@/components/ui/ParallaxBackground';
+import SpecularButton from './SpecularButton';
 
 export default function Home() {
 
@@ -29,8 +30,8 @@ export default function Home() {
 
             {/* HERO SECTION */}
             <header className="relative pt-16 pb-20 px-6 md:px-12 max-w-7xl mx-auto w-full z-10">
-                <div className="flex flex-col items-center text-center max-w-5xl mx-auto">
-                    <h1 className="text-3xl sm:text-5xl md:text-6xl lg:text-[4.25rem] xl:text-7xl font-black mb-6 leading-[1.08] tracking-tight text-plum whitespace-nowrap">
+                <div className="flex flex-col items-center text-center max-w-6xl mx-auto w-full">
+                    <h1 className="text-3xl sm:text-5xl md:text-6xl lg:text-[4.25rem] xl:text-7xl font-black mb-6 leading-[1.08] tracking-tight font-serif text-plum">
                         Perfect Your <span className="text-berry">Chess Intuition</span>
                     </h1>
 
@@ -39,19 +40,52 @@ export default function Home() {
                     </p>
 
                     <div className="flex flex-wrap justify-center gap-4 w-full sm:w-auto">
-                        <Link
+                        <SpecularButton
                             to="/games"
-                            className="soft-button-berry px-8 py-4 flex items-center justify-center gap-2 group w-full sm:w-auto text-sm"
+                            size="md"
+                            radius={14}
+                            tint="#D23157"
+                            tintOpacity={1}
+                            textColor="#ffffff"
+                            lineColor="#ffffff"
+                            baseColor="#991b3b"
+                            intensity={1.2}
+                            shineSize={14}
+                            shineFade={35}
+                            thickness={1.5}
+                            speed={0.35}
+                            followMouse={true}
+                            proximity={250}
+                            className="w-full sm:w-auto"
                         >
-                            <span>Play & Learn</span>
-                            <ChevronRight size={18} className="group-hover:translate-x-1 transition-transform" />
-                        </Link>
-                        <Link
+                            <span className="flex items-center justify-center gap-2 group text-sm font-bold">
+                                <span>Play & Learn</span>
+                                <ChevronRight size={18} className="group-hover:translate-x-1 transition-transform" />
+                            </span>
+                        </SpecularButton>
+                        <SpecularButton
                             to="/contact"
-                            className="soft-button-outline px-8 py-4 flex items-center justify-center gap-2 w-full sm:w-auto text-sm"
+                            size="md"
+                            radius={14}
+                            tint="#ffffff"
+                            tintOpacity={0.95}
+                            blur={8}
+                            textColor="#4A154B"
+                            lineColor="#D23157"
+                            baseColor="#e5d0de"
+                            intensity={1.2}
+                            shineSize={14}
+                            shineFade={35}
+                            thickness={1.5}
+                            speed={0.35}
+                            followMouse={true}
+                            proximity={250}
+                            className="w-full sm:w-auto border border-plum/10"
                         >
-                            <span>Book a Session</span>
-                        </Link>
+                            <span className="flex items-center justify-center gap-2 text-sm font-bold">
+                                <span>Book a Session</span>
+                            </span>
+                        </SpecularButton>
                     </div>
                 </div>
             </header>

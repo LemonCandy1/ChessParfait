@@ -14,6 +14,8 @@ export default defineConfig({
     alias: {
       '@': path.resolve(__dirname, './src'),
       'next/image': path.resolve(__dirname, './src/components/ui/NextImageShim.tsx'),
+      'lucide-original': path.resolve(__dirname, './node_modules/lucide-react/dist/esm/lucide-react.js'),
+      'lucide-react': path.resolve(__dirname, './src/components/icons/uxercon.tsx'),
     },
   },
   server: {

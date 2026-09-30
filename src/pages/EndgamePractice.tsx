@@ -1,6 +1,6 @@
 import { useState, useCallback, useMemo, useRef, useEffect, type CSSProperties } from 'react';
 import { Chess } from 'chess.js';
-import { Chessboard, defaultArrowOptions } from 'react-chessboard';
+import { Chessboard, defaultArrowOptions, defaultPieces } from 'react-chessboard';
 import {
     RotateCcw,
     CheckCircle2,
@@ -20,13 +20,15 @@ import {
     Search,
     X,
     Lightbulb,
-    Star
-} from 'lucide-react';
+    Star,
+    ChevronDown,
+    ChevronRight
+} from '@/lib/lucideOriginal';
 import { useSearchParams, Link } from 'react-router-dom';
 import Navbar from '../components/Navbar/Navbar';
 import { playMoveSound, playCaptureSound, playWinSound, playLoseSound } from '../lib/soundEffects';
 import endgamesData from '../data/endgames.json';
-import { endgameEngine, type EngineDefenseMode } from '../lib/stockfishEngine';
+import { endgameEngine, OPPONENT_PRESETS, type PracticeOpponent } from '../lib/stockfishEngine';
 import { useAuth } from '../context/AuthContext';
 
 const customArrowOptions = {
@@ -52,6 +54,44 @@ export interface EndgamePosition {
     description: string;
     theoryNotes: string;
     keyTip: string;
+}
+
+/**
+ * Check if a proposed move is a pawn promotion move
+ */
+/**
+ * Return the starting FEN with the player to move, so practice always begins on the
+ * player's turn. Falls back to the original FEN if switching the turn is not legal.
+ */
+function fenForPlayer(fen: string, color: 'w' | 'b'): string {
+    const parts = fen.split(' ');
+    if (parts[1] === color) return fen;
+    parts[1] = color;
+    parts[3] = '-';
+    const candidate = parts.join(' ');
+    try {
+        const opponentToMove = new Chess(candidate.replace(/ [wb] /, color === 'w' ? ' b ' : ' w '));
+        if (opponentToMove.isCheck()) return fen;
+        return new Chess(candidate).fen();
+    } catch {
+        return fen;
+    }
+}
+
+function isPromotionMove(gameInstance: Chess, from: string, to: string): boolean {
+    try {
+        const piece = gameInstance.get(from as any);
+        if (!piece || piece.type !== 'p') return false;
+
+        const targetRank = to[1];
+        const isPromoRank = (piece.color === 'w' && targetRank === '8') || (piece.color === 'b' && targetRank === '1');
+        if (!isPromoRank) return false;
+
+        const legalMoves = gameInstance.moves({ square: from as any, verbose: true });
+        return legalMoves.some((m) => m.to === to && Boolean(m.promotion));
+    } catch {
+        return false;
+    }
 }
 
 // ── Silhouette SVG Icons matching the ChessParfait design ──
@@ -191,9 +231,20 @@ export default function EndgamePractice() {
     }, [storageKey]);
 
     // Chess board and calculation state
-    const [game, setGame] = useState<Chess>(() => new Chess((matchedEndgame || endgames[0]).fen));
+    const [game, setGame] = useState<Chess>(() => new Chess(fenForPlayer((matchedEndgame || endgames[0]).fen, (matchedEndgame || endgames[0]).playerColor)));
     const [playerColor, setPlayerColor] = useState<'w' | 'b'>((matchedEndgame || endgames[0]).playerColor);
-    const [defenseMode, setDefenseMode] = useState<EngineDefenseMode>('tablebase_stubborn');
+    const [selectedOpponent, setSelectedOpponent] = useState<PracticeOpponent>(() => {
+        try {
+            const saved = localStorage.getItem('endgame_practice_opponent');
+            if (saved && OPPONENT_PRESETS[saved as PracticeOpponent]) {
+                endgameEngine.setOpponent(saved as PracticeOpponent);
+                return saved as PracticeOpponent;
+            }
+        } catch {}
+        endgameEngine.setOpponent('stockfish');
+        return 'stockfish';
+    });
+    const [showOpponentModal, setShowOpponentModal] = useState(false);
     const [isAiThinking, setIsAiThinking] = useState(false);
     const [liveEval, setLiveEval] = useState<string>('Calculating...');
     const [statusMessage, setStatusMessage] = useState<{ type: 'info' | 'success' | 'error' | 'celebrate'; text: string }>({
@@ -224,6 +275,14 @@ export default function EndgamePractice() {
     });
 
     const aiTimerRef = useRef<number | null>(null);
+    const [pendingPromotion, setPendingPromotion] = useState<{ from: string; to: string; color: 'w' | 'b' } | null>(null);
+    const gameRef = useRef<Chess>(game);
+    const pendingMoveRef = useRef<{ from: string; to: string; promotion?: string } | null>(null);
+    const executeMoveRef = useRef<(sourceSquare: string, targetSquare: string, chosenPromotion?: string) => boolean>(() => false);
+
+    useEffect(() => {
+        gameRef.current = game;
+    }, [game]);
 
     // Sync URL parameter with active endgame
     useEffect(() => {
@@ -233,7 +292,7 @@ export default function EndgamePractice() {
             if (eg && eg.id !== activeEndgame.id) {
                 setActiveEndgame(eg);
                 setPlayerColor(eg.playerColor);
-                setGame(new Chess(eg.fen));
+                setGame(new Chess(fenForPlayer(eg.fen, eg.playerColor)));
                 setViewMode('arena');
             }
         }
@@ -312,7 +371,7 @@ export default function EndgamePractice() {
     // Initial evaluation
     useEffect(() => {
         if (viewMode === 'arena') {
-            updateEvaluation(activeEndgame.fen);
+            updateEvaluation(gameRef.current.fen());
         }
     }, [activeEndgame, updateEvaluation, viewMode]);
 
@@ -321,8 +380,11 @@ export default function EndgamePractice() {
         if (aiTimerRef.current) clearTimeout(aiTimerRef.current);
         setActiveEndgame(endgame);
         setPlayerColor(endgame.playerColor);
-        const newGame = new Chess(endgame.fen);
+        const newGame = new Chess(fenForPlayer(endgame.fen, endgame.playerColor));
         setGame(newGame);
+        gameRef.current = newGame;
+        pendingMoveRef.current = null;
+        setPendingPromotion(null);
         setMoveCount(0);
         setSelectedSquare(null);
         setLastMove(null);
@@ -339,7 +401,7 @@ export default function EndgamePractice() {
                 ? 'Your goal: Find the winning technique and deliver checkmate!'
                 : 'Your goal: Defend precisely and hold the theoretical draw!'
         });
-        updateEvaluation(endgame.fen);
+        updateEvaluation(newGame.fen());
         setViewMode('arena');
         setSearchParams({ id: endgame.id });
     };
@@ -347,15 +409,20 @@ export default function EndgamePractice() {
     // Return to catalog
     const handleReturnToCatalog = () => {
         if (aiTimerRef.current) clearTimeout(aiTimerRef.current);
+        pendingMoveRef.current = null;
+        setPendingPromotion(null);
         setViewMode('catalog');
         setSearchParams({});
     };
 
     // Reset current position
-    const handleResetPosition = useCallback(() => {
+    const handleResetPosition = useCallback((colorArg?: 'w' | 'b') => {
         if (aiTimerRef.current) clearTimeout(aiTimerRef.current);
-        const newGame = new Chess(activeEndgame.fen);
+        const newGame = new Chess(fenForPlayer(activeEndgame.fen, colorArg ?? playerColor));
         setGame(newGame);
+        gameRef.current = newGame;
+        pendingMoveRef.current = null;
+        setPendingPromotion(null);
         setMoveCount(0);
         setSelectedSquare(null);
         setLastMove(null);
@@ -368,8 +435,8 @@ export default function EndgamePractice() {
             type: 'info',
             text: 'Position reset. Ready for another attempt!'
         });
-        updateEvaluation(activeEndgame.fen);
-    }, [activeEndgame, updateEvaluation]);
+        updateEvaluation(newGame.fen());
+    }, [activeEndgame, playerColor, updateEvaluation]);
 
     // Advance to next endgame
     const handleNextEndgame = () => {
@@ -385,14 +452,22 @@ export default function EndgamePractice() {
         setSelectedSquare(null);
         setLastMove(null);
         setCircledSquares([]);
-        handleResetPosition();
+        handleResetPosition(nextColor);
     };
 
-    // Switch defense mode
-    const handleDefenseModeChange = (mode: EngineDefenseMode) => {
-        setDefenseMode(mode);
-        endgameEngine.setMode(mode);
+    // Switch practice opponent (Maia bots or Stockfish)
+    const handleOpponentChange = (opponent: PracticeOpponent) => {
+        setSelectedOpponent(opponent);
+        endgameEngine.setOpponent(opponent);
+        try {
+            localStorage.setItem('endgame_practice_opponent', opponent);
+        } catch {}
         setShowSettingsDropdown(false);
+        setShowOpponentModal(false);
+        setStatusMessage({
+            type: 'info',
+            text: `Opponent set to ${OPPONENT_PRESETS[opponent].name} (${OPPONENT_PRESETS[opponent].title}).`
+        });
     };
 
     // Fullscreen toggle
@@ -501,13 +576,25 @@ export default function EndgamePractice() {
                 const isDefender = activeEndgame.target === 'win';
                 const recommendation = await endgameEngine.getBestMove(fen, isDefender);
 
-                if (recommendation) {
+                {
                     const gameCopy = new Chess(currentGame.fen());
-                    const move = gameCopy.move({
-                        from: recommendation.from,
-                        to: recommendation.to,
-                        promotion: recommendation.promotion || 'q'
-                    }) || gameCopy.move(recommendation.san);
+                    let move = null;
+                    if (recommendation) {
+                        try {
+                            move = gameCopy.move({
+                                from: recommendation.from,
+                                to: recommendation.to,
+                                promotion: recommendation.promotion || 'q'
+                            });
+                        } catch {
+                            move = null;
+                        }
+                    }
+                    if (!move) {
+                        // Guarantee the turn always returns to the player
+                        const legal = gameCopy.moves();
+                        if (legal.length > 0) move = gameCopy.move(legal[Math.floor(Math.random() * legal.length)]);
+                    }
 
                     if (move) {
                         if (!isSoundMuted) {
@@ -516,16 +603,43 @@ export default function EndgamePractice() {
                         }
 
                         setGame(gameCopy);
+                        gameRef.current = gameCopy;
                         setLastMove({ from: move.from, to: move.to });
-                        setSelectedSquare(null);
                         updateEvaluation(gameCopy.fen());
+
+                        // Preserve player's selected piece if it is still on the board and belongs to the player
+                        setSelectedSquare((prevSelected) => {
+                            if (!prevSelected) return null;
+                            const piece = gameCopy.get(prevSelected as any);
+                            return (piece && piece.color === playerColor) ? prevSelected : null;
+                        });
 
                         const gameOver = evaluateEndCondition(gameCopy);
                         if (!gameOver) {
+                            const oppName = OPPONENT_PRESETS[selectedOpponent]?.name || 'Opponent';
+                            const neuralTag = recommendation?.isNeural ? ' (Neural ONNX)' : '';
                             setStatusMessage({
                                 type: 'info',
-                                text: `Opponent played ${move.san}. Your turn!`
+                                text: `${oppName}${neuralTag} played ${move.san}. Your turn!`
                             });
+
+                            // If player queued a move while opponent was calculating, execute it now!
+                            if (pendingMoveRef.current) {
+                                const pending = pendingMoveRef.current;
+                                pendingMoveRef.current = null;
+                                // Clear AI thinking flag so executeMove will run the move immediately
+                                setIsAiThinking(false);
+                                if (!pending.promotion && isPromotionMove(gameCopy, pending.from, pending.to)) {
+                                    setPendingPromotion({
+                                        from: pending.from,
+                                        to: pending.to,
+                                        color: playerColor
+                                    });
+                                } else {
+                                    // Execute the queued move (including promotion if needed)
+                                    executeMoveRef.current(pending.from, pending.to, pending.promotion);
+                                }
+                            }
                         }
                     }
                 }
@@ -535,19 +649,54 @@ export default function EndgamePractice() {
                 setIsAiThinking(false);
             }
         }, 400);
-    }, [activeEndgame, evaluateEndCondition, isSoundMuted, updateEvaluation]);
+    }, [activeEndgame, evaluateEndCondition, isSoundMuted, playerColor, selectedOpponent, updateEvaluation]);
+
+    // Safety net: whenever it is not the player's turn, the opponent replies immediately
+    useEffect(() => {
+        if (viewMode !== 'arena' || isSolved || isAiThinking) return;
+        if (game.isGameOver() || game.turn() === playerColor) return;
+        triggerAiResponse(game);
+    }, [game, isAiThinking, isSolved, playerColor, triggerAiResponse, viewMode]);
 
     // Shared move executor for Click-to-Move and Drag-and-Drop
-    const executeMove = useCallback((sourceSquare: string, targetSquare: string): boolean => {
-        if (isAiThinking || isSolved) return false;
-        if (game.turn() !== playerColor) return false;
+    const executeMove = useCallback((sourceSquare: string, targetSquare: string, chosenPromotion?: string): boolean => {
+        if (isSolved) return false;
+
+        const currentGame = gameRef.current;
+
+        // If opponent is currently calculating or it's not the player's turn:
+        // Queue the move (premove) so it executes as soon as the opponent move lands!
+        if (isAiThinking || currentGame.turn() !== playerColor) {
+            const movingPiece = currentGame.get(sourceSquare as any);
+            if (movingPiece && movingPiece.color === playerColor) {
+                pendingMoveRef.current = { from: sourceSquare, to: targetSquare, promotion: chosenPromotion };
+                setSelectedSquare(sourceSquare);
+                setStatusMessage({
+                    type: 'info',
+                    text: 'Move queued. Executing as soon as opponent moves...'
+                });
+                return true;
+            }
+            return false;
+        }
+
+        // Check if this is a pawn promotion and user hasn't selected a piece yet
+        if (!chosenPromotion && isPromotionMove(currentGame, sourceSquare, targetSquare)) {
+            setPendingPromotion({
+                from: sourceSquare,
+                to: targetSquare,
+                color: playerColor
+            });
+            setSelectedSquare(sourceSquare);
+            return false;
+        }
 
         try {
-            const gameCopy = new Chess(game.fen());
+            const gameCopy = new Chess(currentGame.fen());
             const move = gameCopy.move({
                 from: sourceSquare,
                 to: targetSquare,
-                promotion: 'q'
+                promotion: chosenPromotion || 'q'
             });
 
             if (move === null) return false;
@@ -558,16 +707,19 @@ export default function EndgamePractice() {
             }
 
             setGame(gameCopy);
+            gameRef.current = gameCopy;
             setMoveCount((prev) => prev + 1);
             setLastMove({ from: move.from, to: move.to });
             setSelectedSquare(null);
+            pendingMoveRef.current = null;
             updateEvaluation(gameCopy.fen());
 
             const isEnd = evaluateEndCondition(gameCopy);
             if (!isEnd) {
+                const oppName = OPPONENT_PRESETS[selectedOpponent]?.name || 'Opponent';
                 setStatusMessage({
                     type: 'info',
-                    text: 'Good move! Opponent is calculating defense...'
+                    text: `Good move! ${oppName} is calculating defense...`
                 });
                 triggerAiResponse(gameCopy);
             }
@@ -576,32 +728,85 @@ export default function EndgamePractice() {
         } catch {
             return false;
         }
-    }, [evaluateEndCondition, game, isAiThinking, isSolved, isSoundMuted, playerColor, triggerAiResponse, updateEvaluation]);
+    }, [evaluateEndCondition, isAiThinking, isSolved, isSoundMuted, playerColor, selectedOpponent, triggerAiResponse, updateEvaluation]);
+
+    useEffect(() => {
+        executeMoveRef.current = executeMove;
+    }, [executeMove]);
+
+    // Promotion selection handlers
+    const handleSelectPromotion = useCallback((promoPiece: 'q' | 'r' | 'b' | 'n') => {
+        if (!pendingPromotion) return;
+        const { from, to } = pendingPromotion;
+        setPendingPromotion(null);
+        executeMove(from, to, promoPiece);
+    }, [executeMove, pendingPromotion]);
+
+    const handleCancelPromotion = useCallback(() => {
+        setPendingPromotion(null);
+        setSelectedSquare(null);
+    }, []);
+
+    // Keyboard shortcuts for promotion selection
+    useEffect(() => {
+        if (!pendingPromotion) return;
+
+        const handleKeyDown = (e: KeyboardEvent) => {
+            const key = e.key.toLowerCase();
+            if (key === 'q' || key === '1') {
+                e.preventDefault();
+                handleSelectPromotion('q');
+            } else if (key === 'r' || key === '2') {
+                e.preventDefault();
+                handleSelectPromotion('r');
+            } else if (key === 'b' || key === '3') {
+                e.preventDefault();
+                handleSelectPromotion('b');
+            } else if (key === 'n' || key === '4') {
+                e.preventDefault();
+                handleSelectPromotion('n');
+            } else if (key === 'escape') {
+                e.preventDefault();
+                handleCancelPromotion();
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [pendingPromotion, handleSelectPromotion, handleCancelPromotion]);
 
     // Click handler for Click-to-Move (clicking piece then clicking target square)
     const handleSquareOrPieceClick = useCallback((square: string) => {
         // Left click removes all circled squares
         setCircledSquares([]);
+        if (isSolved) return;
 
-        if (isAiThinking || isSolved) return;
-        if (game.turn() !== playerColor) return;
+        const currentGame = gameRef.current;
 
         if (selectedSquare) {
             // Clicking the same square toggles/deselects
             if (square === selectedSquare) {
                 setSelectedSquare(null);
+                pendingMoveRef.current = null;
                 return;
             }
 
             // Clicking another friendly piece switches selection
-            const pieceOnSquare = game.get(square as any);
+            const pieceOnSquare = currentGame.get(square as any);
             if (pieceOnSquare && pieceOnSquare.color === playerColor) {
                 setSelectedSquare(square);
+                pendingMoveRef.current = null;
+                return;
+            }
+
+            // If opponent is calculating or not player's turn, queue move
+            if (isAiThinking || currentGame.turn() !== playerColor) {
+                executeMove(selectedSquare, square);
                 return;
             }
 
             // Check if the destination is a legal move
-            const legalMoves = game.moves({ square: selectedSquare as any, verbose: true });
+            const legalMoves = currentGame.moves({ square: selectedSquare as any, verbose: true });
             const isLegal = legalMoves.some((m) => m.to === square);
 
             if (isLegal) {
@@ -612,36 +817,37 @@ export default function EndgamePractice() {
             return;
         }
 
-        // No piece selected: select if square contains the player's piece
-        const pieceOnSquare = game.get(square as any);
+        // No piece selected: allow selecting if square contains the player's piece (even during opponent move!)
+        const pieceOnSquare = currentGame.get(square as any);
         if (pieceOnSquare && pieceOnSquare.color === playerColor) {
             setSelectedSquare(square);
         }
-    }, [executeMove, game, isAiThinking, isSolved, playerColor, selectedSquare]);
+    }, [executeMove, isAiThinking, isSolved, playerColor, selectedSquare]);
 
     // Piece drag handler to immediately show legal moves while dragging
     const onPieceDrag = useCallback(({ square }: { square: string | null; isSparePiece?: boolean; piece?: any }) => {
         setCircledSquares([]);
-        if (!square) return;
-        if (isAiThinking || isSolved) return;
-        if (game.turn() !== playerColor) return;
-        const pieceOnSquare = game.get(square as any);
+        if (!square || isSolved) return;
+        const currentGame = gameRef.current;
+        const pieceOnSquare = currentGame.get(square as any);
         if (pieceOnSquare && pieceOnSquare.color === playerColor) {
             setSelectedSquare(square);
         }
-    }, [game, isAiThinking, isSolved, playerColor]);
+    }, [isSolved, playerColor]);
 
     // Drop piece handler for Drag-and-Drop
     const onPieceDrop = useCallback(({ sourceSquare, targetSquare }: { sourceSquare: string; targetSquare: string | null }): boolean => {
         setCircledSquares([]);
-        if (!targetSquare) {
+        if (!targetSquare || isSolved) {
             setSelectedSquare(null);
             return false;
         }
         const success = executeMove(sourceSquare, targetSquare);
-        setSelectedSquare(null);
+        if (!isAiThinking) {
+            setSelectedSquare(null);
+        }
         return success;
-    }, [executeMove]);
+    }, [executeMove, isAiThinking, isSolved]);
 
     // Right-click square handler to toggle circle on/off
     const handleSquareRightClick = useCallback((square: string) => {
@@ -716,7 +922,7 @@ export default function EndgamePractice() {
     }, [endgames, solvedIds]);
 
     return (
-        <div className="h-screen flex flex-col bg-[#FAF1DB] font-sans text-plum overflow-hidden">
+        <div className="h-screen h-[100dvh] flex flex-col bg-[#FAF1DB] font-sans text-plum overflow-hidden">
             {/* Top Navbar */}
             <Navbar />
 
@@ -907,7 +1113,7 @@ export default function EndgamePractice() {
                     
                     {/* ── LEFT COLUMN: Endgames List & Course Hierarchy ── */}
                     <aside
-                        className={`shrink-0 border-r-2 border-plum/15 bg-white flex flex-col h-full overflow-hidden transition-all duration-300 z-20 ${
+                        className={`hidden md:flex shrink-0 border-r-2 border-plum/15 bg-white flex-col h-full overflow-hidden transition-all duration-300 z-20 ${
                             isSidebarCollapsed ? 'w-14' : 'w-full md:w-[280px] lg:w-[320px]'
                         }`}
                     >
@@ -1036,25 +1242,62 @@ export default function EndgamePractice() {
                     </aside>
 
                     {/* ── CENTER COLUMN: Centered Chessboard ── */}
-                    <main className="flex-1 flex flex-col items-center justify-center p-2 md:p-3 relative h-full min-w-0 bg-[#f8fafc] overflow-hidden">
+                    <main className="flex-1 flex flex-col items-center justify-start md:justify-center p-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] md:p-3 relative h-full min-w-0 bg-[#f8fafc] overflow-y-auto md:overflow-hidden">
                         {/* Top quick navigation to return to catalog */}
-                        <div className="w-full max-w-[min(calc(100vh-175px),calc(100vw-680px),540px)] flex items-center justify-between mb-1.5 px-1">
+                        <div className="w-full max-w-[min(100%,calc(100dvh-300px),540px)] md:max-w-[min(calc(100vh-175px),calc(100vw-680px),540px)] flex items-center justify-between mb-1.5 px-1">
                             <button
                                 onClick={handleReturnToCatalog}
-                                className="inline-flex items-center gap-1.5 text-xs font-bold text-plum/70 hover:text-berry transition-colors"
+                                className="inline-flex items-center gap-1.5 text-xs font-bold text-plum/70 hover:text-berry transition-colors cursor-pointer"
                             >
                                 <ArrowLeft size={14} />
                                 <span>Back to Endgames Catalog</span>
                             </button>
-                            <span className="text-[11px] font-bold text-slate-400 font-mono">
+                            <span className="hidden sm:inline text-[11px] font-bold text-slate-400 font-mono">
                                 Drill Progress: {drillProgress[activeEndgame.id] || 0} / {activeEndgame.totalDrills || 10}
                             </span>
                         </div>
 
+                        {/* Opponent Match Bar */}
+                        <div className="w-full max-w-[min(100%,calc(100dvh-300px),540px)] md:max-w-[min(calc(100vh-175px),calc(100vw-680px),540px)] mb-2 px-1 flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                                <button
+                                    onClick={() => setShowOpponentModal(true)}
+                                    className="inline-flex items-center gap-2 px-2.5 py-1 rounded-xl border border-slate-200 bg-white hover:border-berry/40 hover:shadow-xs transition-all text-xs font-bold text-slate-700 group cursor-pointer"
+                                    title="Choose practice opponent (Maia bots or Stockfish)"
+                                >
+                                    <span className="text-sm">{OPPONENT_PRESETS[selectedOpponent].icon}</span>
+                                    <span className="font-black text-slate-800 group-hover:text-berry transition-colors">
+                                        {OPPONENT_PRESETS[selectedOpponent].name}
+                                    </span>
+                                    <span className={`text-[10px] font-black px-1.5 py-0.5 rounded border ${OPPONENT_PRESETS[selectedOpponent].badgeColor}`}>
+                                        {OPPONENT_PRESETS[selectedOpponent].elo} ELO
+                                    </span>
+                                    <ChevronDown size={13} className="text-slate-400 group-hover:text-berry transition-colors" />
+                                </button>
+                                {isAiThinking && (
+                                    <span className="inline-flex items-center gap-1.5 text-[11px] font-bold text-berry animate-pulse">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-berry" />
+                                        Thinking...
+                                    </span>
+                                )}
+                            </div>
+
+                            <div className="text-[11px] font-bold text-slate-500 flex items-center gap-1">
+                                <span>You:</span>
+                                <button
+                                    onClick={handleToggleColor}
+                                    className="font-black text-plum hover:text-berry transition-colors capitalize cursor-pointer px-1.5 py-0.5 rounded hover:bg-slate-200/60"
+                                    title="Click to flip playing color"
+                                >
+                                    {playerColor === 'w' ? 'White' : 'Black'}
+                                </button>
+                            </div>
+                        </div>
+
                         {/* Chessboard Container - fits completely on one screen */}
-                        <div className="w-full max-w-[min(calc(100vh-175px),calc(100vw-680px),540px)] aspect-square relative flex items-center justify-center">
+                        <div className="w-full max-w-[min(100%,calc(100dvh-300px),540px)] md:max-w-[min(calc(100vh-175px),calc(100vw-680px),540px)] aspect-square relative flex items-center justify-center">
                             <div
-                                className="w-full h-full rounded-xl overflow-hidden shadow-xl border-2 border-slate-300/80 bg-white select-none relative"
+                                className="w-full h-full rounded-xl overflow-hidden shadow-xl border-2 border-slate-300/80 bg-white select-none touch-none relative"
                                 onContextMenu={(e) => e.preventDefault()}
                                 onClick={() => setCircledSquares([])}
                             >
@@ -1062,6 +1305,11 @@ export default function EndgamePractice() {
                                     options={{
                                         position: game.fen(),
                                         boardOrientation: playerColor === 'w' ? 'white' : 'black',
+                                        canDragPiece: ({ piece }: any) => {
+                                            if (isSolved) return false;
+                                            const pieceColor = piece?.pieceType?.[0] || piece?.color;
+                                            return pieceColor === playerColor;
+                                        },
                                         onPieceDrop: onPieceDrop,
                                         onPieceDrag: onPieceDrag,
                                         onPieceClick: ({ square }: any) => handleSquareOrPieceClick(square),
@@ -1097,6 +1345,68 @@ export default function EndgamePractice() {
                                     }}
                                 />
 
+                                {/* Promotion Piece Selector Modal */}
+                                {pendingPromotion && (
+                                    <div className="absolute inset-0 bg-slate-900/65 backdrop-blur-[2px] z-50 flex items-center justify-center p-4 animate-in fade-in duration-150">
+                                        <div className="bg-[#FAF1DB] border-2 border-plum/20 rounded-2xl shadow-2xl p-5 max-w-xs sm:max-w-sm w-full mx-auto text-center space-y-3.5 animate-in zoom-in-95 duration-150">
+                                            <div>
+                                                <div className="text-[10px] font-black uppercase tracking-widest text-plum/60 font-mono">
+                                                    Pawn Promotion
+                                                </div>
+                                                <h3 className="font-serif font-black text-xl text-plum mt-0.5">
+                                                    Choose Promotion Piece
+                                                </h3>
+                                                <p className="text-xs text-plum/70 font-medium mt-0.5">
+                                                    Click piece or press <kbd className="font-mono bg-white/70 px-1 py-0.5 rounded border border-plum/20 text-[10px]">Q</kbd> <kbd className="font-mono bg-white/70 px-1 py-0.5 rounded border border-plum/20 text-[10px]">R</kbd> <kbd className="font-mono bg-white/70 px-1 py-0.5 rounded border border-plum/20 text-[10px]">B</kbd> <kbd className="font-mono bg-white/70 px-1 py-0.5 rounded border border-plum/20 text-[10px]">N</kbd>
+                                                </p>
+                                            </div>
+
+                                            <div className="grid grid-cols-4 gap-2 pt-1">
+                                                {[
+                                                    { type: 'q' as const, name: 'Queen', key: 'Q', score: 'Q' },
+                                                    { type: 'r' as const, name: 'Rook', key: 'R', score: 'R' },
+                                                    { type: 'b' as const, name: 'Bishop', key: 'B', score: 'B' },
+                                                    { type: 'n' as const, name: 'Knight', key: 'N', score: 'N' }
+                                                ].map((item) => {
+                                                    const pieceCode = `${pendingPromotion.color}${item.type.toUpperCase()}`;
+                                                    const PieceSvg = (defaultPieces as any)[pieceCode];
+
+                                                    return (
+                                                        <button
+                                                            key={item.type}
+                                                            onClick={() => handleSelectPromotion(item.type)}
+                                                            className="group flex flex-col items-center justify-center p-2 rounded-xl bg-white border-2 border-plum/15 hover:border-berry hover:bg-berry/5 hover:scale-105 active:scale-95 transition-all shadow-sm cursor-pointer"
+                                                        >
+                                                            <div className="w-11 h-11 flex items-center justify-center">
+                                                                {PieceSvg ? (
+                                                                    <PieceSvg svgStyle={{ width: 42, height: 42 }} />
+                                                                ) : (
+                                                                    <span className="text-3xl">{item.score}</span>
+                                                                )}
+                                                            </div>
+                                                            <span className="text-xs font-black text-plum group-hover:text-berry mt-1">
+                                                                {item.name}
+                                                            </span>
+                                                            <span className="text-[10px] font-mono text-slate-400 font-bold">
+                                                                [{item.key}]
+                                                            </span>
+                                                        </button>
+                                                    );
+                                                })}
+                                            </div>
+
+                                            <div className="pt-1 flex justify-center">
+                                                <button
+                                                    onClick={handleCancelPromotion}
+                                                    className="text-xs font-bold text-slate-500 hover:text-slate-800 transition-colors py-1.5 px-4 rounded-lg hover:bg-black/5 cursor-pointer"
+                                                >
+                                                    Cancel Move
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+
                                 {/* Solved Celebration Overlay */}
                                 {showSolvedOverlay && (
                                     <div className="absolute inset-0 bg-emerald-950/85 backdrop-blur-[2px] z-40 flex flex-col items-center justify-center p-6 text-center animate-in fade-in duration-200">
@@ -1128,7 +1438,7 @@ export default function EndgamePractice() {
                         </div>
 
                         {/* Bottom Status Bar Under Board */}
-                        <div className="w-full max-w-[min(calc(100vh-175px),calc(100vw-680px),540px)] flex items-center justify-between mt-2 px-2 py-1 text-slate-600 select-none">
+                        <div className="w-full max-w-[min(100%,calc(100dvh-300px),540px)] md:max-w-[min(calc(100vh-175px),calc(100vw-680px),540px)] flex items-center justify-between mt-2 px-2 py-1 text-slate-600 select-none">
                             {/* Hint Button */}
                             <button
                                 onClick={handleToggleHint}
@@ -1145,9 +1455,9 @@ export default function EndgamePractice() {
                             {/* Turn & Status Message */}
                             <div className="flex items-center gap-2">
                                 <div className={`w-2.5 h-2.5 rounded-full ${game.turn() === 'w' ? 'bg-white border border-slate-400' : 'bg-slate-800'}`} />
-                                <span className="text-xs font-black text-slate-700">
+                                <span className="text-xs font-black text-slate-700 whitespace-nowrap">
                                     {isAiThinking
-                                        ? 'Opponent Calculating...'
+                                        ? 'Thinking...'
                                         : game.turn() === playerColor
                                             ? 'Your Move'
                                             : 'Opponent Turn'}
@@ -1155,14 +1465,51 @@ export default function EndgamePractice() {
                             </div>
 
                             {/* Moves count */}
-                            <span className="text-[11px] font-bold text-slate-500">
+                            <span className="text-[11px] font-bold text-slate-500 whitespace-nowrap">
                                 Moves: {moveCount}
                             </span>
                         </div>
 
+                        {/* Mobile controls: everything the side panels offer, visible without scrolling */}
+                        <div className="md:hidden w-full max-w-[min(100%,540px)] mt-1.5 space-y-1.5">
+                            <p className="px-2 text-[11px] leading-snug text-slate-600 font-medium text-center line-clamp-2">
+                                {statusMessage.text}
+                            </p>
+                            <div className="grid grid-cols-4 gap-1.5">
+                                <button
+                                    onClick={() => handleResetPosition()}
+                                    className="flex flex-col items-center justify-center gap-0.5 min-h-[44px] rounded-xl bg-white border border-slate-200 text-slate-700 text-[10px] font-black active:scale-95 transition-transform"
+                                >
+                                    <RotateCcw size={16} />
+                                    <span>Reset</span>
+                                </button>
+                                <button
+                                    onClick={handleToggleColor}
+                                    className="flex flex-col items-center justify-center gap-0.5 min-h-[44px] rounded-xl bg-white border border-slate-200 text-slate-700 text-[10px] font-black active:scale-95 transition-transform"
+                                >
+                                    <Compass size={16} />
+                                    <span>Flip</span>
+                                </button>
+                                <button
+                                    onClick={() => setShowOpponentModal(true)}
+                                    className="flex flex-col items-center justify-center gap-0.5 min-h-[44px] rounded-xl bg-white border border-slate-200 text-slate-700 text-[10px] font-black active:scale-95 transition-transform"
+                                >
+                                    <Settings size={16} />
+                                    <span>Opponent</span>
+                                </button>
+                                <Link
+                                    to={`/EndgameStrategy?endgame=${activeEndgame.id}&returnId=${activeEndgame.id}`}
+                                    className="flex flex-col items-center justify-center gap-0.5 min-h-[44px] rounded-xl bg-berry text-white text-[10px] font-black active:scale-95 transition-transform"
+                                >
+                                    <BookOpen size={16} />
+                                    <span>Strategy</span>
+                                </Link>
+                            </div>
+                        </div>
+
                         {/* Hint reveal banner */}
                         {revealedHint && (
-                            <div className="w-full max-w-[min(calc(100vh-175px),calc(100vw-680px),540px)] mt-1.5 p-2.5 rounded-xl bg-amber-50/95 border border-amber-200 text-amber-900 text-xs flex items-start gap-2 shadow-sm animate-in fade-in duration-150">
+                            <div className="w-full max-w-[min(100%,calc(100dvh-300px),540px)] md:max-w-[min(calc(100vh-175px),calc(100vw-680px),540px)] mt-1.5 p-2.5 rounded-xl bg-amber-50/95 border border-amber-200 text-amber-900 text-xs flex items-start gap-2 shadow-sm animate-in fade-in duration-150">
                                 <Lightbulb size={16} className="text-amber-600 shrink-0 mt-0.5" />
                                 <div className="flex-1">
                                     <span className="font-black">Key Hint: </span>
@@ -1173,7 +1520,7 @@ export default function EndgamePractice() {
                     </main>
 
                     {/* ── RIGHT COLUMN: Explanations, Strategy Link & Toolbar ── */}
-                    <aside className="w-full md:w-[310px] lg:w-[350px] shrink-0 border-l-2 border-plum/15 bg-white flex flex-col h-full overflow-hidden justify-between z-20">
+                    <aside className="hidden md:flex w-full md:w-[310px] lg:w-[350px] shrink-0 border-l-2 border-plum/15 bg-white flex-col h-full overflow-hidden justify-between z-20">
                         
                         {/* Header: Title and Actions */}
                         <div className="p-4 border-b border-slate-100 flex items-start justify-between gap-3">
@@ -1248,8 +1595,46 @@ export default function EndgamePractice() {
                                 <p className="text-xs text-slate-500 font-medium">
                                     {activeEndgame.target === 'win'
                                         ? 'Convert the advantage and force checkmate.'
-                                        : 'Hold the theoretical draw against the tablebase engine.'}
+                                        : 'Hold the theoretical draw against the engine.'}
                                 </p>
+                            </div>
+
+                            {/* Opponent Selection Card */}
+                            <div className="space-y-1.5 pt-2 border-t border-slate-100">
+                                <div className="flex items-center justify-between">
+                                    <span className="text-[11px] font-black uppercase tracking-wider text-slate-400">
+                                        Opponent
+                                    </span>
+                                    <button
+                                        onClick={() => setShowOpponentModal(true)}
+                                        className="text-[10px] font-black text-berry hover:underline uppercase tracking-wide cursor-pointer"
+                                    >
+                                        Change
+                                    </button>
+                                </div>
+                                <button
+                                    onClick={() => setShowOpponentModal(true)}
+                                    className="w-full p-2.5 rounded-xl border border-slate-200 hover:border-berry/40 bg-slate-50/70 hover:bg-slate-50 transition-all flex items-center justify-between text-left cursor-pointer group"
+                                    title="Choose practice opponent"
+                                >
+                                    <div className="flex items-center gap-2.5 min-w-0">
+                                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm border shrink-0 ${OPPONENT_PRESETS[selectedOpponent].avatarBg}`}>
+                                            {OPPONENT_PRESETS[selectedOpponent].icon}
+                                        </div>
+                                        <div className="min-w-0">
+                                            <div className="text-xs font-black text-slate-800 group-hover:text-berry transition-colors flex items-center gap-1.5">
+                                                <span>{OPPONENT_PRESETS[selectedOpponent].name}</span>
+                                                <span className={`text-[9px] font-black px-1.5 py-0.2 rounded border ${OPPONENT_PRESETS[selectedOpponent].badgeColor}`}>
+                                                    {OPPONENT_PRESETS[selectedOpponent].elo}
+                                                </span>
+                                            </div>
+                                            <div className="text-[10px] text-slate-500 truncate">
+                                                {OPPONENT_PRESETS[selectedOpponent].title}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <ChevronRight size={14} className="text-slate-400 group-hover:text-berry group-hover:translate-x-0.5 transition-all shrink-0 ml-1" />
+                                </button>
                             </div>
 
                             {/* Live Move Status alert */}
@@ -1282,40 +1667,47 @@ export default function EndgamePractice() {
                             {/* Settings Dropdown Popup */}
                             {showSettingsDropdown && (
                                 <div className="absolute bottom-16 left-3 right-3 bg-white border-2 border-slate-200 rounded-2xl p-3 shadow-xl z-50 space-y-2 animate-in fade-in slide-in-from-bottom-2 duration-150">
-                                    <div className="text-xs font-black text-slate-700 uppercase tracking-wider">
-                                        Engine Defense Mode
+                                    <div className="flex items-center justify-between">
+                                        <div className="text-xs font-black text-slate-700 uppercase tracking-wider">
+                                            Select Opponent
+                                        </div>
+                                        <span className="text-[10px] font-bold text-slate-400">
+                                            Maia & Stockfish
+                                        </span>
                                     </div>
-                                    <div className="space-y-1.5">
-                                        <button
-                                            onClick={() => handleDefenseModeChange('tablebase_stubborn')}
-                                            className={`w-full py-2 px-3 rounded-xl text-left text-xs font-bold transition-colors ${
-                                                defenseMode === 'tablebase_stubborn'
-                                                    ? 'bg-[#0085ff] text-white'
-                                                    : 'hover:bg-slate-100 text-slate-700'
-                                            }`}
-                                        >
-                                            Tablebase (Syzygy Max Defense)
-                                        </button>
-                                        <button
-                                            onClick={() => handleDefenseModeChange('stockfish_gm')}
-                                            className={`w-full py-2 px-3 rounded-xl text-left text-xs font-bold transition-colors ${
-                                                defenseMode === 'stockfish_gm'
-                                                    ? 'bg-[#0085ff] text-white'
-                                                    : 'hover:bg-slate-100 text-slate-700'
-                                            }`}
-                                        >
-                                            Stockfish GM (Maximum Depth)
-                                        </button>
-                                        <button
-                                            onClick={() => handleDefenseModeChange('practice_adaptive')}
-                                            className={`w-full py-2 px-3 rounded-xl text-left text-xs font-bold transition-colors ${
-                                                defenseMode === 'practice_adaptive'
-                                                    ? 'bg-[#0085ff] text-white'
-                                                    : 'hover:bg-slate-100 text-slate-700'
-                                            }`}
-                                        >
-                                            Practice Adaptive (Dynamic Defense)
-                                        </button>
+                                    <div className="space-y-1.5 max-h-64 overflow-y-auto pr-0.5">
+                                        {(Object.keys(OPPONENT_PRESETS) as PracticeOpponent[]).map((oppId) => {
+                                            const opp = OPPONENT_PRESETS[oppId];
+                                            const isSelected = selectedOpponent === oppId;
+                                            return (
+                                                <button
+                                                    key={oppId}
+                                                    onClick={() => handleOpponentChange(oppId)}
+                                                    className={`w-full p-2 rounded-xl text-left transition-all flex items-center justify-between gap-2 cursor-pointer ${
+                                                        isSelected
+                                                            ? 'bg-berry text-white shadow-xs font-bold'
+                                                            : 'hover:bg-slate-100 text-slate-700'
+                                                    }`}
+                                                >
+                                                    <div className="flex items-center gap-2 min-w-0">
+                                                        <span className="text-base shrink-0">{opp.icon}</span>
+                                                        <div className="min-w-0">
+                                                            <div className={`text-xs font-black truncate ${isSelected ? 'text-white' : 'text-slate-800'}`}>
+                                                                {opp.name}
+                                                            </div>
+                                                            <div className={`text-[10px] truncate ${isSelected ? 'text-white/80' : 'text-slate-500'}`}>
+                                                                {opp.title}
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <span className={`text-[10px] font-mono font-bold px-1.5 py-0.5 rounded border shrink-0 ${
+                                                        isSelected ? 'bg-white/20 border-white/30 text-white' : opp.badgeColor
+                                                    }`}>
+                                                        {opp.elo}
+                                                    </span>
+                                                </button>
+                                            );
+                                        })}
                                     </div>
                                 </div>
                             )}
@@ -1330,7 +1722,7 @@ export default function EndgamePractice() {
                                     <Compass size={17} />
                                 </button>
                                 <button
-                                    onClick={handleResetPosition}
+                                    onClick={() => handleResetPosition()}
                                     className="p-2.5 rounded-xl hover:bg-slate-100 hover:text-slate-800 transition-colors"
                                     title="Reset Position"
                                 >
@@ -1382,6 +1774,105 @@ export default function EndgamePractice() {
                             </div>
                         </div>
                     </aside>
+                </div>
+            )}
+
+            {/* ── OPPONENT SELECTION MODAL ── */}
+            {showOpponentModal && (
+                <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-xs animate-in fade-in duration-200">
+                    <div 
+                        className="bg-white border-2 border-plum/15 rounded-3xl max-w-xl w-full max-h-[90vh] flex flex-col shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        {/* Modal Header */}
+                        <div className="p-5 border-b border-slate-100 flex items-start justify-between bg-slate-50/50">
+                            <div>
+                                <div className="flex items-center gap-2">
+                                    <div className="w-8 h-8 rounded-xl bg-berry/10 text-berry flex items-center justify-center font-bold text-base">
+                                        AI
+                                    </div>
+                                    <h3 className="font-serif font-black text-xl text-plum">
+                                        Choose Practice Opponent
+                                    </h3>
+                                </div>
+                                <p className="text-xs text-slate-500 font-medium mt-1">
+                                    Select a Maia human-trained neural bot or the full Stockfish engine.
+                                </p>
+                            </div>
+                            <button
+                                onClick={() => setShowOpponentModal(false)}
+                                className="p-2 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
+                                title="Close"
+                            >
+                                <X size={18} />
+                            </button>
+                        </div>
+
+                        {/* Modal Opponents List */}
+                        <div className="p-5 overflow-y-auto space-y-3">
+                            {(Object.keys(OPPONENT_PRESETS) as PracticeOpponent[]).map((oppId) => {
+                                const opp = OPPONENT_PRESETS[oppId];
+                                const isSelected = selectedOpponent === oppId;
+                                return (
+                                    <button
+                                        key={oppId}
+                                        onClick={() => handleOpponentChange(oppId)}
+                                        className={`w-full p-4 rounded-2xl border-2 transition-all flex items-start justify-between text-left cursor-pointer group ${
+                                            isSelected
+                                                ? 'border-berry bg-berry/5 shadow-xs'
+                                                : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50/70'
+                                        }`}
+                                    >
+                                        <div className="flex items-start gap-3.5 min-w-0 pr-2">
+                                            <div className={`w-11 h-11 rounded-2xl flex items-center justify-center text-xl border shrink-0 shadow-2xs ${opp.avatarBg}`}>
+                                                {opp.icon}
+                                            </div>
+                                            <div className="min-w-0">
+                                                <div className="flex items-center gap-2 flex-wrap">
+                                                    <span className="font-black text-slate-800 text-sm group-hover:text-berry transition-colors">
+                                                        {opp.name}
+                                                    </span>
+                                                    <span className={`text-[10px] font-mono font-black px-2 py-0.5 rounded-full border ${opp.badgeColor}`}>
+                                                        {opp.elo} ELO
+                                                    </span>
+                                                    <span className="text-[11px] font-bold text-slate-400">
+                                                        • {opp.title}
+                                                    </span>
+                                                </div>
+                                                <p className="text-xs text-slate-600 mt-1 leading-relaxed">
+                                                    {opp.description}
+                                                </p>
+                                            </div>
+                                        </div>
+
+                                        <div className="shrink-0 pt-0.5">
+                                            {isSelected ? (
+                                                <span className="inline-flex items-center gap-1 text-xs font-black text-berry bg-berry/10 px-2.5 py-1 rounded-xl">
+                                                    <CheckCircle2 size={13} />
+                                                    Active
+                                                </span>
+                                            ) : (
+                                                <span className="text-xs font-bold text-slate-400 group-hover:text-berry transition-colors">
+                                                    Select
+                                                </span>
+                                            )}
+                                        </div>
+                                    </button>
+                                );
+                            })}
+                        </div>
+
+                        {/* Modal Footer */}
+                        <div className="p-4 border-t border-slate-100 bg-slate-50 flex items-center justify-between text-xs text-slate-500">
+                            <span>Preferences are saved automatically.</span>
+                            <button
+                                onClick={() => setShowOpponentModal(false)}
+                                className="px-4 py-2 bg-berry text-white rounded-xl font-bold hover:bg-berry/90 transition-colors cursor-pointer"
+                            >
+                                Done
+                            </button>
+                        </div>
+                    </div>
                 </div>
             )}
         </div>

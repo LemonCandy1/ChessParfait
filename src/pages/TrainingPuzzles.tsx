@@ -8,8 +8,7 @@ import {
     LogIn,
     Lightbulb,
     ArrowRight,
-    HelpCircle,
-    PartyPopper
+    HelpCircle
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Chess } from 'chess.js';
@@ -53,6 +52,27 @@ interface SolutionStep {
 /**
  * Parses raw answer string into verified sequential chess moves using chess.js
  */
+/**
+ * Puzzle FENs come from a spreadsheet, so repair common slips (missing fields, a move
+ * number of 0) instead of letting chess.js reject the whole puzzle.
+ */
+function normalizeFen(fen: string): string {
+    const parts = fen.trim().split(/\s+/);
+    const [placement, turn = 'w', castling = '-', ep = '-', half = '0', full = '1'] = parts;
+    const halfmove = /^\d+$/.test(half) ? half : '0';
+    const fullmove = /^\d+$/.test(full) && parseInt(full, 10) >= 1 ? full : '1';
+    return [placement, turn, castling, ep, halfmove, fullmove].join(' ');
+}
+
+function isLoadableFen(fen: string): boolean {
+    try {
+        new Chess(fen);
+        return true;
+    } catch {
+        return false;
+    }
+}
+
 function parseSolutionMoves(startFen: string, rawAnswer?: string): SolutionStep[] {
     if (!rawAnswer || !rawAnswer.trim()) return [];
 
@@ -110,6 +130,7 @@ export default function TrainingPuzzles() {
     // Interactive puzzle gameplay states
     const [stepIndex, setStepIndex] = useState(0);
     const [wrongAttempts, setWrongAttempts] = useState(0);
+    const [wrongMove, setWrongMove] = useState<{ from: string; to: string } | null>(null);
     const [puzzleStatus, setPuzzleStatus] = useState<'solving' | 'opponent_turn' | 'solved' | 'failed'>('solving');
     const [statusFeedback, setStatusFeedback] = useState<{ type: 'info' | 'success' | 'error' | 'celebrate'; message: string }>({
         type: 'info',
@@ -121,6 +142,8 @@ export default function TrainingPuzzles() {
     const [lastMove, setLastMove] = useState<{ from: string; to: string } | null>(null);
     const [circledSquares, setCircledSquares] = useState<string[]>([]);
     const opponentTimerRef = useRef<number | null>(null);
+    const pendingMoveRef = useRef<{ from: string; to: string } | null>(null);
+    const onDropRef = useRef<(args: { sourceSquare: string; targetSquare: string | null }) => boolean>(() => false);
     const solveRedirectTimerRef = useRef<number | null>(null);
 
     // Cleanup timers on unmount
@@ -188,8 +211,11 @@ export default function TrainingPuzzles() {
         const currentWeekNumber = weekIndex + 1;
 
         const select = (diff: Difficulty) => {
-            const pool = puzzlesData[diff] || (diff === 'Cherry Bomb' ? puzzlesData['Challenge'] : undefined) || [];
-            if (!pool || pool.length === 0) return { title: `${diff} Puzzle`, fen: '8/8/8/8/8/8/8/8 w - - 0 1', question: 'Find the best move.' };
+            const rawPool = puzzlesData[diff] || (diff === 'Cherry Bomb' ? puzzlesData['Challenge'] : undefined) || [];
+            const pool = rawPool
+                .map((puzzle) => ({ ...puzzle, fen: normalizeFen(puzzle.fen) }))
+                .filter((puzzle) => isLoadableFen(puzzle.fen));
+            if (!pool || pool.length === 0) return { title: `${diff} Puzzle`, fen: 'k7/8/8/8/8/8/8/K7 w - - 0 1', question: 'Find the best move.' };
             return pool[weekIndex % pool.length];
         };
 
@@ -225,6 +251,8 @@ export default function TrainingPuzzles() {
             solveRedirectTimerRef.current = null;
         }
         setShowSolvedOverlay(false);
+        setWrongMove(null);
+        pendingMoveRef.current = null;
         setWrongAttempts(0);
         setSelectedSquare(null);
         setLastMove(null);
@@ -253,6 +281,8 @@ export default function TrainingPuzzles() {
             solveRedirectTimerRef.current = null;
         }
         setShowSolvedOverlay(false);
+        setWrongMove(null);
+        pendingMoveRef.current = null;
         setSelectedSquare(null);
         setLastMove(null);
         setCircledSquares([]);
@@ -340,7 +370,15 @@ export default function TrainingPuzzles() {
     const onDrop = ({ sourceSquare, targetSquare }: { sourceSquare: string, targetSquare: string | null }) => {
         setCircledSquares([]);
         if (!targetSquare) return false;
-        if (puzzleStatus === 'opponent_turn' || puzzleStatus === 'solved') return false;
+        if (puzzleStatus === 'opponent_turn') {
+            // Piece released while the opponent is still replying: finish the move as soon as they have moved.
+            const dragged = game.get(sourceSquare as any);
+            if (dragged && dragged.color !== game.turn()) {
+                pendingMoveRef.current = { from: sourceSquare, to: targetSquare };
+            }
+            return false;
+        }
+        if (puzzleStatus === 'solved' || wrongMove) return false;
 
         try {
             const gameCopy = new Chess(game.fen());
@@ -361,7 +399,20 @@ export default function TrainingPuzzles() {
                 );
 
                 if (!isMatch) {
-                    playLoseSound();
+                    // Play the wrong move on the board, flag it as incorrect, then take it back.
+                    const previousGame = game;
+                    const previousLastMove = lastMove;
+                    if (move.captured) {
+                        playCaptureSound();
+                    } else {
+                        playMoveSound();
+                    }
+                    setGame(gameCopy);
+                    setLastMove({ from: sourceSquare, to: targetSquare });
+                    setSelectedSquare(null);
+                    setShowHint(false);
+                    setWrongMove({ from: sourceSquare, to: targetSquare });
+
                     const newWrongCount = wrongAttempts + 1;
                     setWrongAttempts(newWrongCount);
                     setPuzzleStatus('failed');
@@ -378,7 +429,18 @@ export default function TrainingPuzzles() {
                             message: `Not quite! ${remaining} attempt${remaining === 1 ? '' : 's'} remaining for points.`
                         });
                     }
-                    return false;
+
+                    if (opponentTimerRef.current) clearTimeout(opponentTimerRef.current);
+                    // Let the move animation finish, show the incorrect marker, then animate it back.
+                    window.setTimeout(() => playLoseSound(), 300);
+                    opponentTimerRef.current = window.setTimeout(() => {
+                        setGame(previousGame);
+                        setLastMove(previousLastMove);
+                        setWrongMove(null);
+                        setPuzzleStatus('solving');
+                        opponentTimerRef.current = null;
+                    }, 1100);
+                    return true;
                 }
 
                 // Correct player move!
@@ -432,7 +494,17 @@ export default function TrainingPuzzles() {
                                         type: 'info',
                                         message: 'Your turn! Find the next winning move.'
                                     });
+
+                                    // Play the move the user released while the opponent was moving
+                                    const pending = pendingMoveRef.current;
+                                    pendingMoveRef.current = null;
+                                    if (pending) {
+                                        window.setTimeout(() => {
+                                            onDropRef.current({ sourceSquare: pending.from, targetSquare: pending.to });
+                                        }, 80);
+                                    }
                                 } else {
+                                    pendingMoveRef.current = null;
                                     // Finished after opponent move
                                     playWinSound();
                                     setPuzzleStatus('solved');
@@ -484,6 +556,11 @@ export default function TrainingPuzzles() {
         }
     };
 
+    // Keep the latest drop handler reachable from timers (queued drag-and-release moves)
+    useEffect(() => {
+        onDropRef.current = onDrop;
+    });
+
     // Right-click circle handler to toggle circles
     const handleSquareRightClick = useCallback((square: string) => {
         setCircledSquares((prev) =>
@@ -494,7 +571,7 @@ export default function TrainingPuzzles() {
     // Click handler for Click-to-Move
     const handleSquareOrPieceClick = useCallback((square: string) => {
         setCircledSquares([]);
-        if (puzzleStatus === 'opponent_turn' || puzzleStatus === 'solved') return;
+        if (puzzleStatus === 'opponent_turn' || puzzleStatus === 'solved' || wrongMove) return;
         const currentTurn = game.turn();
 
         if (selectedSquare) {
@@ -524,18 +601,18 @@ export default function TrainingPuzzles() {
         if (pieceOnSquare && pieceOnSquare.color === currentTurn) {
             setSelectedSquare(square);
         }
-    }, [game, puzzleStatus, selectedSquare]);
+    }, [game, puzzleStatus, selectedSquare, wrongMove]);
 
     // Piece drag handler
     const onPieceDrag = useCallback(({ square }: { square: string | null; isSparePiece?: boolean; piece?: any }) => {
         setCircledSquares([]);
         if (!square) return;
-        if (puzzleStatus === 'opponent_turn' || puzzleStatus === 'solved') return;
+        if (puzzleStatus === 'opponent_turn' || puzzleStatus === 'solved' || wrongMove) return;
         const pieceOnSquare = game.get(square as any);
         if (pieceOnSquare && pieceOnSquare.color === game.turn()) {
             setSelectedSquare(square);
         }
-    }, [game, puzzleStatus]);
+    }, [game, puzzleStatus, wrongMove]);
 
     // Dynamic square styles matching endgame boards
     const squareStyles = useMemo(() => {
@@ -544,6 +621,20 @@ export default function TrainingPuzzles() {
         if (lastMove) {
             styles[lastMove.from] = { backgroundColor: 'rgba(205, 210, 106, 0.45)' };
             styles[lastMove.to] = { backgroundColor: 'rgba(205, 210, 106, 0.45)' };
+        }
+
+        // Hint: highlight the piece that should move next
+        const hintStep = solutionSteps[stepIndex];
+        if (showHint && hintStep && puzzleStatus === 'solving' && !wrongMove) {
+            styles[hintStep.from] = {
+                backgroundColor: 'rgba(245, 158, 11, 0.6)',
+                boxShadow: 'inset 0 0 0 3px rgba(217, 119, 6, 0.95)'
+            };
+        }
+
+        if (wrongMove) {
+            styles[wrongMove.from] = { backgroundColor: 'rgba(220, 38, 38, 0.30)' };
+            styles[wrongMove.to] = { backgroundColor: 'rgba(220, 38, 38, 0.60)' };
         }
 
         circledSquares.forEach((sq) => {
@@ -579,29 +670,7 @@ export default function TrainingPuzzles() {
         }
 
         return styles;
-    }, [game, selectedSquare, lastMove, circledSquares]);
-
-    // Hint generator
-    const currentHint = useMemo(() => {
-        if (!solutionSteps || solutionSteps.length === 0) {
-            return 'Look for checks, captures, and unprotected pieces!';
-        }
-        const expected = solutionSteps[stepIndex];
-        if (!expected) return 'Find the best continuation.';
-
-        // Identify piece type from starting square
-        const piece = game.get(expected.from as any);
-        const pieceNames: Record<string, string> = {
-            p: 'Pawn',
-            n: 'Knight',
-            b: 'Bishop',
-            r: 'Rook',
-            q: 'Queen',
-            k: 'King'
-        };
-        const pieceName = piece ? pieceNames[piece.type.toLowerCase()] || 'Piece' : 'Piece';
-        return `Hint: Move your ${pieceName} from ${expected.from.toUpperCase()}.`;
-    }, [solutionSteps, stepIndex, game]);
+    }, [game, selectedSquare, lastMove, circledSquares, wrongMove, showHint, solutionSteps, stepIndex, puzzleStatus]);
 
     // ── Early return if puzzleInfo is not available ──
     if (!puzzleInfo) {
@@ -758,16 +827,22 @@ export default function TrainingPuzzles() {
                                                     allowDrawingArrows: true,
                                                     clearArrowsOnClick: true,
                                                     arrowOptions: customArrowOptions,
-                                                    animationDurationInMs: 250
+                                                    animationDurationInMs: 300
                                                 }}
                                             />
+
+                                            {wrongMove && (
+                                                <div
+                                                    className="absolute top-3 left-1/2 -translate-x-1/2 z-30 px-3 py-1 rounded-full bg-red-600 text-white text-xs font-black uppercase tracking-wider shadow-lg pointer-events-none animate-in fade-in zoom-in-95 duration-150"
+                                                    role="status"
+                                                >
+                                                    Incorrect
+                                                </div>
+                                            )}
 
                                             {/* Solved Overlay animation */}
                                             {showSolvedOverlay && (
                                                 <div className="absolute inset-0 bg-emerald-950/70 backdrop-blur-[2px] z-40 flex flex-col items-center justify-center p-6 text-center animate-in fade-in duration-500">
-                                                    <div className="w-16 h-16 rounded-full bg-emerald-500 text-white flex items-center justify-center mb-3 shadow-xl animate-bounce">
-                                                        <PartyPopper size={32} />
-                                                    </div>
                                                     <h3 className="font-serif font-black text-2xl text-white mb-1">Puzzle Solved!</h3>
                                                     <p className="text-emerald-200 text-xs font-bold uppercase tracking-wider">
                                                         {wrongAttempts >= 3
@@ -791,7 +866,8 @@ export default function TrainingPuzzles() {
                                     </button>
                                     <button
                                         onClick={() => setShowHint(!showHint)}
-                                        className="flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl border-2 border-amber-300/80 bg-amber-50/80 hover:bg-amber-100 text-amber-900 font-black text-xs uppercase tracking-wider transition-all shadow-sm active:scale-95"
+                                        disabled={solutionSteps.length === 0 || puzzleStatus !== 'solving'}
+                                        className="flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl border-2 border-amber-300/80 bg-amber-50/80 hover:bg-amber-100 text-amber-900 font-black text-xs uppercase tracking-wider transition-all shadow-sm active:scale-95 disabled:opacity-40 disabled:pointer-events-none"
                                     >
                                         <Lightbulb size={15} className="text-amber-600" />
                                         <span>{showHint ? 'Hide Hint' : 'Show Hint'}</span>
@@ -802,26 +878,14 @@ export default function TrainingPuzzles() {
                             {/* Puzzle Info & Actions Column */}
                             <div className="lg:col-span-6 space-y-6">
                                 <div className="space-y-3">
-                                    <div className="flex items-center gap-3 flex-wrap">
-                                        <div className={`inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl border border-plum/10 ${themes[selectedDifficulty].bg}`}>
-                                            <span className={themes[selectedDifficulty].text}>
-                                                {themes[selectedDifficulty].icon(18)}
-                                            </span>
-                                            <span className="font-black uppercase tracking-widest text-[11px] text-plum/70">{selectedDifficulty}</span>
-                                        </div>
-
-                                        {(puzzleStatus === 'solved' || isCurrentDifficultySolved) ? (
+                                    {(puzzleStatus === 'solved' || isCurrentDifficultySolved) && (
+                                        <div className="flex items-center gap-3 flex-wrap">
                                             <span className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-emerald-100 text-emerald-800 text-xs font-black uppercase tracking-wider border border-emerald-300/50">
                                                 <CheckCircle2 size={14} className="text-emerald-600" />
-                                                Completed (+{DIFFICULTY_POINTS[selectedDifficulty]} pts)
+                                                Completed
                                             </span>
-                                        ) : (
-                                            <span className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-berry/10 text-berry text-xs font-black uppercase tracking-wider border border-berry/20">
-                                                <Trophy size={14} className="text-amber-500" />
-                                                +{DIFFICULTY_POINTS[selectedDifficulty]} Points on Solve
-                                            </span>
-                                        )}
-                                    </div>
+                                        </div>
+                                    )}
 
                                     <h2 className="text-3xl md:text-4xl font-serif font-black tracking-tight text-plum">
                                         {weeklyPuzzles?.[selectedDifficulty]?.title}
@@ -832,7 +896,7 @@ export default function TrainingPuzzles() {
                                 </div>
 
                                 {/* Status & Actions Card */}
-                                <div className="bg-white/60 backdrop-blur-md rounded-[2rem] p-6 border-2 border-plum/15 shadow-sm space-y-4">
+                                <div className="space-y-4">
                                     {/* Feedback Status Alert */}
                                     <div className={`p-4 rounded-2xl border-2 flex items-center gap-3.5 transition-all ${statusFeedback.type === 'celebrate'
                                         ? 'bg-emerald-50 border-emerald-300 text-emerald-900 shadow-sm'
@@ -854,37 +918,9 @@ export default function TrainingPuzzles() {
                                         </p>
                                     </div>
 
-                                    {/* Hint Card (Smooth Grid Accordion) */}
-                                    <div
-                                        className={`grid transition-[grid-template-rows] duration-200 ease-[cubic-bezier(0.23,1,0.32,1)] ${
-                                            showHint ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'
-                                        }`}
-                                    >
-                                        <div className="overflow-hidden">
-                                            <div
-                                                className={`p-4 rounded-2xl bg-amber-50 border-2 border-amber-200 text-amber-900 text-xs font-bold leading-relaxed flex items-start gap-2.5 transition-opacity duration-160 ${
-                                                    showHint ? 'opacity-100 delay-50' : 'opacity-0'
-                                                }`}
-                                            >
-                                                <Lightbulb className="text-amber-600 shrink-0 mt-0.5" size={16} />
-                                                <div>
-                                                    <span className="block font-black uppercase tracking-wider text-[10px] text-amber-700 mb-0.5">Tactical Clue</span>
-                                                    <span>{currentHint}</span>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-
                                     {/* Solve Action summary */}
                                     {puzzleStatus === 'solved' && (
                                         <div className="pt-2 flex flex-col gap-3">
-                                            <div className="flex items-center justify-between text-xs font-bold text-plum/70 px-1">
-                                                <span>Calculation complete!</span>
-                                                <span className="text-emerald-600 font-black flex items-center gap-1.5">
-                                                    <span>All moves verified</span>
-                                                    <CheckCircle2 size={14} className="text-emerald-600" />
-                                                </span>
-                                            </div>
                                             <button
                                                 onClick={() => setSelectedDifficulty(null)}
                                                 className="w-full py-3.5 soft-button-berry flex items-center justify-center gap-2 text-sm font-bold shadow-lg"

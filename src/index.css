@@ -7,8 +7,8 @@
   --color-parfait-dark: #6B5B95;
   --color-parfait-light: #F8F5F2;
   
-  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
-  --font-serif: "Playfair Display", ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
+  --font-sans: "Figtree", ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+  --font-serif: "Fraunces", ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
   --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
   --ease-in: cubic-bezier(0.4, 0, 1, 1);
   --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
@@ -138,6 +138,33 @@
     z-index: 15 !important;
     pointer-events: none !important;
     user-select: none !important;
+  }
+}
+
+/* Skeleton placeholders shown while page code or data loads.
+   The same rules are inlined in index.html for the pre-JavaScript shell. */
+@layer components {
+  .skeleton {
+    background: linear-gradient(90deg, rgb(74 21 75 / 0.07) 25%, rgb(74 21 75 / 0.13) 50%, rgb(74 21 75 / 0.07) 75%);
+    background-size: 200% 100%;
+    animation: skeleton-shimmer 1.4s ease-in-out infinite;
+    border-radius: 0.5rem;
+  }
+
+  .skeleton-light {
+    background: linear-gradient(90deg, rgb(250 241 219 / 0.12) 25%, rgb(250 241 219 / 0.22) 50%, rgb(250 241 219 / 0.12) 75%);
+    background-size: 200% 100%;
+  }
+}
+
+@keyframes skeleton-shimmer {
+  from { background-position: 100% 0; }
+  to { background-position: -100% 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton {
+    animation: none;
   }
 }
 

@@ -1,54 +1,43 @@
+import { Suspense } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
-import Home from './pages/Home';
-import About from './pages/About';
-import Challenge_Rulette from './pages/Challenge_Rulette';
-import TrainingPuzzles from './pages/TrainingPuzzles';
-import ImposterChess from './pages/ImposterChess';
-import PawnGame from './pages/PawnGame';
-import PawnGameStrategy from './pages/PawnGameStrategy';
-import Contact from './pages/Contact';
-import Games from './pages/Games';
-import Register from './pages/Register';
-import ForgotPassword from './pages/ForgotPassword';
-import ResetPassword from './pages/ResetPassword';
-import LinkEmail from './pages/LinkEmail';
-import Login from './pages/Login';
-import SetupProfile from './pages/SetupProfile';
-import Profile from './pages/Profile';
-import EndgamePractice from './pages/EndgamePractice';
-import EndgameStrategy from './pages/EndgameStrategy';
 import ScrollToTop from './components/ScrollToTop';
+import PageLoadBoundary from './components/PageLoadBoundary';
 import { AuthProvider } from './context/AuthContext';
 import { GoogleOAuthProvider } from '@react-oauth/google';
+import RouteMeta from './seo/RouteMeta';
+import { ROUTES } from './routes';
 
-export default function App() {
+/** Providers and routes without a router, so the build-time renderer can supply its own. */
+export function AppShell() {
   return (
     <GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID || ''}>
       <AuthProvider>
-        <BrowserRouter>
         <ScrollToTop />
+        <RouteMeta />
         <Routes>
-          <Route path="/" element={<Home />} />
-          <Route path="/about" element={<About />} />
-          <Route path="/Challenge_Rulette" element={<Challenge_Rulette />} />
-          <Route path="/TrainingPuzzles" element={<TrainingPuzzles />} />
-          <Route path="/EndgamePractice" element={<EndgamePractice />} />
-          <Route path="/EndgameStrategy" element={<EndgameStrategy />} />
-          <Route path="/ImposterChess" element={<ImposterChess />} />
-          <Route path="/PawnGame" element={<PawnGame />} />
-          <Route path="/PawnGameStrategy" element={<PawnGameStrategy />} />
-          <Route path="/contact" element={<Contact />} />
-          <Route path="/games" element={<Games />} />
-          <Route path="/profile" element={<Profile />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/setup-profile" element={<SetupProfile />} />
-          <Route path="/register" element={<Register />} />
-          <Route path="/forgot-password" element={<ForgotPassword />} />
-          <Route path="/reset-password" element={<ResetPassword />} />
-          <Route path="/link-email" element={<LinkEmail />} />
+          {ROUTES.map(({ path, Page, fallback }) => (
+            <Route
+              key={path}
+              path={path}
+              element={
+                <PageLoadBoundary>
+                  <Suspense fallback={fallback}>
+                    <Page />
+                  </Suspense>
+                </PageLoadBoundary>
+              }
+            />
+          ))}
         </Routes>
-      </BrowserRouter>
-    </AuthProvider>
+      </AuthProvider>
     </GoogleOAuthProvider>
+  );
+}
+
+export default function App() {
+  return (
+    <BrowserRouter>
+      <AppShell />
+    </BrowserRouter>
   );
 }

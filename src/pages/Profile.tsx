@@ -20,6 +20,7 @@ import Navbar from '../components/Navbar/Navbar';
 import { useAuth } from '../context/AuthContext';
 import { calculateLevelInfo, formatJoinDate, LEVEL_TIERS } from '../lib/levelSystem';
 import { ChessCakeSliceIcon, PieIcon, CherryBombIcon, PuzzleIcon, ChessPawnIcon, RouletteIcon } from '../components/Icons';
+import { ProfileSkeleton } from '../components/skeletons/PageSkeletons';
 
 export default function Profile() {
     const { user, loading, logout, updateAvatar, removeAvatar } = useAuth();
@@ -91,15 +92,7 @@ export default function Profile() {
     };
 
     if (loading) {
-        return (
-            <div className="min-h-screen bg-cream flex flex-col justify-center items-center font-sans text-plum">
-                <Navbar />
-                <div className="flex flex-col items-center gap-4">
-                    <div className="w-12 h-12 border-4 border-berry/20 border-t-berry rounded-full animate-spin" />
-                    <p className="text-sm font-black uppercase tracking-widest text-plum/50">Loading profile...</p>
-                </div>
-            </div>
-        );
+        return <ProfileSkeleton />;
     }
 
     if (!user) {

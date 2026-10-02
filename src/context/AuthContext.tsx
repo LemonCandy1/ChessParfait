@@ -57,6 +57,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const [loading, setLoading] = useState(true);
 
     const [remembered, setRemembered] = useState<Remembered | null>(() => {
+        if (typeof window === 'undefined') return null; // build-time rendering
         try {
             const stored = localStorage.getItem('chessparfait_remembered');
             return stored ? JSON.parse(stored) : null;

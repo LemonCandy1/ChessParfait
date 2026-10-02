@@ -1,0 +1,22 @@
+# Chess Parfait — chess coaching in Glen Waverley, Melbourne
+# Account pages are excluded from search with a noindex tag rather than blocked here,
+# so crawlers can still read that tag.
+User-agent: *
+Allow: /
+Disallow: /api/
+
+# AI search and assistant crawlers are welcome
+User-agent: GPTBot
+User-agent: OAI-SearchBot
+User-agent: ChatGPT-User
+User-agent: ClaudeBot
+User-agent: Claude-SearchBot
+User-agent: Claude-User
+User-agent: PerplexityBot
+User-agent: Perplexity-User
+User-agent: Google-Extended
+User-agent: Applebot-Extended
+Allow: /
+Disallow: /api/
+
+Sitemap: https://chessparfait.com/sitemap.xml

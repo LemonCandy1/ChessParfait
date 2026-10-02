@@ -1,7 +1,6 @@
 import { Award, Star, Medal, ExternalLink } from 'lucide-react';
 import profilePicture from '../assets/Profile Photo.jpeg'; 
 import Navbar from '../components/Navbar/Navbar.tsx';
-import { Link } from 'react-router-dom';
 
 export default function About() {
     return (
@@ -80,18 +79,6 @@ export default function About() {
                             Read about the Championship <ExternalLink size={18} />
                         </a>
                     </div>
-                </section>
-
-                {/* Call to Action */}
-                <section className="p-12 md:p-16 bg-plum rounded-[2.5rem] text-cream text-center relative overflow-hidden shadow-2xl shadow-plum/30">
-                    <div className="absolute top-0 right-0 w-64 h-64 bg-berry/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none" />
-                    <h2 className="text-4xl md:text-5xl font-bold mb-4">Ready to reach the next level?</h2>
-                    <p className="text-lg md:text-xl mb-10 text-cream/80 max-w-2xl mx-auto font-medium">
-                        Booking limited sessions for the current tournament season.
-                    </p>
-                    <Link to="/contact" className="soft-button-berry inline-flex items-center justify-center px-10 py-4 text-base md:text-lg font-bold">
-                        Secure Your Spot
-                    </Link>
                 </section>
             </main>
         </div>

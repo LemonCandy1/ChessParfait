@@ -3,8 +3,7 @@
   <head>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=Playfair+Display:ital,wght@0,400..900;1,400..900&display=swap" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@400..700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Figtree:ital,wght@0,300..900;1,300..900&family=Fraunces:ital,opsz,wght,SOFT@0,9..144,300..900,100;1,9..144,300..900,100&display=swap" rel="stylesheet">
     <meta charset="UTF-8" />
   <link rel="icon" type="image/svg+xml" href="/Logo.jpg" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
@@ -16,8 +15,38 @@
   <title>Chess Parfait</title>
   <link rel="preload" as="image" href="/src/assets/Profile%20Photo.jpeg" />
 
+  <style>
+    /* Pre-JavaScript loading shell. React replaces #root's contents on first render. */
+    html, body { margin: 0; background: #FAF1DB; }
+    .boot-nav { height: 72px; box-sizing: border-box; display: flex; align-items: center; justify-content: space-between; padding: 0 16px; border-bottom: 2px solid rgb(74 21 75 / 0.15); background: #FAF1DB; }
+    .boot-brand { display: flex; align-items: center; gap: 10px; }
+    .boot-main { max-width: 720px; margin: 0 auto; padding: 56px 16px; display: flex; flex-direction: column; align-items: center; gap: 14px; }
+    .boot-bone { background: linear-gradient(90deg, rgb(74 21 75 / 0.07) 25%, rgb(74 21 75 / 0.13) 50%, rgb(74 21 75 / 0.07) 75%); background-size: 200% 100%; animation: boot-shimmer 1.4s ease-in-out infinite; border-radius: 8px; }
+    @keyframes boot-shimmer { from { background-position: 100% 0; } to { background-position: -100% 0; } }
+    @media (prefers-reduced-motion: reduce) { .boot-bone { animation: none; } }
+    @media (min-width: 768px) { .boot-nav { padding: 0 24px; } }
+  </style>
   </head>  <body>
-    <div id="root"></div>
+    <div id="root">
+      <div aria-busy="true">
+        <div class="boot-nav">
+          <div class="boot-brand">
+            <div class="boot-bone" style="width:44px;height:44px;border-radius:12px"></div>
+            <div class="boot-bone" style="width:140px;height:24px"></div>
+          </div>
+          <div class="boot-bone" style="width:84px;height:32px;border-radius:12px"></div>
+        </div>
+        <div class="boot-main">
+          <div class="boot-bone" style="width:100%;max-width:560px;height:52px;border-radius:16px"></div>
+          <div class="boot-bone" style="width:80%;max-width:460px;height:16px;margin-top:8px"></div>
+          <div class="boot-bone" style="width:70%;max-width:400px;height:16px"></div>
+          <div style="display:flex;gap:12px;margin-top:16px">
+            <div class="boot-bone" style="width:136px;height:48px;border-radius:12px"></div>
+            <div class="boot-bone" style="width:136px;height:48px;border-radius:12px"></div>
+          </div>
+        </div>
+      </div>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

@@ -16,7 +16,7 @@ import { Chessboard, defaultArrowOptions } from 'react-chessboard';
 import Navbar from '../components/Navbar/Navbar';
 import { supabase } from '../lib/supabaseClient';
 import { ChessCakeSliceIcon, PieIcon, CherryBombIcon } from '../components/Icons';
-import { playMoveSound, playCaptureSound, playWinSound, playLoseSound } from '../lib/soundEffects';
+import { playMoveSound, playCaptureSound, playWinSound, playIncorrectSound } from '../lib/soundEffects';
 import localPuzzlesData from '../data/puzzles.json';
 import { useAuth } from '../context/AuthContext';
 import { DIFFICULTY_POINTS } from '../lib/levelSystem';
@@ -432,7 +432,7 @@ export default function TrainingPuzzles() {
 
                     if (opponentTimerRef.current) clearTimeout(opponentTimerRef.current);
                     // Let the move animation finish, show the incorrect marker, then animate it back.
-                    window.setTimeout(() => playLoseSound(), 300);
+                    window.setTimeout(() => playIncorrectSound(), 300);
                     opponentTimerRef.current = window.setTimeout(() => {
                         setGame(previousGame);
                         setLastMove(previousLastMove);

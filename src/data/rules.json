@@ -39,6 +39,18 @@
         {
             "title": "Left or Right?",
             "rule": "Read this rule out loud. You must move pieces on black squares with your RIGHT hand and pieces on white squares with your LEFT hand. You must move your king with BOTH hands. If you move a piece with the wrong hand, you lose."
+        },
+        {
+            "title": "Great Wall of China",
+            "rule": "You must build the China Wall: a zig-zag pawn wall on a3, b4, c3, d4, e3, f4, g3 and h4 (as Black: a6, b5, c6, d5, e6, f5, g6 and h5). Your other pieces can move normally, but until the wall is finished, every pawn move must put a pawn onto its wall square. If a wall pawn gets captured, just finish the rest of the wall."
+        },
+        {
+            "title": "Stay in Bed",
+            "rule": "Your king is too sleepy to get up. It can never move onto your second rank (the 2nd rank as White, the 7th rank as Black). It can still move along the back rank and castle."
+        },
+        {
+            "title": "You Shall Be Missed",
+            "rule": "At some point in the game, you must sacrifice your queen: move it to a square where your opponent can capture it and you can't win back the same value straight away. If your opponent doesn't take it, keep offering it until they do. If the game ends and you never sacrificed your queen, you lose."
         }
     ],
     "Hard Tart": [
@@ -101,6 +113,10 @@
         {
             "title": "Dark Knight",
             "rule": "Every 3 moves, you have to move a piece to a dark square."
+        },
+        {
+            "title": "Little Duckling",
+            "rule": "Your pawns are ducklings following mama queen. Every time you move your queen, your very next move must be a pawn move. If you have no legal pawn moves, you can move any piece."
         }
     ],
     "Brain Freeze": [
@@ -155,6 +171,14 @@
         {
             "title": "3 Lives!",
             "rule": "If you lose 3 pawns in the game, you must resign."
+        },
+        {
+            "title": "Piece Cycle",
+            "rule": "Your moves must follow the cycle: pawn → minor piece (knight or bishop) → major piece (rook or queen) → pawn → and so on, starting with a pawn. Castling counts as a major piece move. If you can't make a legal move with the type you need, you can make any legal move (including with your king), then carry on the cycle from where you left off."
+        },
+        {
+            "title": "Point Blast",
+            "rule": "You can never capture your opponent's rooks or queens. Every other capture is allowed as normal."
         }
     ],
     "Cherry Bomb": [
@@ -205,6 +229,14 @@
         {
             "title": "Food Coma",
             "rule": "Every time you capture an opponent's piece, your piece which captured that opponent's piece cannot be moved for the rest of the game. This rule does not apply to enemy pawns, and your king cannot capture."
+        },
+        {
+            "title": "Slow Morning",
+            "rule": "Your pawns are still asleep. You cannot move any pawn during your first 10 moves, so only your knights can get out at the start. From your 11th move onwards, pawns can move as normal. If you have no legal move except a pawn move, you can make it."
+        },
+        {
+            "title": "Where'd You Go??",
+            "rule": "Read this rule out loud. After every 5th move you make, your opponent picks one of your pieces or pawns (not your king), closes their eyes and puts it down on a random empty square. If a pawn lands on the first or last rank, or the new position leaves either king in check, they put it back and try again. Then the game carries on as normal."
         }
     ]
 }

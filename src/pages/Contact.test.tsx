@@ -13,6 +13,11 @@ vi.mock('../lib/supabaseClient', () => ({
   },
 }));
 
+// Navbar depends on AuthProvider, which isn't relevant to the form
+vi.mock('../components/Navbar/Navbar', () => ({
+  default: () => null,
+}));
+
 const renderContact = () => {
   return render(
     <BrowserRouter>
@@ -65,7 +70,8 @@ describe('Contact Page', () => {
       question: 'This is a test question.',
     }]);
 
-    // Verify form was reset
+    // Return to the form and verify it was reset
+    fireEvent.click(screen.getByRole('button', { name: /send another message/i }));
     expect(screen.getByLabelText(/name/i)).toHaveValue('');
     expect(screen.getByLabelText(/email/i)).toHaveValue('');
     expect(screen.getByLabelText(/question/i)).toHaveValue('');

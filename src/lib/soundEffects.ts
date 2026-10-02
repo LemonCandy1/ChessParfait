@@ -1,9 +1,12 @@
+import incorrectSoundUrl from '../assets/freesound_community-training-program-incorrect1-88736.mp3';
+
 let audioCtx: AudioContext | null = null;
 const buffers: Record<string, AudioBuffer | null> = {
     move: null,
     capture: null,
     win: null,
-    lose: null
+    lose: null,
+    incorrect: null
 };
 
 /**
@@ -50,6 +53,7 @@ if (typeof window !== 'undefined') {
             loadSound('capture', '/piece capture 1s.mp3');
             loadSound('win', '/soundshelfstudio-mission-complete-chime-534595.mp3');
             loadSound('lose', '/freesound_community-negative_beeps-6008.mp3');
+            loadSound('incorrect', incorrectSoundUrl);
         }, 100);
     });
 }
@@ -117,6 +121,19 @@ export function playLoseSound() {
     } else {
         try {
             new Audio('/freesound_community-negative_beeps-6008.mp3').play().catch(() => {});
+        } catch (e) {}
+    }
+}
+
+/**
+ * Plays the incorrect puzzle move sound.
+ */
+export function playIncorrectSound() {
+    if (buffers.incorrect) {
+        playBuffer(buffers.incorrect);
+    } else {
+        try {
+            new Audio(incorrectSoundUrl).play().catch(() => {});
         } catch (e) {}
     }
 }

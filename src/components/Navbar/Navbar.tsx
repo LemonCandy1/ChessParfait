@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Menu, X, User, LogOut, ChevronDown, Trophy, Award } from 'lucide-react';
+import { Menu, X, User, LogOut, ChevronDown, Trophy, Award, MessageSquare, Podium } from 'lucide-react';
 import { ChessKnight, Book } from '../../lib/lucideOriginal';
 import logo from '../../assets/Logo-bg-removed.png';
 import { ChessPawnIcon, RouletteIcon, GhostChefIcon } from '../Icons';
@@ -33,15 +33,15 @@ const Navbar = () => {
 
                 {/* Left: Logo */}
                 <div className="flex items-center justify-start z-10">
-                    <Link to="/" onClick={closeMenu} className="flex items-center group gap-3 transition-all">
-                        <div className="h-12 w-12 rounded-xl overflow-hidden shadow-md group-hover:shadow-berry/20 transition-all border-2 border-plum/15">
+                    <Link to="/" onClick={closeMenu} className="flex items-center group gap-2 sm:gap-3 transition-all">
+                        <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-xl overflow-hidden shadow-md group-hover:shadow-berry/20 transition-all border-2 border-plum/15">
                             <img
                                 src={logo}
                                 alt="Logo"
                                 className="h-full w-full object-cover"
                             />
                         </div>
-                        <span className="font-serif text-2xl font-black text-plum tracking-tight group-hover:text-berry transition-colors">
+                        <span className="font-serif text-xl sm:text-2xl font-black text-plum tracking-tight group-hover:text-berry transition-colors">
                             Chess<span className="text-berry italic">Parfait</span>
                         </span>
                     </Link>
@@ -122,6 +122,39 @@ const Navbar = () => {
                     </div>
 
                     <NavLink to="/TrainingPuzzles" label="Puzzles" />
+
+                    {/* Community Link with Dropdown */}
+                    <div className="relative group py-2">
+                        <Link
+                            to="/forum"
+                            className="text-plum/70 font-bold hover:text-berry transition text-sm md:text-xs uppercase tracking-widest relative block"
+                        >
+                            Community
+                            <span className="hidden md:block absolute -bottom-1 left-0 w-0 h-0.5 bg-berry transition-all group-hover:w-full"></span>
+                        </Link>
+
+                        {/* Dropdown Menu */}
+                        <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 w-72 bg-white rounded-2xl shadow-xl border-2 border-plum/15 py-2 px-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 transform -translate-y-2 group-hover:translate-y-0 z-[10000] before:absolute before:-top-2.5 before:left-0 before:w-full before:h-2.5 before:content-['']">
+                            {/* Arrow indicator */}
+                            <div className="absolute -top-1.5 w-3 h-3 bg-white border-t-2 border-l-2 border-plum/15 rotate-45 left-1/2 -translate-x-1/2" />
+
+                            <div className="relative z-10 space-y-0.5">
+                                <DropdownItem
+                                    to="/leaderboard"
+                                    title="Leaderboard"
+                                    description="Top players by points"
+                                    icon={<Podium size={18} />}
+                                />
+                                <DropdownItem
+                                    to="/forum"
+                                    title="Forum"
+                                    description="Feedback, ideas and discussion"
+                                    icon={<MessageSquare size={18} />}
+                                />
+                            </div>
+                        </div>
+                    </div>
+
                     <NavLink to="/contact" label="Contact" />
                     <NavLink to="/about" label="About" />
                 </div>
@@ -274,6 +307,8 @@ const Navbar = () => {
                     <NavLink to="/games" label="Play" onClick={closeMenu} />
                     <NavLink to="/EndgamePractice" label="Endgame" onClick={closeMenu} />
                     <NavLink to="/TrainingPuzzles" label="Puzzles" onClick={closeMenu} />
+                    <NavLink to="/leaderboard" label="Leaderboard" onClick={closeMenu} />
+                    <NavLink to="/forum" label="Forum" onClick={closeMenu} />
                     {user && (
                         <NavLink to="/profile" label={`Profile (Lvl ${levelInfo.level})`} onClick={closeMenu} />
                     )}

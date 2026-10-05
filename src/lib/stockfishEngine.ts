@@ -12,9 +12,6 @@ export interface OpponentInfo {
     elo: number;
     title: string;
     description: string;
-    avatarBg: string;
-    badgeColor: string;
-    icon: string;
 }
 
 export const OPPONENT_PRESETS: Record<PracticeOpponent, OpponentInfo> = {
@@ -24,39 +21,27 @@ export const OPPONENT_PRESETS: Record<PracticeOpponent, OpponentInfo> = {
         elo: 3500,
         title: 'Syzygy Perfect Engine',
         description: 'Maximum mathematical precision via 7-piece Syzygy tablebases and deep engine search.',
-        avatarBg: 'bg-rose-100 text-rose-700 border-rose-300',
-        badgeColor: 'bg-rose-50 text-rose-700 border-rose-200',
-        icon: 'SF'
     },
     maia_1900: {
         id: 'maia_1900',
-        name: 'Maia 1900',
+        name: 'Mr. Cherry',
         elo: 1900,
         title: 'Strongest Maia',
         description: 'Expert-level human play with strong endgame knowledge and stubborn defence.',
-        avatarBg: 'bg-amber-100 text-amber-800 border-amber-300',
-        badgeColor: 'bg-amber-50 text-amber-800 border-amber-200',
-        icon: '1900'
     },
     maia_1500: {
         id: 'maia_1500',
-        name: 'Maia 1500',
+        name: 'Lemon Tart',
         elo: 1500,
         title: 'Intermediate Club Player',
         description: 'Solid basic technique, realistic human inaccuracies and tempo miscalculations.',
-        avatarBg: 'bg-blue-100 text-blue-700 border-blue-300',
-        badgeColor: 'bg-blue-50 text-blue-700 border-blue-200',
-        icon: '1500'
     },
     maia_1100: {
         id: 'maia_1100',
-        name: 'Maia 1100',
+        name: 'Strawberry Cake',
         elo: 1100,
         title: 'Casual / Beginner',
         description: 'Plays natural human beginner moves with frequent inaccuracies and tactical blunders.',
-        avatarBg: 'bg-emerald-100 text-emerald-700 border-emerald-300',
-        badgeColor: 'bg-emerald-50 text-emerald-700 border-emerald-200',
-        icon: '1100'
     }
 };
 

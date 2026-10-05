@@ -40,6 +40,27 @@ const customArrowOptions = {
     activeOpacity: 0.55,
 };
 
+/**
+ * Highlights for the Rule of the Square: tints every square between the pawn and its
+ * promotion rank, marks the pawn, and marks the defending king.
+ */
+const SQUARE_ZONE_STYLE: React.CSSProperties = { backgroundColor: 'rgba(16, 185, 129, 0.3)' };
+
+function ruleOfSquare(pawn: string, king: string): Pick<MoveStep, 'highlights'> {
+    const file = pawn.charCodeAt(0) - 97;
+    const rank = Number(pawn[1]);
+    const size = 8 - rank;
+    const highlights: Record<string, React.CSSProperties> = {};
+    for (let f = file; f <= Math.min(7, file + size); f++) {
+        for (let r = rank; r <= 8; r++) {
+            highlights[`${String.fromCharCode(97 + f)}${r}`] = SQUARE_ZONE_STYLE;
+        }
+    }
+    highlights[pawn] = WHITE_SQUARE_STYLE;
+    highlights[king] = BLACK_SQUARE_STYLE;
+    return { highlights };
+}
+
 interface StrategyTopic {
     id: string;
     chapter: string;
@@ -289,16 +310,15 @@ const STRATEGY_TOPICS: StrategyTopic[] = [
             {
                 moveNumber: 'Initial Position',
                 san: 'Start',
-                fen: '6k1/8/8/8/8/8/P7/7K w - - 0 1',
-                comment: 'White to move. The white pawn is on its starting square a2, and the Black king is on g8. Can the pawn promote without King assistance?',
-                highlights: { a2: WHITE_SQUARE_STYLE, g8: BLACK_SQUARE_STYLE }
+                fen: '8/8/4k3/8/P7/8/8/7K w - - 0 1',
+                comment: 'White to move. The white pawn on a4 wants to run to a8, and the white king on h1 is too far away to help. Can the black king on e6 catch the pawn?',
             },
             {
-                moveNumber: '1',
-                san: '1. a4!',
-                fen: '6k1/8/8/8/P7/8/8/7K b - - 0 1',
-                comment: '1. a4! The pawn advances two squares. Now draw the square: vertices are a4, a8, e8, and e4. Black to move must step into this zone to catch the pawn.',
-                highlights: { a4: WHITE_SQUARE_STYLE, a8: WHITE_SQUARE_STYLE, e8: WHITE_SQUARE_STYLE, e4: WHITE_SQUARE_STYLE },
+                moveNumber: 'Square',
+                san: 'Draw the square',
+                fen: '8/8/4k3/8/P7/8/8/7K w - - 0 1',
+                comment: 'Draw the square: take the distance from the pawn to its promotion square (a4 to a8, four squares) and use it as the side of a square: a4, a8, e8 and e4. The black king on e6 is inside the square, so it can catch the pawn.',
+                ...ruleOfSquare('a4', 'e6'),
                 arrows: [
                     { startSquare: 'a4', endSquare: 'a8', color: '#10b981' },
                     { startSquare: 'a8', endSquare: 'e8', color: '#10b981' },
@@ -307,39 +327,60 @@ const STRATEGY_TOPICS: StrategyTopic[] = [
                 ]
             },
             {
+                moveNumber: '1',
+                san: '1. a5',
+                fen: '8/8/4k3/P7/8/8/8/7K b - - 0 1',
+                comment: '1. a5. Every pawn step shrinks the square, now a5 to d8. The king on e6 is just outside, but it is Black to move.',
+                ...ruleOfSquare('a5', 'e6')
+            },
+            {
                 moveNumber: '1...',
-                san: '1... Kf7',
-                fen: '8/5k2/8/8/P7/8/8/7K w - - 1 2',
-                comment: '1... Kf7. The Black king attempts to enter the square, but it lands on f7—outside the perimeter (a4-e8).',
-                highlights: { f7: BLACK_SQUARE_STYLE }
+                san: '1... Kd6',
+                fen: '8/8/3k4/P7/8/8/8/7K w - - 1 2',
+                comment: '1... Kd6. The king steps diagonally back inside the square. As long as it stays inside, the pawn cannot escape.',
+                ...ruleOfSquare('a5', 'd6')
             },
             {
                 moveNumber: '2',
-                san: '2. a5!',
-                fen: '8/5k2/8/P7/8/8/8/7K b - - 0 2',
-                comment: '2. a5! The square shrinks immediately to a5-a8-d8-d5! Black on f7 is two files away and cannot enter.',
-                highlights: { a5: WHITE_SQUARE_STYLE, a8: WHITE_SQUARE_STYLE, d8: WHITE_SQUARE_STYLE, d5: WHITE_SQUARE_STYLE }
+                san: '2. a6',
+                fen: '8/8/P2k4/8/8/8/8/7K b - - 0 2',
+                comment: '2. a6. The square shrinks again, to a6 to c8.',
+                ...ruleOfSquare('a6', 'd6')
             },
             {
                 moveNumber: '2...',
-                san: '2... Ke6',
-                fen: '8/8/4k3/P7/8/8/8/7K w - - 1 3',
-                comment: '2... Ke6. Black chases in vain.',
-                highlights: { e6: BLACK_SQUARE_STYLE }
+                san: '2... Kc7',
+                fen: '8/2k5/P7/8/8/8/8/7K w - - 1 3',
+                comment: '2... Kc7. The king keeps pace, stepping inside the smaller square.',
+                ...ruleOfSquare('a6', 'c7')
             },
             {
                 moveNumber: '3',
-                san: '3. a6',
-                fen: '8/8/P3k3/8/8/8/8/7K b - - 0 3',
-                comment: '3. a6. The square is now a6-a8-c8-c6. Black cannot catch the runner.',
-                highlights: { a6: WHITE_SQUARE_STYLE }
+                san: '3. a7',
+                fen: '8/P1k5/8/8/8/8/8/7K b - - 0 3',
+                comment: '3. a7. The pawn is one step from queening, and its square is just a7, a8, b8 and b7.',
+                ...ruleOfSquare('a7', 'c7')
+            },
+            {
+                moveNumber: '3...',
+                san: '3... Kb7',
+                fen: '8/Pk6/8/8/8/8/8/7K w - - 1 4',
+                comment: '3... Kb7. The king reaches the last square and now guards both a7 and a8.',
+                ...ruleOfSquare('a7', 'b7')
             },
             {
                 moveNumber: '4',
-                san: '3... Kd6 4. a7 Kc7 5. a8=Q',
-                fen: 'Q7/2k5/8/8/8/8/8/7K b - - 0 5',
-                comment: '3... Kd6 4. a7 Kc7 5. a8=Q! The pawn crowns into a Queen with an effortless theoretical win.',
-                highlights: { a8: WHITE_SQUARE_STYLE }
+                san: '4. a8=Q+',
+                fen: 'Q7/1k6/8/8/8/8/8/7K b - - 0 4',
+                comment: '4. a8=Q+. The pawn promotes, but the new queen is attacked by the king.',
+                highlights: { a8: WHITE_SQUARE_STYLE, b7: BLACK_SQUARE_STYLE }
+            },
+            {
+                moveNumber: '4...',
+                san: '4... Kxa8',
+                fen: 'k7/8/8/8/8/8/8/7K w - - 0 5',
+                comment: '4... Kxa8. The king captures the queen and the game is a draw. Because the king started inside the square, it caught the pawn in time.',
+                highlights: { a8: BLACK_SQUARE_STYLE }
             }
         ]
     },

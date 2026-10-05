@@ -27,6 +27,8 @@ import {
 import { useSearchParams, Link } from 'react-router-dom';
 import Navbar from '../components/Navbar/Navbar';
 import { playMoveSound, playCaptureSound, playWinSound, playLoseSound } from '../lib/soundEffects';
+import { drillGoalFor, goalAchievedBy } from '../lib/endgameGoals';
+import { BotAvatar } from '../components/BotAvatars';
 import endgamesData from '../data/endgames.json';
 import { endgameEngine, OPPONENT_PRESETS, type PracticeOpponent } from '../lib/stockfishEngine';
 import { useAuth } from '../context/AuthContext';
@@ -59,6 +61,19 @@ export interface EndgamePosition {
 /**
  * Check if a proposed move is a pawn promotion move
  */
+/** What the player must achieve, matching how the drill is judged. */
+function objectiveText(endgame: EndgamePosition): string {
+    if (endgame.target !== 'win') return 'Defend precisely and hold the theoretical draw.';
+    switch (drillGoalFor(endgame)) {
+        case 'pawn-promotion':
+            return 'Promote your pawn to a queen safely, where it cannot be captured.';
+        case 'queen-wins-rook':
+            return 'Win the rook with your queen, without stalemate or allowing a recapture.';
+        default:
+            return 'Convert the advantage and force checkmate.';
+    }
+}
+
 /**
  * Return the starting FEN with the player to move, so practice always begins on the
  * player's turn. Falls back to the original FEN if switching the turn is not legal.
@@ -245,6 +260,8 @@ export default function EndgamePractice() {
         return 'stockfish';
     });
     const [showOpponentModal, setShowOpponentModal] = useState(false);
+    // Opponent highlighted in the picker; only applied when the player presses Done.
+    const [draftOpponent, setDraftOpponent] = useState<PracticeOpponent>('stockfish');
     const [isAiThinking, setIsAiThinking] = useState(false);
     const [liveEval, setLiveEval] = useState<string>('Calculating...');
     const [statusMessage, setStatusMessage] = useState<{ type: 'info' | 'success' | 'error' | 'celebrate'; text: string }>({
@@ -253,6 +270,8 @@ export default function EndgamePractice() {
     });
     const [moveCount, setMoveCount] = useState(0);
     const [isSolved, setIsSolved] = useState(false);
+    // The opponent reached the drill's goal (safe promotion or won the rook): the attempt is over.
+    const [isFailed, setIsFailed] = useState(false);
     const [showSolvedOverlay, setShowSolvedOverlay] = useState(false);
     const [selectedSquare, setSelectedSquare] = useState<string | null>(null);
     const [lastMove, setLastMove] = useState<{ from: string; to: string } | null>(null);
@@ -391,15 +410,14 @@ export default function EndgamePractice() {
         setCircledSquares([]);
         const isAlreadyDone = (drillProgress[endgame.id] || 0) >= (endgame.totalDrills || 10);
         setIsSolved(isAlreadyDone);
+        setIsFailed(false);
         setShowSolvedOverlay(false);
         setIsAiThinking(false);
         setRevealedHint(null);
         setShowSettingsDropdown(false);
         setStatusMessage({
             type: 'info',
-            text: endgame.target === 'win'
-                ? 'Your goal: Find the winning technique and deliver checkmate!'
-                : 'Your goal: Defend precisely and hold the theoretical draw!'
+            text: `Your goal: ${objectiveText(endgame)}`
         });
         updateEvaluation(newGame.fen());
         setViewMode('arena');
@@ -428,6 +446,7 @@ export default function EndgamePractice() {
         setLastMove(null);
         setCircledSquares([]);
         setIsSolved(false);
+        setIsFailed(false);
         setShowSolvedOverlay(false);
         setIsAiThinking(false);
         setRevealedHint(null);
@@ -453,6 +472,11 @@ export default function EndgamePractice() {
         setLastMove(null);
         setCircledSquares([]);
         handleResetPosition(nextColor);
+    };
+
+    const openOpponentPicker = () => {
+        setDraftOpponent(selectedOpponent);
+        setShowOpponentModal(true);
     };
 
     // Switch practice opponent (Maia bots or Stockfish)
@@ -562,6 +586,35 @@ export default function EndgamePractice() {
             return true;
         }
 
+        // Pawn endgames end on a safe promotion; queen vs rook ends when the queen safely wins the rook.
+        const goal = drillGoalFor(activeEndgame);
+        const achievedBy = goalAchievedBy(goal, currentGame, currentGame.history({ verbose: true }).at(-1));
+        if (achievedBy) {
+            const promoted = goal === 'pawn-promotion';
+            if (achievedBy === playerColor) {
+                if (!isSoundMuted) playWinSound();
+                setIsSolved(true);
+                setShowSolvedOverlay(true);
+                markSolved(activeEndgame.id);
+                setStatusMessage({
+                    type: 'celebrate',
+                    text: promoted
+                        ? 'Success! Your pawn queened safely. The rest is a textbook win.'
+                        : 'Success! Your queen won the rook and is safe. Queen vs king is a textbook win.'
+                });
+            } else {
+                if (!isSoundMuted) playLoseSound();
+                setIsFailed(true);
+                setStatusMessage({
+                    type: 'error',
+                    text: promoted
+                        ? 'The opponent queened safely. Reset and try again!'
+                        : 'The opponent won your rook. Reset and try again!'
+                });
+            }
+            return true;
+        }
+
         return false;
     }, [activeEndgame, isSoundMuted, markSolved, playerColor]);
 
@@ -653,14 +706,14 @@ export default function EndgamePractice() {
 
     // Safety net: whenever it is not the player's turn, the opponent replies immediately
     useEffect(() => {
-        if (viewMode !== 'arena' || isSolved || isAiThinking) return;
+        if (viewMode !== 'arena' || isSolved || isFailed || isAiThinking) return;
         if (game.isGameOver() || game.turn() === playerColor) return;
         triggerAiResponse(game);
-    }, [game, isAiThinking, isSolved, playerColor, triggerAiResponse, viewMode]);
+    }, [game, isAiThinking, isFailed, isSolved, playerColor, triggerAiResponse, viewMode]);
 
     // Shared move executor for Click-to-Move and Drag-and-Drop
     const executeMove = useCallback((sourceSquare: string, targetSquare: string, chosenPromotion?: string): boolean => {
-        if (isSolved) return false;
+        if (isSolved || isFailed) return false;
 
         const currentGame = gameRef.current;
 
@@ -728,7 +781,7 @@ export default function EndgamePractice() {
         } catch {
             return false;
         }
-    }, [evaluateEndCondition, isAiThinking, isSolved, isSoundMuted, playerColor, selectedOpponent, triggerAiResponse, updateEvaluation]);
+    }, [evaluateEndCondition, isAiThinking, isFailed, isSolved, isSoundMuted, playerColor, selectedOpponent, triggerAiResponse, updateEvaluation]);
 
     useEffect(() => {
         executeMoveRef.current = executeMove;
@@ -1261,16 +1314,13 @@ export default function EndgamePractice() {
                         <div className="w-full max-w-[min(100%,calc(100dvh-300px),540px)] md:max-w-[min(calc(100vh-175px),calc(100vw-680px),540px)] mb-2 px-1 flex items-center justify-between">
                             <div className="flex items-center gap-2">
                                 <button
-                                    onClick={() => setShowOpponentModal(true)}
+                                    onClick={openOpponentPicker}
                                     className="inline-flex items-center gap-2 px-2.5 py-1 rounded-xl border border-slate-200 bg-white hover:border-berry/40 hover:shadow-xs transition-all text-xs font-bold text-slate-700 group cursor-pointer"
                                     title="Choose practice opponent (Maia bots or Stockfish)"
                                 >
-                                    <span className="text-sm">{OPPONENT_PRESETS[selectedOpponent].icon}</span>
+                                    <BotAvatar opponent={selectedOpponent} size={28} className="shrink-0" />
                                     <span className="font-black text-slate-800 group-hover:text-berry transition-colors">
                                         {OPPONENT_PRESETS[selectedOpponent].name}
-                                    </span>
-                                    <span className={`text-[10px] font-black px-1.5 py-0.5 rounded border ${OPPONENT_PRESETS[selectedOpponent].badgeColor}`}>
-                                        {OPPONENT_PRESETS[selectedOpponent].elo} ELO
                                     </span>
                                     <ChevronDown size={13} className="text-slate-400 group-hover:text-berry transition-colors" />
                                 </button>
@@ -1306,7 +1356,7 @@ export default function EndgamePractice() {
                                         position: game.fen(),
                                         boardOrientation: playerColor === 'w' ? 'white' : 'black',
                                         canDragPiece: ({ piece }: any) => {
-                                            if (isSolved) return false;
+                                            if (isSolved || isFailed) return false;
                                             const pieceColor = piece?.pieceType?.[0] || piece?.color;
                                             return pieceColor === playerColor;
                                         },
@@ -1491,7 +1541,7 @@ export default function EndgamePractice() {
                                     <span>Flip</span>
                                 </button>
                                 <button
-                                    onClick={() => setShowOpponentModal(true)}
+                                    onClick={openOpponentPicker}
                                     className="flex flex-col items-center justify-center gap-0.5 min-h-[44px] rounded-xl bg-white border border-slate-200 text-slate-700 text-[10px] font-black active:scale-95 transition-transform"
                                 >
                                     <Settings size={16} />
@@ -1593,9 +1643,7 @@ export default function EndgamePractice() {
                                     {playerColor === 'w' ? 'White to play!' : 'Black to play!'}
                                 </div>
                                 <p className="text-xs text-slate-500 font-medium">
-                                    {activeEndgame.target === 'win'
-                                        ? 'Convert the advantage and force checkmate.'
-                                        : 'Hold the theoretical draw against the engine.'}
+                                    {objectiveText(activeEndgame)}
                                 </p>
                             </div>
 
@@ -1606,27 +1654,22 @@ export default function EndgamePractice() {
                                         Opponent
                                     </span>
                                     <button
-                                        onClick={() => setShowOpponentModal(true)}
+                                        onClick={openOpponentPicker}
                                         className="text-[10px] font-black text-berry hover:underline uppercase tracking-wide cursor-pointer"
                                     >
                                         Change
                                     </button>
                                 </div>
                                 <button
-                                    onClick={() => setShowOpponentModal(true)}
+                                    onClick={openOpponentPicker}
                                     className="w-full p-2.5 rounded-xl border border-slate-200 hover:border-berry/40 bg-slate-50/70 hover:bg-slate-50 transition-all flex items-center justify-between text-left cursor-pointer group"
                                     title="Choose practice opponent"
                                 >
                                     <div className="flex items-center gap-2.5 min-w-0">
-                                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-sm border shrink-0 ${OPPONENT_PRESETS[selectedOpponent].avatarBg}`}>
-                                            {OPPONENT_PRESETS[selectedOpponent].icon}
-                                        </div>
+                                        <BotAvatar opponent={selectedOpponent} size={40} className="shrink-0" />
                                         <div className="min-w-0">
-                                            <div className="text-xs font-black text-slate-800 group-hover:text-berry transition-colors flex items-center gap-1.5">
-                                                <span>{OPPONENT_PRESETS[selectedOpponent].name}</span>
-                                                <span className={`text-[9px] font-black px-1.5 py-0.2 rounded border ${OPPONENT_PRESETS[selectedOpponent].badgeColor}`}>
-                                                    {OPPONENT_PRESETS[selectedOpponent].elo}
-                                                </span>
+                                            <div className="text-xs font-black text-slate-800 group-hover:text-berry transition-colors">
+                                                {OPPONENT_PRESETS[selectedOpponent].name}
                                             </div>
                                             <div className="text-[10px] text-slate-500 truncate">
                                                 {OPPONENT_PRESETS[selectedOpponent].title}
@@ -1690,7 +1733,7 @@ export default function EndgamePractice() {
                                                     }`}
                                                 >
                                                     <div className="flex items-center gap-2 min-w-0">
-                                                        <span className="text-base shrink-0">{opp.icon}</span>
+                                                        <BotAvatar opponent={opp.id} size={32} className="shrink-0" />
                                                         <div className="min-w-0">
                                                             <div className={`text-xs font-black truncate ${isSelected ? 'text-white' : 'text-slate-800'}`}>
                                                                 {opp.name}
@@ -1700,11 +1743,6 @@ export default function EndgamePractice() {
                                                             </div>
                                                         </div>
                                                     </div>
-                                                    <span className={`text-[10px] font-mono font-bold px-1.5 py-0.5 rounded border shrink-0 ${
-                                                        isSelected ? 'bg-white/20 border-white/30 text-white' : opp.badgeColor
-                                                    }`}>
-                                                        {opp.elo}
-                                                    </span>
                                                 </button>
                                             );
                                         })}
@@ -1809,31 +1847,28 @@ export default function EndgamePractice() {
                         </div>
 
                         {/* Modal Opponents List */}
-                        <div className="p-5 overflow-y-auto space-y-3">
+                        <div role="radiogroup" aria-label="Practice opponent" className="p-5 overflow-y-auto space-y-3">
                             {(Object.keys(OPPONENT_PRESETS) as PracticeOpponent[]).map((oppId) => {
                                 const opp = OPPONENT_PRESETS[oppId];
-                                const isSelected = selectedOpponent === oppId;
+                                const isSelected = draftOpponent === oppId;
                                 return (
                                     <button
                                         key={oppId}
-                                        onClick={() => handleOpponentChange(oppId)}
+                                        role="radio"
+                                        aria-checked={isSelected}
+                                        onClick={() => setDraftOpponent(oppId)}
                                         className={`w-full p-4 rounded-2xl border-2 transition-all flex items-start justify-between text-left cursor-pointer group ${
                                             isSelected
                                                 ? 'border-berry bg-berry/5 shadow-xs'
                                                 : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50/70'
                                         }`}
                                     >
-                                        <div className="flex items-start gap-3.5 min-w-0 pr-2">
-                                            <div className={`w-11 h-11 rounded-2xl flex items-center justify-center text-xl border shrink-0 shadow-2xs ${opp.avatarBg}`}>
-                                                {opp.icon}
-                                            </div>
+                                        <div className="flex items-center gap-4 min-w-0 pr-2">
+                                            <BotAvatar opponent={opp.id} size={60} className="shrink-0" />
                                             <div className="min-w-0">
                                                 <div className="flex items-center gap-2 flex-wrap">
                                                     <span className="font-black text-slate-800 text-sm group-hover:text-berry transition-colors">
                                                         {opp.name}
-                                                    </span>
-                                                    <span className={`text-[10px] font-mono font-black px-2 py-0.5 rounded-full border ${opp.badgeColor}`}>
-                                                        {opp.elo} ELO
                                                     </span>
                                                     <span className="text-[11px] font-bold text-slate-400">
                                                         • {opp.title}
@@ -1845,11 +1880,11 @@ export default function EndgamePractice() {
                                             </div>
                                         </div>
 
-                                        <div className="shrink-0 pt-0.5">
+                                        <div className="shrink-0 self-center">
                                             {isSelected ? (
                                                 <span className="inline-flex items-center gap-1 text-xs font-black text-berry bg-berry/10 px-2.5 py-1 rounded-xl">
                                                     <CheckCircle2 size={13} />
-                                                    Active
+                                                    Selected
                                                 </span>
                                             ) : (
                                                 <span className="text-xs font-bold text-slate-400 group-hover:text-berry transition-colors">
@@ -1864,9 +1899,9 @@ export default function EndgamePractice() {
 
                         {/* Modal Footer */}
                         <div className="p-4 border-t border-slate-100 bg-slate-50 flex items-center justify-between text-xs text-slate-500">
-                            <span>Preferences are saved automatically.</span>
+                            <span>Press Done to play against your choice.</span>
                             <button
-                                onClick={() => setShowOpponentModal(false)}
+                                onClick={() => handleOpponentChange(draftOpponent)}
                                 className="px-4 py-2 bg-berry text-white rounded-xl font-bold hover:bg-berry/90 transition-colors cursor-pointer"
                             >
                                 Done

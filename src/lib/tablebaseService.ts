@@ -4,24 +4,102 @@
  * Distance to Zero (DTZ), and stubborn defensive move ranking.
  */
 
+/**
+ * Lichess result categories. The position's own category is from the point of view of the side
+ * to move. Each move's category describes the position AFTER that move, so it is from the
+ * opponent's point of view: a move marked 'loss' is a winning move for the side playing it.
+ */
+export type TablebaseCategory =
+    | 'win' | 'syzygy-win' | 'maybe-win' | 'cursed-win'
+    | 'draw' | 'unknown'
+    | 'blessed-loss' | 'maybe-loss' | 'syzygy-loss' | 'loss';
+
 export interface TablebaseMove {
     uci: string;
     san: string;
-    category: 'win' | 'loss' | 'draw' | 'unknown';
-    dtm: number | null; // Distance to Mate (positive for winning side, negative for losing side)
-    dtz: number | null; // Distance to Zero (50-move rule counter)
+    category: TablebaseCategory; // Opponent's point of view (see above)
+    dtm: number | null; // Distance to mate, from the opponent's point of view
+    dtz: number | null; // Distance to zeroing, from the opponent's point of view
     checkmate: boolean;
     stalemate: boolean;
     insufficient_material: boolean;
 }
 
 export interface TablebaseResult {
-    category: 'win' | 'loss' | 'draw' | 'unknown';
-    dtm: number | null;
+    category: TablebaseCategory; // Side to move's point of view
+    dtm: number | null; // Positive: side to move mates; negative: side to move gets mated
     dtz: number | null;
     moves: TablebaseMove[];
+    /** All moves ordered best-first for the side to move: fastest win, then draws, then the most stubborn losses. */
+    rankedMoves: TablebaseMove[];
     bestMove: TablebaseMove | null;
-    mostStubbornMove: TablebaseMove | null; // Move with longest moves to mate for defender
+}
+
+export type TablebaseOutcome = 'win' | 'cursed-win' | 'draw' | 'blessed-loss' | 'loss';
+
+/** Outcome for the side whose point of view `category` is expressed in. Cursed wins and blessed losses are drawn by the 50-move rule. */
+export function outcomeOf(category: TablebaseCategory | string): TablebaseOutcome {
+    switch (category) {
+        case 'win':
+        case 'syzygy-win':
+        case 'maybe-win':
+            return 'win';
+        case 'cursed-win':
+            return 'cursed-win';
+        case 'blessed-loss':
+            return 'blessed-loss';
+        case 'loss':
+        case 'syzygy-loss':
+        case 'maybe-loss':
+            return 'loss';
+        default:
+            return 'draw';
+    }
+}
+
+const OPPOSITE_OUTCOME: Record<TablebaseOutcome, TablebaseOutcome> = {
+    win: 'loss',
+    'cursed-win': 'blessed-loss',
+    draw: 'draw',
+    'blessed-loss': 'cursed-win',
+    loss: 'win'
+};
+
+/** The same result seen from the other side of the board. */
+export function flipOutcome(outcome: TablebaseOutcome): TablebaseOutcome {
+    return OPPOSITE_OUTCOME[outcome];
+}
+
+/** Outcome of playing `move`, for the side that plays it. */
+export function outcomeForMover(move: TablebaseMove): TablebaseOutcome {
+    return flipOutcome(outcomeOf(move.category));
+}
+
+const OUTCOME_RANK: Record<TablebaseOutcome, number> = {
+    win: 4,
+    'cursed-win': 3,
+    draw: 2,
+    'blessed-loss': 1,
+    loss: 0
+};
+
+/** Moves to mate after the move (falls back to DTZ when DTM is unavailable). */
+function distanceAfter(move: TablebaseMove): number {
+    const d = move.dtm ?? move.dtz;
+    return d === null ? 0 : Math.abs(d);
+}
+
+/** Orders moves best-first for the side to move. Lichess's own order is kept among equal moves. */
+export function rankMovesForMover(moves: TablebaseMove[]): TablebaseMove[] {
+    return [...moves].sort((a, b) => {
+        const outcomeA = outcomeForMover(a);
+        const outcomeB = outcomeForMover(b);
+        if (outcomeA !== outcomeB) return OUTCOME_RANK[outcomeB] - OUTCOME_RANK[outcomeA];
+        // Winning: mate as fast as possible. Losing: resist as long as possible.
+        if (outcomeA === 'win' || outcomeA === 'cursed-win') return distanceAfter(a) - distanceAfter(b);
+        if (outcomeA === 'loss' || outcomeA === 'blessed-loss') return distanceAfter(b) - distanceAfter(a);
+        return 0;
+    });
 }
 
 // In-memory cache for fast lookups
@@ -54,42 +132,15 @@ export async function queryTablebase(fen: string): Promise<TablebaseResult | nul
             insufficient_material: Boolean(m.insufficient_material)
         }));
 
-        // Best move for the current side (shortest DTM to win, or draw if losing)
-        let bestMove: TablebaseMove | null = null;
-        if (moves.length > 0) {
-            // Sort to find the best move
-            // If winning: move with lowest positive DTM (fastest mate)
-            // If drawing: move with draw category
-            // If losing: move with most negative DTM (longest resistance)
-            bestMove = moves[0];
-        }
-
-        // Most stubborn defensive move:
-        // When the opponent is defending, they want the move that prolongs the game the most
-        // (i.e. if losing, smallest absolute dtm or furthest dtm from 0, e.g. -35 is more stubborn than -2).
-        let mostStubbornMove: TablebaseMove | null = null;
-        if (moves.length > 0) {
-            const losingMoves = moves.filter(m => m.category === 'loss' || (m.dtm !== null && m.dtm < 0));
-            if (losingMoves.length > 0) {
-                // Sort by most negative dtm (largest distance to mate)
-                losingMoves.sort((a, b) => {
-                    const dtmA = a.dtm !== null ? Math.abs(a.dtm) : 0;
-                    const dtmB = b.dtm !== null ? Math.abs(b.dtm) : 0;
-                    return dtmB - dtmA; // Descending distance to mate
-                });
-                mostStubbornMove = losingMoves[0];
-            } else {
-                mostStubbornMove = moves[0];
-            }
-        }
+        const rankedMoves = rankMovesForMover(moves);
 
         const result: TablebaseResult = {
             category: data.category || 'unknown',
             dtm: typeof data.dtm === 'number' ? data.dtm : null,
             dtz: typeof data.dtz === 'number' ? data.dtz : null,
             moves,
-            bestMove,
-            mostStubbornMove
+            rankedMoves,
+            bestMove: rankedMoves[0] ?? null
         };
 
         tablebaseCache.set(cleanFen, result);

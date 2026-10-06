@@ -1,5 +1,5 @@
 import { Chess } from 'chess.js';
-import { queryTablebase, type TablebaseMove, type TablebaseResult } from './tablebaseService';
+import { flipOutcome, outcomeOf, queryTablebase, type TablebaseMove, type TablebaseResult } from './tablebaseService';
 import { maiaOnnxService } from './maiaOnnxService';
 
 export type PracticeOpponent = 'stockfish' | 'maia_1100' | 'maia_1500' | 'maia_1900';
@@ -45,6 +45,12 @@ export const OPPONENT_PRESETS: Record<PracticeOpponent, OpponentInfo> = {
     }
 };
 
+/**
+ * How long to wait for chess-api.com (remote Stockfish) before falling back to the local heuristic.
+ * Depth-14 answers typically take 1-3 s, so a short timeout would almost always abort.
+ */
+const ONLINE_ENGINE_TIMEOUT_MS = 4000;
+
 export interface MoveRecommendation {
     from: string;
     to: string;
@@ -87,9 +93,10 @@ export class EndgameEngine {
     }
 
     /**
-     * Compute the best defensive or attacking move for the given FEN
+     * Compute the opponent's move for the given FEN: the best move for the side to move, whether it
+     * is attacking or defending (weaker opponents sometimes pick a worse move on purpose).
      */
-    async getBestMove(fen: string, isDefender: boolean = true): Promise<MoveRecommendation | null> {
+    async getBestMove(fen: string): Promise<MoveRecommendation | null> {
         const game = new Chess(fen);
         if (game.isGameOver()) return null;
 
@@ -120,7 +127,7 @@ export class EndgameEngine {
         if (pieceCount <= 7) {
             const tbResult = await queryTablebase(fen);
             if (tbResult && tbResult.moves.length > 0) {
-                const chosenMove = this.selectMoveByOpponentProfile(tbResult, isDefender);
+                const chosenMove = this.selectMoveByOpponentProfile(tbResult);
                 if (chosenMove) {
                     const from = chosenMove.uci.slice(0, 2);
                     const to = chosenMove.uci.slice(2, 4);
@@ -162,40 +169,13 @@ export class EndgameEngine {
     /**
      * Select move based on the active opponent's skill and blunder profile
      */
-    private selectMoveByOpponentProfile(tbResult: TablebaseResult, isDefender: boolean): TablebaseMove | null {
-        const moves = [...tbResult.moves];
+    private selectMoveByOpponentProfile(tbResult: TablebaseResult): TablebaseMove | null {
+        // Best-first for the side to move: fastest win, then draws, then the most stubborn defence
+        const moves = tbResult.rankedMoves;
         if (moves.length === 0) return null;
 
-        // Sort moves from best to worst
-        moves.sort((a, b) => {
-            // Winning moves for moving side first
-            const aWin = a.category === 'win' || (a.dtm !== null && a.dtm > 0);
-            const bWin = b.category === 'win' || (b.dtm !== null && b.dtm > 0);
-            if (aWin && !bWin) return -1;
-            if (!aWin && bWin) return 1;
-
-            if (aWin && bWin) {
-                // Shortest mate to win
-                const dtma = a.dtm ?? 999;
-                const dtmb = b.dtm ?? 999;
-                return dtma - dtmb;
-            }
-
-            // Draw moves next
-            const aDraw = a.category === 'draw';
-            const bDraw = b.category === 'draw';
-            if (aDraw && !bDraw) return -1;
-            if (!aDraw && bDraw) return 1;
-
-            // Losing moves: sort by most stubborn (longest distance to mate)
-            const dtma = a.dtm !== null ? Math.abs(a.dtm) : 0;
-            const dtmb = b.dtm !== null ? Math.abs(b.dtm) : 0;
-            return dtmb - dtma; // Descending: e.g. -30 before -4
-        });
-
-        // Stockfish: Always pick the absolute best/most stubborn move
+        // Stockfish: always the best move (fastest win, safest draw, or most stubborn defence)
         if (this.opponent === 'stockfish') {
-            if (isDefender && tbResult.mostStubbornMove) return tbResult.mostStubbornMove;
             return moves[0];
         }
 
@@ -244,7 +224,7 @@ export class EndgameEngine {
 
         try {
             const controller = new AbortController();
-            const timeout = setTimeout(() => controller.abort(), 650);
+            const timeout = setTimeout(() => controller.abort(), ONLINE_ENGINE_TIMEOUT_MS);
 
             const res = await fetch('https://chess-api.com/v1', {
                 method: 'POST',
@@ -276,27 +256,45 @@ export class EndgameEngine {
     }
 
     /**
-     * Query evaluation only (for live eval bar)
+     * Evaluation for the live eval display, from `perspective`'s point of view
+     * (a positive score and "Winning" mean good for that side, whoever is to move).
      */
-    async getEvaluation(fen: string): Promise<{ evalText: string; score: number; dtm?: number | null }> {
-        const pieceCount = this.countPieces(fen);
-        if (pieceCount <= 7) {
+    async getEvaluation(fen: string, perspective: 'w' | 'b'): Promise<{ evalText: string; score: number; dtm?: number | null }> {
+        const game = new Chess(fen);
+        const viewerToMove = game.turn() === perspective;
+
+        if (this.countPieces(fen) <= 7) {
             const tbResult = await queryTablebase(fen);
             if (tbResult) {
-                if (tbResult.category === 'draw') return { evalText: 'Theoretical Draw (0.0)', score: 0, dtm: 0 };
-                if (tbResult.dtm !== null) {
-                    const movesLeft = Math.ceil(Math.abs(tbResult.dtm) / 2);
-                    if (tbResult.dtm > 0) {
-                        return { evalText: `Winning (Mate in ${movesLeft})`, score: 99 - movesLeft, dtm: tbResult.dtm };
-                    } else {
-                        return { evalText: `Losing (Mate in ${movesLeft})`, score: -99 + movesLeft, dtm: tbResult.dtm };
-                    }
+                // The tablebase reports from the side to move; flip it when that is the opponent.
+                const sideToMove = outcomeOf(tbResult.category);
+                const outcome = viewerToMove ? sideToMove : flipOutcome(sideToMove);
+                const dtm = tbResult.dtm === null ? null : (viewerToMove ? tbResult.dtm : -tbResult.dtm);
+                const mateIn = dtm === null ? null : Math.ceil(Math.abs(dtm) / 2);
+
+                if (game.isCheckmate()) {
+                    return viewerToMove
+                        ? { evalText: 'Checkmated', score: -100, dtm: 0 }
+                        : { evalText: 'Checkmate!', score: 100, dtm: 0 };
+                }
+                switch (outcome) {
+                    case 'win':
+                        return { evalText: mateIn ? `Winning (Mate in ${mateIn})` : 'Winning', score: 99 - (mateIn ?? 0), dtm };
+                    case 'loss':
+                        return { evalText: mateIn ? `Losing (Mated in ${mateIn})` : 'Losing', score: -99 + (mateIn ?? 0), dtm };
+                    case 'cursed-win':
+                        return { evalText: 'Winning, but drawn by the 50-move rule', score: 1, dtm };
+                    case 'blessed-loss':
+                        return { evalText: 'Losing, but saved by the 50-move rule', score: -1, dtm };
+                    default:
+                        return { evalText: 'Theoretical Draw (0.0)', score: 0, dtm: 0 };
                 }
             }
         }
 
-        const game = new Chess(fen);
-        const evalScore = this.evaluatePosition(game);
+        // Material-based estimate (White's point of view), flipped for Black.
+        const whiteScore = this.evaluatePosition(game);
+        const evalScore = perspective === 'w' ? whiteScore : -whiteScore;
         return {
             evalText: evalScore > 0 ? `+${(evalScore / 100).toFixed(1)}` : `${(evalScore / 100).toFixed(1)}`,
             score: evalScore

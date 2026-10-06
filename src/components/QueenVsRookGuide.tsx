@@ -145,7 +145,7 @@ export const FORK_VARIATIONS: DiagramVariation[] = [
                 moveNumber: '5',
                 san: '5. Qd4+',
                 fen: '8/k7/2K5/8/3Q4/8/8/1r6 b - - 9 5',
-                comment: '5. Qd4+! Centralizing check. Black King must step to a8 (if 5...Kb8 6.Qh8+ Ka7 7.Qh7+ wins equally).',
+                comment: '5. Qd4+! Centralizing check. The king goes back to a8 (5...Kb8 6.Qh8+ Ka7 7.Qh7+ is the same fork, and 5...Ka6 6.Qa4# is mate).',
                 highlights: { d4: WHITE_SQUARE_STYLE }
             },
             {
@@ -185,10 +185,17 @@ export const FORK_VARIATIONS: DiagramVariation[] = [
                 ]
             },
             {
+                moveNumber: '7...',
+                san: '7... Kb8',
+                fen: '1k6/7Q/2K5/8/8/8/8/1r6 w - - 14 8',
+                comment: '7... Kb8. The king steps out of check, but nothing can save the rook on b1.',
+                highlights: { b8: BLACK_SQUARE_STYLE }
+            },
+            {
                 moveNumber: '8',
-                san: '7... Kb8 8. Qxb1+',
+                san: '8. Qxb1+',
                 fen: '1k6/8/2K5/8/8/8/8/1Q6 b - - 0 8',
-                comment: '8. Qxb1! The rook falls. White mates on the next move (e.g. 8...Ka8 9.Qb7#).',
+                comment: '8. Qxb1+! The rook falls. White mates next move (for example 8...Ka8 9.Qb7#).',
                 highlights: { b1: WHITE_SQUARE_STYLE }
             }
         ]
@@ -250,10 +257,17 @@ export const FORK_VARIATIONS: DiagramVariation[] = [
                 ]
             },
             {
+                moveNumber: '6...',
+                san: '6... Ka7',
+                fen: '8/k6r/2K5/8/8/8/8/1Q6 w - - 12 7',
+                comment: '6... Ka7. The king escapes the check, but the rook on h7 is still hanging.',
+                highlights: { a7: BLACK_SQUARE_STYLE }
+            },
+            {
                 moveNumber: '7',
-                san: '6... Ka7 7. Qxh7+',
+                san: '7. Qxh7+',
                 fen: '8/k6Q/2K5/8/8/8/8/8 b - - 0 7',
-                comment: '6... Ka7 7. Qxh7+! Rook captured with check; White mates shortly.',
+                comment: '7. Qxh7+! The rook is captured with check, and White mates shortly.',
                 highlights: { h7: WHITE_SQUARE_STYLE }
             }
         ]
@@ -303,7 +317,7 @@ export const FORK_VARIATIONS: DiagramVariation[] = [
                 moveNumber: '6',
                 san: '6. Qa4+!',
                 fen: 'k7/8/2K5/8/Q7/1r6/8/8 b - - 11 6',
-                comment: '6. Qa4+! DOUBLE ATTACK! Queen hits Ka8 along the a-file and simultaneously skewers Rb3 along the 4th rank!',
+                comment: '6. Qa4+! DOUBLE ATTACK! The queen checks the king on a8 along the a-file and attacks the rook on b3 along the a4-b3 diagonal at the same time!',
                 highlights: {
                     a4: WHITE_SQUARE_STYLE,
                     a8: BLACK_SQUARE_STYLE,
@@ -315,10 +329,17 @@ export const FORK_VARIATIONS: DiagramVariation[] = [
                 ]
             },
             {
+                moveNumber: '6...',
+                san: '6... Kb8',
+                fen: '1k6/8/2K5/8/Q7/1r6/8/8 w - - 12 7',
+                comment: '6... Kb8. The king steps out of check, leaving the rook on b3 to its fate.',
+                highlights: { b8: BLACK_SQUARE_STYLE }
+            },
+            {
                 moveNumber: '7',
-                san: '6... Kb8 7. Qxb3+',
+                san: '7. Qxb3+',
                 fen: '1k6/8/2K5/8/8/1Q6/8/8 b - - 0 7',
-                comment: '7. Qxb3. Decisive win.',
+                comment: '7. Qxb3+! The rook falls, and queen vs king is a simple win.',
                 highlights: { b3: WHITE_SQUARE_STYLE }
             }
         ]
@@ -340,7 +361,7 @@ export const FORK_VARIATIONS: DiagramVariation[] = [
                 moveNumber: '4',
                 san: '4. Qd8+',
                 fen: '1k1Q4/8/2K5/8/8/8/1r6/8 b - - 7 4',
-                comment: '4. Qd8+ Ka7',
+                comment: '4. Qd8+! Back-rank check. The king must go to a7.',
                 highlights: { d8: WHITE_SQUARE_STYLE }
             },
             {
@@ -366,10 +387,17 @@ export const FORK_VARIATIONS: DiagramVariation[] = [
                 ]
             },
             {
+                moveNumber: '5...',
+                san: '5... Kb8',
+                fen: '1k6/8/2K5/8/3Q4/8/1r6/8 w - - 10 6',
+                comment: '5... Kb8. Out of check, but the rook on b2 is still attacked.',
+                highlights: { b8: BLACK_SQUARE_STYLE }
+            },
+            {
                 moveNumber: '6',
-                san: '5... Kb8 6. Qxb2+',
+                san: '6. Qxb2+',
                 fen: '1k6/8/2K5/8/8/8/1Q6/8 b - - 0 6',
-                comment: '6. Qxb2. Rook won.',
+                comment: '6. Qxb2+! The rook is won.',
                 highlights: { b2: WHITE_SQUARE_STYLE }
             }
         ]
@@ -391,14 +419,14 @@ export const FORK_VARIATIONS: DiagramVariation[] = [
                 moveNumber: '4',
                 san: '4. Qf5+',
                 fen: '2k5/1r6/2K5/5Q2/8/8/8/8 b - - 7 4',
-                comment: '4. Qf5+! Black king is forced to d8.',
+                comment: '4. Qf5+! Checking along the f5-c8 diagonal. The king must go to d8 or b8.',
                 highlights: { f5: WHITE_SQUARE_STYLE }
             },
             {
                 moveNumber: '4...',
                 san: '4... Kd8',
                 fen: '3k4/1r6/2K5/5Q2/8/8/8/8 w - - 8 5',
-                comment: '4... Kd8 (4...Kb8 loses to 5.Qf8+ Ka7 6.Qa3+ Kb8 7.Qa6).',
+                comment: '4... Kd8? A mistake that allows mate in one. (The more stubborn 4...Kb8 also loses, just more slowly.)',
                 highlights: { d8: BLACK_SQUARE_STYLE }
             },
             {
@@ -501,7 +529,7 @@ export const HERDING_STEPS: MoveStep[] = [
         moveNumber: '7',
         san: '7. Qc6+',
         fen: '5r2/8/2Q5/8/8/2K2k2/8/8 b - - 12 7',
-        comment: '7. Qc6+! Crucial timing! Now 7...Ke3? is impossible due to the double attack 8.Qc5+! forking King and Rook. Black must play 7...Kg4.',
+        comment: '7. Qc6+! Crucial timing! Now 7...Ke3? loses the rook to the double attack 8.Qc5+!, forking king and rook. Black\'s best is 7...Kg4 or 7...Kg3.',
         highlights: {
             c6: WHITE_SQUARE_STYLE,
             c5: BLACK_SQUARE_STYLE
@@ -556,7 +584,7 @@ export const HERDING_STEPS: MoveStep[] = [
         moveNumber: '10...',
         san: '10... Rf3+',
         fen: '8/8/8/7Q/8/3K1rk1/8/8 w - - 19 11',
-        comment: '10... Rf3+ (10...Rd8+ 11.Ke3 Re8+? is illegal/losing).',
+        comment: '10... Rf3+. The rook checks while staying protected by its king.',
         highlights: { f3: BLACK_SQUARE_STYLE }
     },
     {
@@ -577,7 +605,7 @@ export const HERDING_STEPS: MoveStep[] = [
         moveNumber: '12',
         san: '12. Ke3!',
         fen: '8/8/8/7Q/5r2/4K1k1/8/8 b - - 22 12',
-        comment: '12. Ke3! Black has run out of safe checks (12...Rf3+ is impossible). The defending king is cornered on the rim and White will soon transition directly into the Philidor 1777 winning setup!',
+        comment: '12. Ke3! Black has run out of safe checks: 12...Rf3+? loses the rook to 13.Qxf3+, because the white king protects the queen. The defending king is cornered on the rim and White will soon reach the winning Philidor setup.',
         highlights: {
             e3: WHITE_SQUARE_STYLE,
             f4: BLACK_SQUARE_STYLE,
@@ -587,112 +615,112 @@ export const HERDING_STEPS: MoveStep[] = [
     {
         moveNumber: '12...',
         san: '12... Rg4',
-        fen: '8/8/8/7Q/6r1/4K1k1/8/8 w - - 1 2',
+        fen: '8/8/8/7Q/6r1/4K1k1/8/8 w - - 23 13',
         comment: '12... Rg4 (Another possibility is 12...Ra4; White cannot win the rook by force immediately, but must drive the black king away to an edge, place the queen optimally, and then advance the king).',
         highlights: { g4: BLACK_SQUARE_STYLE }
     },
     {
         moveNumber: '13',
         san: '13. Qe5+',
-        fen: '8/8/8/4Q3/6r1/4K1k1/8/8 b - - 2 2',
+        fen: '8/8/8/4Q3/6r1/4K1k1/8/8 b - - 24 13',
         comment: '13. Qe5+! Checking the Black King and driving it further toward the corner.',
         highlights: { e5: WHITE_SQUARE_STYLE }
     },
     {
         moveNumber: '13...',
         san: '13... Kg2',
-        fen: '8/8/8/4Q3/6r1/4K3/6k1/8 w - - 3 3',
+        fen: '8/8/8/4Q3/6r1/4K3/6k1/8 w - - 25 14',
         comment: '13... Kg2. Defending king steps toward the g2 square.',
         highlights: { g2: BLACK_SQUARE_STYLE }
     },
     {
         moveNumber: '14',
         san: '14. Ke2',
-        fen: '8/8/8/4Q3/6r1/8/4K1k1/8 b - - 4 3',
+        fen: '8/8/8/4Q3/6r1/8/4K1k1/8 b - - 26 14',
         comment: '14. Ke2! Zugzwang. White patiently steps the King up, leaving Black with no productive moves.',
         highlights: { e2: WHITE_SQUARE_STYLE }
     },
     {
         moveNumber: '14...',
         san: '14... Rg3',
-        fen: '8/8/8/4Q3/8/6r1/4K1k1/8 w - - 5 4',
-        comment: '14... Rg3. The rook is forced to move along the 3rd rank.',
+        fen: '8/8/8/4Q3/8/6r1/4K1k1/8 w - - 27 15',
+        comment: '14... Rg3. The most stubborn defence: the rook stays next to its king.',
         highlights: { g3: BLACK_SQUARE_STYLE }
     },
     {
         moveNumber: '15',
         san: '15. Qh5',
-        fen: '8/8/8/7Q/8/6r1/4K1k1/8 b - - 6 4',
+        fen: '8/8/8/7Q/8/6r1/4K1k1/8 b - - 28 15',
         comment: '15. Qh5! Squeezing Black further. The Black King is trapped on the rim.',
         highlights: { h5: WHITE_SQUARE_STYLE }
     },
     {
         moveNumber: '15...',
         san: '15... Kg1',
-        fen: '8/8/8/7Q/8/6r1/4K3/6k1 w - - 7 5',
+        fen: '8/8/8/7Q/8/6r1/4K3/6k1 w - - 29 16',
         comment: '15... Kg1. Black King drops to the bottom rank.',
         highlights: { g1: BLACK_SQUARE_STYLE }
     },
     {
         moveNumber: '16',
         san: '16. Qd5',
-        fen: '8/8/8/3Q4/8/6r1/4K3/6k1 b - - 8 5',
+        fen: '8/8/8/3Q4/8/6r1/4K3/6k1 b - - 30 16',
         comment: '16. Qd5! Zugzwang. Quiet moves that limit the mobility of enemy pieces or create a zugzwang situation are often much more effective than checks.',
         highlights: { d5: WHITE_SQUARE_STYLE }
     },
     {
         moveNumber: '16...',
         san: '16... Rg6',
-        fen: '8/8/6r1/3Q4/8/8/4K3/6k1 w - - 9 6',
+        fen: '8/8/6r1/3Q4/8/8/4K3/6k1 w - - 31 17',
         comment: '16... Rg6 (In case of 16...Rg2+ 17.Kf3 Kh2 18.Qh5+ Kg1 19.Qh4 we arrive at the exact same Philidor position).',
         highlights: { g6: BLACK_SQUARE_STYLE }
     },
     {
         moveNumber: '17',
         san: '17. Qd4+',
-        fen: '8/8/6r1/8/3Q4/8/4K3/6k1 b - - 10 6',
+        fen: '8/8/6r1/8/3Q4/8/4K3/6k1 b - - 32 17',
         comment: '17. Qd4+! Central diagonal check, cutting off the King.',
         highlights: { d4: WHITE_SQUARE_STYLE }
     },
     {
         moveNumber: '17...',
         san: '17... Kh2',
-        fen: '8/8/6r1/8/3Q4/8/4K2k/8 w - - 11 7',
+        fen: '8/8/6r1/8/3Q4/8/4K2k/8 w - - 33 18',
         comment: '17... Kh2.',
         highlights: { h2: BLACK_SQUARE_STYLE }
     },
     {
         moveNumber: '18',
         san: '18. Qf4+',
-        fen: '8/8/6r1/8/5Q2/8/4K2k/8 b - - 12 7',
+        fen: '8/8/6r1/8/5Q2/8/4K2k/8 b - - 34 18',
         comment: '18. Qf4+! Driving the King back onto g1.',
         highlights: { f4: WHITE_SQUARE_STYLE }
     },
     {
         moveNumber: '18...',
         san: '18... Kg1',
-        fen: '8/8/6r1/8/5Q2/8/4K3/6k1 w - - 13 8',
+        fen: '8/8/6r1/8/5Q2/8/4K3/6k1 w - - 35 19',
         comment: '18... Kg1.',
         highlights: { g1: BLACK_SQUARE_STYLE }
     },
     {
         moveNumber: '19',
         san: '19. Kf3',
-        fen: '8/8/6r1/8/5Q2/5K2/8/6k1 b - - 14 8',
+        fen: '8/8/6r1/8/5Q2/5K2/8/6k1 b - - 36 19',
         comment: '19. Kf3! Decisive king opposition. Black is completely paralyzed.',
         highlights: { f3: WHITE_SQUARE_STYLE }
     },
     {
         moveNumber: '19...',
         san: '19... Rg2',
-        fen: '8/8/8/8/5Q2/5K2/6r1/6k1 w - - 15 9',
-        comment: '19... Rg2. The only legal move to defend against mate.',
+        fen: '8/8/8/8/5Q2/5K2/6r1/6k1 w - - 37 20',
+        comment: '19... Rg2. The most stubborn defence: the rook stays next to its king and shields it.',
         highlights: { g2: BLACK_SQUARE_STYLE }
     },
     {
         moveNumber: '20',
         san: '20. Qh4',
-        fen: '8/8/8/8/7Q/5K2/6r1/6k1 b - - 16 9',
+        fen: '8/8/8/8/7Q/5K2/6r1/6k1 b - - 38 20',
         comment: '20. Qh4! White wins! Black is in zugzwang in the classic Philidor Position. Any king move or rook move along the 2nd rank loses immediately to Queen double attacks.',
         highlights: {
             h4: WHITE_SQUARE_STYLE,

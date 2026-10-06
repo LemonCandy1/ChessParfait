@@ -10,7 +10,6 @@ import {
     ArrowRight,
     ArrowLeft,
     Compass,
-    Settings,
     Volume2,
     VolumeX,
     Maximize2,
@@ -22,7 +21,7 @@ import {
     Lightbulb,
     Star,
     ChevronDown,
-    ChevronRight
+    History
 } from '@/lib/lucideOriginal';
 import { useSearchParams, Link } from 'react-router-dom';
 import Navbar from '../components/Navbar/Navbar';
@@ -32,6 +31,7 @@ import { BotAvatar } from '../components/BotAvatars';
 import endgamesData from '../data/endgames.json';
 import { endgameEngine, OPPONENT_PRESETS, type PracticeOpponent } from '../lib/stockfishEngine';
 import { useAuth } from '../context/AuthContext';
+import { readLastAccessed, timeAgo, writeLastAccessed } from '../lib/lastAccessed';
 
 const customArrowOptions = {
     ...defaultArrowOptions,
@@ -41,6 +41,9 @@ const customArrowOptions = {
     opacity: 0.65,
     activeOpacity: 0.55,
 };
+
+/** Piece animation length on the board; a queued move waits for the opponent's move to finish animating. */
+const BOARD_ANIMATION_MS = 180;
 
 export interface EndgamePosition {
     id: string;
@@ -207,7 +210,7 @@ const renderEndgameIcon = (iconType?: string, category?: string) => {
 export default function EndgamePractice() {
     const endgames = endgamesData as EndgamePosition[];
     const [searchParams, setSearchParams] = useSearchParams();
-    const { user } = useAuth();
+    const { user, loading: authLoading } = useAuth();
 
     // Determine initial endgame from URL param or default
     const paramId = searchParams.get('id');
@@ -281,7 +284,6 @@ export default function EndgamePractice() {
     const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
     const [activeTab, setActiveTab] = useState<'learn' | 'review'>('learn');
     const [isSoundMuted, setIsSoundMuted] = useState(false);
-    const [showSettingsDropdown, setShowSettingsDropdown] = useState(false);
     const [revealedHint, setRevealedHint] = useState<string | null>(null);
 
     const [userRatings, setUserRatings] = useState<Record<string, number>>(() => {
@@ -294,10 +296,22 @@ export default function EndgamePractice() {
     });
 
     const aiTimerRef = useRef<number | null>(null);
+    // Mirrors isAiThinking so callbacks never act on a stale value from an earlier render
+    const aiThinkingRef = useRef(false);
+    const queuedMoveTimerRef = useRef<number | null>(null);
     const [pendingPromotion, setPendingPromotion] = useState<{ from: string; to: string; color: 'w' | 'b' } | null>(null);
     const gameRef = useRef<Chess>(game);
     const pendingMoveRef = useRef<{ from: string; to: string; promotion?: string } | null>(null);
     const executeMoveRef = useRef<(sourceSquare: string, targetSquare: string, chosenPromotion?: string) => boolean>(() => false);
+
+    /** Stops a pending opponent reply and any queued move waiting to be played. */
+    const cancelOpponentTimers = useCallback(() => {
+        if (aiTimerRef.current) clearTimeout(aiTimerRef.current);
+        if (queuedMoveTimerRef.current) clearTimeout(queuedMoveTimerRef.current);
+        aiTimerRef.current = null;
+        queuedMoveTimerRef.current = null;
+        aiThinkingRef.current = false;
+    }, []);
 
     useEffect(() => {
         gameRef.current = game;
@@ -329,6 +343,25 @@ export default function EndgamePractice() {
         });
         return groups;
     }, [endgames]);
+
+    // Remember the endgame each user last opened in the arena
+    useEffect(() => {
+        if (authLoading || viewMode !== 'arena') return;
+        writeLastAccessed('practice', user?.username, { endgameId: activeEndgame.id, at: Date.now() });
+    }, [activeEndgame.id, authLoading, user?.username, viewMode]);
+
+    // "Continue where you left off": re-read whenever the catalog is shown or the account changes
+    const lastPractice = useMemo(() => {
+        if (authLoading || viewMode !== 'catalog') return null;
+        const last = readLastAccessed('practice', user?.username);
+        const endgame = last && endgames.find(e => e.id === last.endgameId);
+        return last && endgame ? { endgame, at: last.at } : null;
+    }, [authLoading, endgames, user?.username, viewMode]);
+
+    const lastStrategy = useMemo(() => {
+        if (authLoading || viewMode !== 'catalog') return null;
+        return readLastAccessed('strategy', user?.username);
+    }, [authLoading, user?.username, viewMode]);
 
     // Overall user account progress calculation
     const progressStats = useMemo(() => {
@@ -377,10 +410,10 @@ export default function EndgamePractice() {
         return filteredGroups;
     }, [categorizedEndgames, searchQuery, categoryFilter]);
 
-    // Update live evaluation
-    const updateEvaluation = useCallback(async (fen: string) => {
+    // Update live evaluation, always from the player's point of view
+    const updateEvaluation = useCallback(async (fen: string, perspective: 'w' | 'b') => {
         try {
-            const evalResult = await endgameEngine.getEvaluation(fen);
+            const evalResult = await endgameEngine.getEvaluation(fen, perspective);
             setLiveEval(evalResult.evalText);
         } catch {
             setLiveEval('In Progress');
@@ -390,13 +423,13 @@ export default function EndgamePractice() {
     // Initial evaluation
     useEffect(() => {
         if (viewMode === 'arena') {
-            updateEvaluation(gameRef.current.fen());
+            updateEvaluation(gameRef.current.fen(), playerColor);
         }
-    }, [activeEndgame, updateEvaluation, viewMode]);
+    }, [activeEndgame, playerColor, updateEvaluation, viewMode]);
 
     // Select position and open practice arena
     const handleSelectEndgame = (endgame: EndgamePosition) => {
-        if (aiTimerRef.current) clearTimeout(aiTimerRef.current);
+        cancelOpponentTimers();
         setActiveEndgame(endgame);
         setPlayerColor(endgame.playerColor);
         const newGame = new Chess(fenForPlayer(endgame.fen, endgame.playerColor));
@@ -414,19 +447,18 @@ export default function EndgamePractice() {
         setShowSolvedOverlay(false);
         setIsAiThinking(false);
         setRevealedHint(null);
-        setShowSettingsDropdown(false);
         setStatusMessage({
             type: 'info',
             text: `Your goal: ${objectiveText(endgame)}`
         });
-        updateEvaluation(newGame.fen());
+        updateEvaluation(newGame.fen(), endgame.playerColor);
         setViewMode('arena');
         setSearchParams({ id: endgame.id });
     };
 
     // Return to catalog
     const handleReturnToCatalog = () => {
-        if (aiTimerRef.current) clearTimeout(aiTimerRef.current);
+        cancelOpponentTimers();
         pendingMoveRef.current = null;
         setPendingPromotion(null);
         setViewMode('catalog');
@@ -435,8 +467,9 @@ export default function EndgamePractice() {
 
     // Reset current position
     const handleResetPosition = useCallback((colorArg?: 'w' | 'b') => {
-        if (aiTimerRef.current) clearTimeout(aiTimerRef.current);
-        const newGame = new Chess(fenForPlayer(activeEndgame.fen, colorArg ?? playerColor));
+        cancelOpponentTimers();
+        const color = colorArg ?? playerColor;
+        const newGame = new Chess(fenForPlayer(activeEndgame.fen, color));
         setGame(newGame);
         gameRef.current = newGame;
         pendingMoveRef.current = null;
@@ -454,8 +487,8 @@ export default function EndgamePractice() {
             type: 'info',
             text: 'Position reset. Ready for another attempt!'
         });
-        updateEvaluation(newGame.fen());
-    }, [activeEndgame, playerColor, updateEvaluation]);
+        updateEvaluation(newGame.fen(), color);
+    }, [activeEndgame, cancelOpponentTimers, playerColor, updateEvaluation]);
 
     // Advance to next endgame
     const handleNextEndgame = () => {
@@ -486,7 +519,6 @@ export default function EndgamePractice() {
         try {
             localStorage.setItem('endgame_practice_opponent', opponent);
         } catch {}
-        setShowSettingsDropdown(false);
         setShowOpponentModal(false);
         setStatusMessage({
             type: 'info',
@@ -621,13 +653,13 @@ export default function EndgamePractice() {
     // AI Move Trigger
     const triggerAiResponse = useCallback((currentGame: Chess) => {
         if (currentGame.isGameOver()) return;
+        aiThinkingRef.current = true;
         setIsAiThinking(true);
 
         aiTimerRef.current = window.setTimeout(async () => {
             try {
                 const fen = currentGame.fen();
-                const isDefender = activeEndgame.target === 'win';
-                const recommendation = await endgameEngine.getBestMove(fen, isDefender);
+                const recommendation = await endgameEngine.getBestMove(fen);
 
                 {
                     const gameCopy = new Chess(currentGame.fen());
@@ -655,10 +687,11 @@ export default function EndgamePractice() {
                             else playMoveSound();
                         }
 
+                        aiThinkingRef.current = false;
                         setGame(gameCopy);
                         gameRef.current = gameCopy;
                         setLastMove({ from: move.from, to: move.to });
-                        updateEvaluation(gameCopy.fen());
+                        updateEvaluation(gameCopy.fen(), playerColor);
 
                         // Preserve player's selected piece if it is still on the board and belongs to the player
                         setSelectedSquare((prevSelected) => {
@@ -676,22 +709,30 @@ export default function EndgamePractice() {
                                 text: `${oppName}${neuralTag} played ${move.san}. Your turn!`
                             });
 
-                            // If player queued a move while opponent was calculating, execute it now!
+                            // If the player queued a move while the opponent was calculating, play it
+                            // once the opponent's move has finished animating.
                             if (pendingMoveRef.current) {
-                                const pending = pendingMoveRef.current;
-                                pendingMoveRef.current = null;
-                                // Clear AI thinking flag so executeMove will run the move immediately
-                                setIsAiThinking(false);
-                                if (!pending.promotion && isPromotionMove(gameCopy, pending.from, pending.to)) {
-                                    setPendingPromotion({
-                                        from: pending.from,
-                                        to: pending.to,
-                                        color: playerColor
-                                    });
-                                } else {
-                                    // Execute the queued move (including promotion if needed)
-                                    executeMoveRef.current(pending.from, pending.to, pending.promotion);
-                                }
+                                queuedMoveTimerRef.current = window.setTimeout(() => {
+                                    queuedMoveTimerRef.current = null;
+                                    const pending = pendingMoveRef.current;
+                                    pendingMoveRef.current = null;
+                                    const latestGame = gameRef.current;
+                                    if (!pending || latestGame.turn() !== playerColor) return;
+
+                                    if (!pending.promotion && isPromotionMove(latestGame, pending.from, pending.to)) {
+                                        setPendingPromotion({
+                                            from: pending.from,
+                                            to: pending.to,
+                                            color: playerColor
+                                        });
+                                    } else if (!executeMoveRef.current(pending.from, pending.to, pending.promotion)) {
+                                        setSelectedSquare(null);
+                                        setStatusMessage({
+                                            type: 'info',
+                                            text: `${oppName} played ${move.san}. Your queued move is no longer legal. Your turn!`
+                                        });
+                                    }
+                                }, BOARD_ANIMATION_MS + 40);
                             }
                         }
                     }
@@ -699,10 +740,11 @@ export default function EndgamePractice() {
             } catch (err) {
                 console.error('AI Move Error:', err);
             } finally {
+                aiThinkingRef.current = false;
                 setIsAiThinking(false);
             }
         }, 400);
-    }, [activeEndgame, evaluateEndCondition, isSoundMuted, playerColor, selectedOpponent, updateEvaluation]);
+    }, [evaluateEndCondition, isSoundMuted, playerColor, selectedOpponent, updateEvaluation]);
 
     // Safety net: whenever it is not the player's turn, the opponent replies immediately
     useEffect(() => {
@@ -719,7 +761,7 @@ export default function EndgamePractice() {
 
         // If opponent is currently calculating or it's not the player's turn:
         // Queue the move (premove) so it executes as soon as the opponent move lands!
-        if (isAiThinking || currentGame.turn() !== playerColor) {
+        if (aiThinkingRef.current || currentGame.turn() !== playerColor) {
             const movingPiece = currentGame.get(sourceSquare as any);
             if (movingPiece && movingPiece.color === playerColor) {
                 pendingMoveRef.current = { from: sourceSquare, to: targetSquare, promotion: chosenPromotion };
@@ -765,7 +807,7 @@ export default function EndgamePractice() {
             setLastMove({ from: move.from, to: move.to });
             setSelectedSquare(null);
             pendingMoveRef.current = null;
-            updateEvaluation(gameCopy.fen());
+            updateEvaluation(gameCopy.fen(), playerColor);
 
             const isEnd = evaluateEndCondition(gameCopy);
             if (!isEnd) {
@@ -781,7 +823,7 @@ export default function EndgamePractice() {
         } catch {
             return false;
         }
-    }, [evaluateEndCondition, isAiThinking, isFailed, isSolved, isSoundMuted, playerColor, selectedOpponent, triggerAiResponse, updateEvaluation]);
+    }, [evaluateEndCondition, isFailed, isSolved, isSoundMuted, playerColor, selectedOpponent, triggerAiResponse, updateEvaluation]);
 
     useEffect(() => {
         executeMoveRef.current = executeMove;
@@ -853,7 +895,7 @@ export default function EndgamePractice() {
             }
 
             // If opponent is calculating or not player's turn, queue move
-            if (isAiThinking || currentGame.turn() !== playerColor) {
+            if (aiThinkingRef.current || currentGame.turn() !== playerColor) {
                 executeMove(selectedSquare, square);
                 return;
             }
@@ -875,7 +917,7 @@ export default function EndgamePractice() {
         if (pieceOnSquare && pieceOnSquare.color === playerColor) {
             setSelectedSquare(square);
         }
-    }, [executeMove, isAiThinking, isSolved, playerColor, selectedSquare]);
+    }, [executeMove, isSolved, playerColor, selectedSquare]);
 
     // Piece drag handler to immediately show legal moves while dragging
     const onPieceDrag = useCallback(({ square }: { square: string | null; isSparePiece?: boolean; piece?: any }) => {
@@ -896,11 +938,11 @@ export default function EndgamePractice() {
             return false;
         }
         const success = executeMove(sourceSquare, targetSquare);
-        if (!isAiThinking) {
+        if (!pendingMoveRef.current) {
             setSelectedSquare(null);
         }
         return success;
-    }, [executeMove, isAiThinking, isSolved]);
+    }, [executeMove, isSolved]);
 
     // Right-click square handler to toggle circle on/off
     const handleSquareRightClick = useCallback((square: string) => {
@@ -1058,6 +1100,56 @@ export default function EndgamePractice() {
                             </div>
                         </div>
 
+                        {/* Continue where you left off (per signed-in user) */}
+                        {(lastPractice || lastStrategy) && (
+                            <div className="bg-white/80 backdrop-blur-md rounded-3xl p-4 md:p-5 border-2 border-plum/15 shadow-sm space-y-3">
+                                <div className="flex items-center gap-2 text-[11px] font-black uppercase tracking-wider text-plum/60">
+                                    <History size={14} className="text-berry" />
+                                    <span>Continue where you left off{user?.username ? `, @${user.username}` : ''}</span>
+                                </div>
+                                <div className="grid gap-3 sm:grid-cols-2">
+                                    {lastPractice && (
+                                        <button
+                                            onClick={() => handleSelectEndgame(lastPractice.endgame)}
+                                            className="text-left p-3.5 rounded-2xl bg-[#FAF1DB] border-2 border-plum/15 hover:border-berry transition-all group flex items-center justify-between gap-3"
+                                        >
+                                            <div className="min-w-0">
+                                                <div className="text-[10px] font-black uppercase tracking-wider text-berry">
+                                                    Last practiced · {timeAgo(lastPractice.at)}
+                                                </div>
+                                                <div className="font-serif font-black text-plum truncate">{lastPractice.endgame.title}</div>
+                                                <div className="text-[11px] font-bold text-plum/60">
+                                                    {lastPractice.endgame.category} · {drillProgress[lastPractice.endgame.id] || 0}/{lastPractice.endgame.totalDrills || 10} drills
+                                                </div>
+                                            </div>
+                                            <span className="shrink-0 inline-flex items-center gap-1 text-xs font-black text-berry">
+                                                Resume <ArrowRight size={14} className="group-hover:translate-x-0.5 transition-transform" />
+                                            </span>
+                                        </button>
+                                    )}
+                                    {lastStrategy && (
+                                        <Link
+                                            to="/EndgameStrategy"
+                                            className="text-left p-3.5 rounded-2xl bg-[#FAF1DB] border-2 border-plum/15 hover:border-berry transition-all group flex items-center justify-between gap-3"
+                                        >
+                                            <div className="min-w-0">
+                                                <div className="text-[10px] font-black uppercase tracking-wider text-berry">
+                                                    Last studied · {timeAgo(lastStrategy.at)}
+                                                </div>
+                                                <div className="font-serif font-black text-plum truncate">{lastStrategy.title}</div>
+                                                <div className="text-[11px] font-bold text-plum/60">
+                                                    Strategy · step {lastStrategy.step + 1} of {lastStrategy.totalSteps}
+                                                </div>
+                                            </div>
+                                            <span className="shrink-0 inline-flex items-center gap-1 text-xs font-black text-berry">
+                                                <BookOpen size={14} /> Continue
+                                            </span>
+                                        </Link>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+
                         {/* Endgame Sections Ordered by Type */}
                         <div className="space-y-8 pb-12">
                             {orderedCategoryKeys.map((catKey) => {
@@ -1173,14 +1265,9 @@ export default function EndgamePractice() {
                         {/* Top Back to Catalog Bar */}
                         {!isSidebarCollapsed && (
                             <div className="p-2.5 border-b border-plum/10 bg-slate-50 flex items-center justify-between">
-                                <button
-                                    onClick={handleReturnToCatalog}
-                                    className="flex items-center gap-1.5 text-xs font-bold text-slate-600 hover:text-plum px-2.5 py-1.5 rounded-lg hover:bg-slate-200/70 transition-colors"
-                                    title="Back to Endgame Selector"
-                                >
-                                    <ArrowLeft size={14} />
-                                    <span>All Endgames</span>
-                                </button>
+                                <span className="px-2.5 py-1.5 text-xs font-bold text-slate-600">
+                                    Overall Progress
+                                </span>
                                 <span className="text-[10px] font-mono font-bold text-slate-500 bg-white px-2 py-0.5 rounded border border-slate-200">
                                     {progressStats.completedDrills}/{progressStats.totalDrills}
                                 </span>
@@ -1334,13 +1421,9 @@ export default function EndgamePractice() {
 
                             <div className="text-[11px] font-bold text-slate-500 flex items-center gap-1">
                                 <span>You:</span>
-                                <button
-                                    onClick={handleToggleColor}
-                                    className="font-black text-plum hover:text-berry transition-colors capitalize cursor-pointer px-1.5 py-0.5 rounded hover:bg-slate-200/60"
-                                    title="Click to flip playing color"
-                                >
+                                <span className="font-black text-plum px-1.5 py-0.5">
                                     {playerColor === 'w' ? 'White' : 'Black'}
-                                </button>
+                                </span>
                             </div>
                         </div>
 
@@ -1391,7 +1474,7 @@ export default function EndgamePractice() {
                                             pointerEvents: 'none',
                                             userSelect: 'none'
                                         },
-                                        animationDurationInMs: 180
+                                        animationDurationInMs: BOARD_ANIMATION_MS
                                     }}
                                 />
 
@@ -1525,7 +1608,7 @@ export default function EndgamePractice() {
                             <p className="px-2 text-[11px] leading-snug text-slate-600 font-medium text-center line-clamp-2">
                                 {statusMessage.text}
                             </p>
-                            <div className="grid grid-cols-4 gap-1.5">
+                            <div className="grid grid-cols-3 gap-1.5">
                                 <button
                                     onClick={() => handleResetPosition()}
                                     className="flex flex-col items-center justify-center gap-0.5 min-h-[44px] rounded-xl bg-white border border-slate-200 text-slate-700 text-[10px] font-black active:scale-95 transition-transform"
@@ -1539,13 +1622,6 @@ export default function EndgamePractice() {
                                 >
                                     <Compass size={16} />
                                     <span>Flip</span>
-                                </button>
-                                <button
-                                    onClick={openOpponentPicker}
-                                    className="flex flex-col items-center justify-center gap-0.5 min-h-[44px] rounded-xl bg-white border border-slate-200 text-slate-700 text-[10px] font-black active:scale-95 transition-transform"
-                                >
-                                    <Settings size={16} />
-                                    <span>Opponent</span>
                                 </button>
                                 <Link
                                     to={`/EndgameStrategy?endgame=${activeEndgame.id}&returnId=${activeEndgame.id}`}
@@ -1585,13 +1661,6 @@ export default function EndgamePractice() {
 
                             {/* Top Right Quick Actions */}
                             <div className="flex items-center gap-1 shrink-0 text-slate-400">
-                                <Link
-                                    to={`/EndgameStrategy?endgame=${activeEndgame.id}&returnId=${activeEndgame.id}`}
-                                    className="p-1.5 rounded-lg hover:bg-slate-100 hover:text-berry transition-colors"
-                                    title="Open Strategy Diagrams"
-                                >
-                                    <BookOpen size={17} />
-                                </Link>
                                 <button
                                     onClick={() => markSolved(activeEndgame.id)}
                                     className={`p-1.5 rounded-lg transition-colors ${
@@ -1647,39 +1716,6 @@ export default function EndgamePractice() {
                                 </p>
                             </div>
 
-                            {/* Opponent Selection Card */}
-                            <div className="space-y-1.5 pt-2 border-t border-slate-100">
-                                <div className="flex items-center justify-between">
-                                    <span className="text-[11px] font-black uppercase tracking-wider text-slate-400">
-                                        Opponent
-                                    </span>
-                                    <button
-                                        onClick={openOpponentPicker}
-                                        className="text-[10px] font-black text-berry hover:underline uppercase tracking-wide cursor-pointer"
-                                    >
-                                        Change
-                                    </button>
-                                </div>
-                                <button
-                                    onClick={openOpponentPicker}
-                                    className="w-full p-2.5 rounded-xl border border-slate-200 hover:border-berry/40 bg-slate-50/70 hover:bg-slate-50 transition-all flex items-center justify-between text-left cursor-pointer group"
-                                    title="Choose practice opponent"
-                                >
-                                    <div className="flex items-center gap-2.5 min-w-0">
-                                        <BotAvatar opponent={selectedOpponent} size={40} className="shrink-0" />
-                                        <div className="min-w-0">
-                                            <div className="text-xs font-black text-slate-800 group-hover:text-berry transition-colors">
-                                                {OPPONENT_PRESETS[selectedOpponent].name}
-                                            </div>
-                                            <div className="text-[10px] text-slate-500 truncate">
-                                                {OPPONENT_PRESETS[selectedOpponent].title}
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <ChevronRight size={14} className="text-slate-400 group-hover:text-berry group-hover:translate-x-0.5 transition-all shrink-0 ml-1" />
-                                </button>
-                            </div>
-
                             {/* Live Move Status alert */}
                             <div className={`p-3 rounded-xl border text-xs flex items-center gap-2.5 ${
                                 statusMessage.type === 'celebrate'
@@ -1707,49 +1743,6 @@ export default function EndgamePractice() {
 
                         {/* Bottom Action Controls Toolbar */}
                         <div className="border-t border-slate-100 bg-white p-3 space-y-2 select-none relative">
-                            {/* Settings Dropdown Popup */}
-                            {showSettingsDropdown && (
-                                <div className="absolute bottom-16 left-3 right-3 bg-white border-2 border-slate-200 rounded-2xl p-3 shadow-xl z-50 space-y-2 animate-in fade-in slide-in-from-bottom-2 duration-150">
-                                    <div className="flex items-center justify-between">
-                                        <div className="text-xs font-black text-slate-700 uppercase tracking-wider">
-                                            Select Opponent
-                                        </div>
-                                        <span className="text-[10px] font-bold text-slate-400">
-                                            Maia & Stockfish
-                                        </span>
-                                    </div>
-                                    <div className="space-y-1.5 max-h-64 overflow-y-auto pr-0.5">
-                                        {(Object.keys(OPPONENT_PRESETS) as PracticeOpponent[]).map((oppId) => {
-                                            const opp = OPPONENT_PRESETS[oppId];
-                                            const isSelected = selectedOpponent === oppId;
-                                            return (
-                                                <button
-                                                    key={oppId}
-                                                    onClick={() => handleOpponentChange(oppId)}
-                                                    className={`w-full p-2 rounded-xl text-left transition-all flex items-center justify-between gap-2 cursor-pointer ${
-                                                        isSelected
-                                                            ? 'bg-berry text-white shadow-xs font-bold'
-                                                            : 'hover:bg-slate-100 text-slate-700'
-                                                    }`}
-                                                >
-                                                    <div className="flex items-center gap-2 min-w-0">
-                                                        <BotAvatar opponent={opp.id} size={32} className="shrink-0" />
-                                                        <div className="min-w-0">
-                                                            <div className={`text-xs font-black truncate ${isSelected ? 'text-white' : 'text-slate-800'}`}>
-                                                                {opp.name}
-                                                            </div>
-                                                            <div className={`text-[10px] truncate ${isSelected ? 'text-white/80' : 'text-slate-500'}`}>
-                                                                {opp.title}
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </button>
-                                            );
-                                        })}
-                                    </div>
-                                </div>
-                            )}
-
                             {/* Toolbar Buttons */}
                             <div className="flex items-center justify-between gap-1 text-slate-500">
                                 <button
@@ -1765,15 +1758,6 @@ export default function EndgamePractice() {
                                     title="Reset Position"
                                 >
                                     <RotateCcw size={17} />
-                                </button>
-                                <button
-                                    onClick={() => setShowSettingsDropdown(!showSettingsDropdown)}
-                                    className={`p-2.5 rounded-xl transition-colors ${
-                                        showSettingsDropdown ? 'bg-slate-100 text-slate-900' : 'hover:bg-slate-100 hover:text-slate-800'
-                                    }`}
-                                    title="Engine Settings"
-                                >
-                                    <Settings size={17} />
                                 </button>
                                 <button
                                     onClick={handleToggleFullscreen}

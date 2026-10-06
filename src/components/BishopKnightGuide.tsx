@@ -369,7 +369,7 @@ export const BISHOP_KNIGHT_10_STEPS: MoveStep[] = [
         moveNumber: `21`,
         san: `21. Bg5`,
         fen: '8/4Nk2/3K4/6B1/8/8/8/8 b - - 41 21',
-        comment: `Step 8: Building The Cage (Position 13.3). 21.Bg5! takes away e7 and f6. The net tightens.`,
+        comment: `Step 8: Building The Cage (Position 13.3). 21.Bg5! covers f6 and d8 and protects the knight on e7. The net tightens.`,
         highlights: { g5: WHITE_SQUARE_STYLE, f7: BLACK_SQUARE_STYLE },
         arrows: [{"startSquare": "e3", "endSquare": "g5", "color": "#0284c7"}]
     },
@@ -414,7 +414,7 @@ export const BISHOP_KNIGHT_10_STEPS: MoveStep[] = [
         moveNumber: `24`,
         san: `24. Ke6`,
         fen: '4k3/8/4K3/4N1B1/8/8/8/8 b - - 47 24',
-        comment: `24. Ke6! THE CAGE IS READY (Position 13.3). The Black King is trapped on the back rank in a 4-square prison (e8-f8-g8-h8). White can now finish calmly.`,
+        comment: `24. Ke6! THE CAGE IS READY (Position 13.3). The black king is locked in the h8 corner area (e8, f8, g8, h8, g7, h7). White can now finish calmly.`,
         highlights: { e6: WHITE_SQUARE_STYLE, e8: BLACK_SQUARE_STYLE, d7: ALERT_SQUARE_STYLE, d8: ALERT_SQUARE_STYLE },
         arrows: [{"startSquare": "d6", "endSquare": "e6", "color": "#0284c7"}]
     },
@@ -429,7 +429,7 @@ export const BISHOP_KNIGHT_10_STEPS: MoveStep[] = [
         moveNumber: `25`,
         san: `25. Kd7`,
         fen: '5k2/3K4/8/4N1B1/8/8/8/8 b - - 49 25',
-        comment: `Step 9: Taking the Mating Square. 25.Kd7! (or 26.Bh6!). White's King marches towards f7/g6.`,
+        comment: `Step 9: Taking the Mating Square. 25.Kd7! White's King heads for e8 and then f7, next to the mating corner.`,
         highlights: { d7: WHITE_SQUARE_STYLE, f8: BLACK_SQUARE_STYLE },
         arrows: [{"startSquare": "e6", "endSquare": "d7", "color": "#0284c7"}]
     },
@@ -444,7 +444,7 @@ export const BISHOP_KNIGHT_10_STEPS: MoveStep[] = [
         moveNumber: `26`,
         san: `26. Ke8`,
         fen: '4K1k1/8/8/4N1B1/8/8/8/8 b - - 51 26',
-        comment: `26. Ke8! White controls f7 and pushes Black into the h-file.`,
+        comment: `26. Ke8! The king closes in on f7, the key square next to the h8 corner.`,
         highlights: { e8: WHITE_SQUARE_STYLE, g8: BLACK_SQUARE_STYLE },
         arrows: [{"startSquare": "d7", "endSquare": "e8", "color": "#0284c7"}]
     },
@@ -474,7 +474,7 @@ export const BISHOP_KNIGHT_10_STEPS: MoveStep[] = [
         moveNumber: `28`,
         san: `28. Bh6`,
         fen: '6k1/4K3/7B/4N3/8/8/8/8 b - - 55 28',
-        comment: `28. Bh6! Restricting the king to g8 and h7.`,
+        comment: `28. Bh6! Taking g7 away: the black king is left with g8, h8 and h7.`,
         highlights: { h6: WHITE_SQUARE_STYLE, g7: ALERT_SQUARE_STYLE, g8: BLACK_SQUARE_STYLE },
         arrows: [{"startSquare": "g5", "endSquare": "h6", "color": "#0284c7"}]
     },
@@ -592,7 +592,7 @@ export const BISHOP_KNIGHT_EDGE_DEFENSE_STEPS: MoveStep[] = [
         moveNumber: `19`,
         san: `19. Ne7`,
         fen: '3k4/B3N3/3K4/8/8/8/8/8 b - - 37 19',
-        comment: `19. Ne7! (c7 -> d5 -> e7). The Knight completes the first V-jump of the W-manoeuvre, cutting off d8/f8 escape squares.`,
+        comment: `19. Ne7! (c7 -> d5 -> e7). The Knight completes the first V-jump of the W-manoeuvre, covering c8 and g8.`,
         highlights: { e7: WHITE_SQUARE_STYLE, d8: BLACK_SQUARE_STYLE },
         arrows: [{"startSquare": "d5", "endSquare": "e7", "color": "#0284c7"}]
     },
@@ -784,25 +784,38 @@ export const BISHOP_KNIGHT_EDGE_DEFENSE_STEPS: MoveStep[] = [
  */
 export const BISHOP_KNIGHT_BARRIER_STEPS: MoveStep[] = [
     {
-        moveNumber: `Position 13.1`,
-        san: `Barrier 1`,
-        fen: '8/8/8/4k3/8/8/2BN4/4K3 w - - 0 1',
-        comment: `Position 13.1 — The Coordinated Diagonal Barrier: When Bishop and Knight stand on same-coloured squares (here c2 and d2), they set up an impassable barrier (a3, b3, c3, c4, d4, e4, e5, f6, g7, h8). The enemy King cannot cross without a long, circuitous march.`,
-        highlights: { c2: WHITE_SQUARE_STYLE, d2: WHITE_SQUARE_STYLE, e5: BLACK_SQUARE_STYLE, b3: ALERT_SQUARE_STYLE, c4: ALERT_SQUARE_STYLE, d4: ALERT_SQUARE_STYLE, e4: ALERT_SQUARE_STYLE, f6: ALERT_SQUARE_STYLE, g7: ALERT_SQUARE_STYLE }
+        moveNumber: `Move 16`,
+        san: `Sealing the corner`,
+        fen: '2k5/B1N5/2K5/8/8/8/8/8 b - - 0 1',
+        comment: `After 16.Ba7!: the bishop takes b8, the knight takes a8 and the king covers b7, c7 and d7. The black king can no longer return to the safe a8 corner and has only one square, d8. From here it must travel toward h8, the corner of the bishop's colour.`,
+        highlights: { a7: WHITE_SQUARE_STYLE, c7: WHITE_SQUARE_STYLE, c6: WHITE_SQUARE_STYLE, c8: BLACK_SQUARE_STYLE, b8: ALERT_SQUARE_STYLE, a8: ALERT_SQUARE_STYLE },
+        arrows: [
+            { startSquare: 'a7', endSquare: 'b8', color: '#be185d' },
+            { startSquare: 'c7', endSquare: 'a8', color: '#be185d' }
+        ]
     },
     {
         moveNumber: `Position 13.2`,
-        san: `Barrier 2`,
-        fen: '8/4N3/3K1k2/8/8/4B3/8/8 w - - 0 1',
-        comment: `Position 13.2 — The Containment Barrier (Move 20): Arising after 19...Kf6 20.Be3!! The Knight on e7 controls f5/g6/g8; the Bishop on e3 controls g5/h6; the White King on d6 seals the rear. The Black King is completely cut off from breaking out into the center!`,
-        highlights: { e7: WHITE_SQUARE_STYLE, e3: WHITE_SQUARE_STYLE, d6: WHITE_SQUARE_STYLE, f6: BLACK_SQUARE_STYLE, g5: ALERT_SQUARE_STYLE, h6: ALERT_SQUARE_STYLE }
+        san: `The barrier`,
+        fen: '8/4N3/3K1k2/8/8/4B3/8/8 b - - 0 1',
+        comment: `After 19...Kf6 20.Be3!: the black king tries to break out toward the centre, but the knight on e7 covers f5 and g6, the bishop covers g5 and the king on d6 covers e5 and e6. The breakout is refuted: Black can only go back to f7 or g7.`,
+        highlights: { e7: WHITE_SQUARE_STYLE, e3: WHITE_SQUARE_STYLE, d6: WHITE_SQUARE_STYLE, f6: BLACK_SQUARE_STYLE, e5: ALERT_SQUARE_STYLE, e6: ALERT_SQUARE_STYLE, f5: ALERT_SQUARE_STYLE, g5: ALERT_SQUARE_STYLE, g6: ALERT_SQUARE_STYLE },
+        arrows: [
+            { startSquare: 'e3', endSquare: 'g5', color: '#be185d' },
+            { startSquare: 'e7', endSquare: 'f5', color: '#be185d' },
+            { startSquare: 'e7', endSquare: 'g6', color: '#be185d' }
+        ]
     },
     {
         moveNumber: `Position 13.3`,
-        san: `The Cage`,
-        fen: '4k3/8/2N1K3/6B1/8/8/8/8 w - - 0 1',
-        comment: `Position 13.3 — The Cage (Move 24): The most remarkable geometry in Ending 93. Black is imprisoned in a 4-square cage on e8/f8/g8/h8. White can now maneuver with total calm and zero risk of escape.`,
-        highlights: { g5: WHITE_SQUARE_STYLE, c6: WHITE_SQUARE_STYLE, e6: WHITE_SQUARE_STYLE, e8: BLACK_SQUARE_STYLE, d7: ALERT_SQUARE_STYLE, d8: ALERT_SQUARE_STYLE, e7: ALERT_SQUARE_STYLE, f7: ALERT_SQUARE_STYLE }
+        san: `The cage`,
+        fen: '4k3/8/4K3/4N1B1/8/8/8/8 b - - 0 1',
+        comment: `After 24.Ke6: the cage. The bishop covers d8, the knight covers f7 and g6, and the king covers d7, e7 and f7. The black king is locked in the h8 corner area (e8, f8, g8, h8, g7, h7) and White can finish calmly.`,
+        highlights: { e6: WHITE_SQUARE_STYLE, e5: WHITE_SQUARE_STYLE, g5: WHITE_SQUARE_STYLE, e8: BLACK_SQUARE_STYLE, d8: ALERT_SQUARE_STYLE, d7: ALERT_SQUARE_STYLE, e7: ALERT_SQUARE_STYLE, f7: ALERT_SQUARE_STYLE, g6: ALERT_SQUARE_STYLE, h6: ALERT_SQUARE_STYLE },
+        arrows: [
+            { startSquare: 'g5', endSquare: 'd8', color: '#be185d' },
+            { startSquare: 'e5', endSquare: 'g6', color: '#be185d' }
+        ]
     }
 ];
 
@@ -815,13 +828,13 @@ export const BISHOP_KNIGHT_RAPID_MATE_STEPS: MoveStep[] = [
         moveNumber: `Initial Position`,
         san: `Start`,
         fen: '8/2k4B/4K3/4N3/8/8/8/8 w - - 0 1',
-        comment: `Exercise 2.23: Suppose you have already spent 30 of your 50 moves. It is time to be accurate! White executes a forced mate in 14 moves.`
+        comment: `Exercise 2.23: Suppose you have already spent 30 of your 50 moves. It is time to be accurate! White can force mate within 15 moves; against the natural defence shown here it takes 14.`
     },
     {
         moveNumber: `1`,
         san: `1. Nd7`,
         fen: '8/2kN3B/4K3/8/8/8/8/8 b - - 1 1',
-        comment: `1. Nd7! Pure tactics. Kicking the Black King towards the dark corner and sealing off escape.`,
+        comment: `1. Nd7! The knight takes b6 and b8 and starts building a box around the black king. With a light-squared bishop, mate is only possible in a light corner (a8 or h1), so White drives the king toward a8.`,
         highlights: { d7: WHITE_SQUARE_STYLE, c7: BLACK_SQUARE_STYLE },
         arrows: [{"startSquare": "e5", "endSquare": "d7", "color": "#0284c7"}]
     },
@@ -851,7 +864,7 @@ export const BISHOP_KNIGHT_RAPID_MATE_STEPS: MoveStep[] = [
         moveNumber: `3`,
         san: `3. Bb5!`,
         fen: '8/2kN4/4K3/1B6/8/8/8/8 b - - 5 3',
-        comment: `3. Bb5! Sealing c6 and forcing Black back to the 8th rank.`,
+        comment: `3. Bb5! Taking away c6. The black king is boxed in near the a8 corner.`,
         highlights: { b5: WHITE_SQUARE_STYLE, c7: BLACK_SQUARE_STYLE },
         arrows: [{"startSquare": "d3", "endSquare": "b5", "color": "#0284c7"}]
     },
@@ -881,7 +894,7 @@ export const BISHOP_KNIGHT_RAPID_MATE_STEPS: MoveStep[] = [
         moveNumber: `5`,
         san: `5. Nd5+`,
         fen: '8/2k5/4K3/1B1N4/8/8/8/8 b - - 9 5',
-        comment: `5. Nd5+! Building the cage! Black is forced to d8.`,
+        comment: `5. Nd5+! Check, and the knight takes b6 and e7. The box around the black king is getting smaller.`,
         highlights: { d5: WHITE_SQUARE_STYLE, c7: BLACK_SQUARE_STYLE },
         arrows: [{"startSquare": "f6", "endSquare": "d5", "color": "#0284c7"}]
     },

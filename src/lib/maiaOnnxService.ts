@@ -154,18 +154,18 @@ class MaiaOnnxService {
     }
 
     /**
-     * Predict the most likely move for a player of the given Maia level.
-     * `elo` is snapped to the nearest model (1100 / 1500 / 1900).
+     * Every legal move, most likely first, as predicted for a player of the given Maia level.
+     * `elo` is snapped to the nearest model (1100 / 1500 / 1900). `confidence` is the move's probability.
      */
-    async getBestMove(fen: string, elo: number): Promise<MaiaMoveResult | null> {
+    async getRankedMoves(fen: string, elo: number): Promise<MaiaMoveResult[]> {
         try {
             const level = MaiaOnnxService.levelForElo(elo);
             const session = await this.loadModel(level);
             const game = new Chess(fen);
-            if (game.isGameOver()) return null;
+            if (game.isGameOver()) return [];
 
             const legalMoves = game.moves({ verbose: true });
-            if (legalMoves.length === 0) return null;
+            if (legalMoves.length === 0) return [];
 
             const isBlack = game.turn() === 'b';
             const results = await session.run({
@@ -181,23 +181,27 @@ class MaiaOnnxService {
             });
             scored.sort((a, b) => b.logit - a.logit);
 
-            const best = scored[0];
-            const total = scored.reduce((sum, s) => sum + Math.exp(s.logit - best.logit), 0);
-            const chosen = best.move;
+            const top = scored[0].logit;
+            const total = scored.reduce((sum, s) => sum + Math.exp(s.logit - top), 0);
 
-            return {
-                from: chosen.from,
-                to: chosen.to,
-                promotion: chosen.promotion,
-                san: chosen.san,
+            return scored.map(({ move, logit }) => ({
+                from: move.from,
+                to: move.to,
+                promotion: move.promotion,
+                san: move.san,
                 evalText: `Maia ${level} (ONNX Neural)`,
-                confidence: 1 / total,
-                score: best.logit
-            };
+                confidence: Math.exp(logit - top) / total,
+                score: logit
+            }));
         } catch (err) {
             console.warn('Maia ONNX inference error, falling back:', err);
-            return null;
+            return [];
         }
+    }
+
+    /** The single most likely move for a player of the given Maia level. */
+    async getBestMove(fen: string, elo: number): Promise<MaiaMoveResult | null> {
+        return (await this.getRankedMoves(fen, elo))[0] ?? null;
     }
 }
 

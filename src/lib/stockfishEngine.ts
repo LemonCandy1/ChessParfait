@@ -1,6 +1,6 @@
 import { Chess } from 'chess.js';
-import { flipOutcome, outcomeOf, queryTablebase, type TablebaseMove, type TablebaseResult } from './tablebaseService';
-import { maiaOnnxService } from './maiaOnnxService';
+import { flipOutcome, moveKeepsResult, outcomeOf, queryTablebase, type TablebaseMove, type TablebaseResult } from './tablebaseService';
+import { maiaOnnxService, type MaiaMoveResult } from './maiaOnnxService';
 
 export type PracticeOpponent = 'stockfish' | 'maia_1100' | 'maia_1500' | 'maia_1900';
 
@@ -46,6 +46,18 @@ export const OPPONENT_PRESETS: Record<PracticeOpponent, OpponentInfo> = {
 };
 
 /**
+ * In endgames (7 pieces or fewer) each Maia bot checks its chosen move against the tablebase.
+ * When that move would throw away the result (a win into a draw, a draw into a loss), the bot
+ * avoids it this often, playing its own next most likely move that keeps the result instead.
+ * Stronger bots catch more of their mistakes; none is perfect, so they still play like humans.
+ */
+export const MAIA_ENDGAME_GUARD_RATE: Record<Exclude<PracticeOpponent, 'stockfish'>, number> = {
+    maia_1900: 0.9,
+    maia_1500: 0.7,
+    maia_1100: 0.4
+};
+
+/**
  * How long to wait for chess-api.com (remote Stockfish) before falling back to the local heuristic.
  * Depth-14 answers typically take 1-3 s, so a short timeout would almost always abort.
  */
@@ -68,6 +80,13 @@ export interface MoveRecommendation {
  */
 export class EndgameEngine {
     private opponent: PracticeOpponent = 'stockfish';
+
+    private readonly random: () => number;
+
+    /** `random` is injectable so tests can make the endgame guard deterministic. */
+    constructor(random: () => number = Math.random) {
+        this.random = random;
+    }
 
     setOpponent(opponent: PracticeOpponent) {
         this.opponent = opponent;
@@ -105,7 +124,8 @@ export class EndgameEngine {
             const preset = OPPONENT_PRESETS[this.opponent];
             const targetElo = preset.elo;
             try {
-                const neuralMove = await maiaOnnxService.getBestMove(fen, targetElo);
+                const ranked = await maiaOnnxService.getRankedMoves(fen, targetElo);
+                const neuralMove = await this.guardMaiaEndgameMove(fen, ranked);
                 if (neuralMove) {
                     return {
                         from: neuralMove.from,
@@ -164,6 +184,27 @@ export class EndgameEngine {
 
         // 3. Fallback heuristic minimax calculation with rating noise
         return this.computeHeuristicMove(game);
+    }
+
+    /**
+     * Maia's choice, unless it throws away the result of a tablebase position: then, with the
+     * bot's guard rate, its most likely move that keeps the result.
+     */
+    private async guardMaiaEndgameMove(fen: string, ranked: MaiaMoveResult[]): Promise<MaiaMoveResult | null> {
+        const top = ranked[0];
+        if (!top || this.opponent === 'stockfish' || this.countPieces(fen) > 7) return top ?? null;
+
+        const tb = await queryTablebase(fen);
+        if (!tb || tb.moves.length === 0) return top;
+
+        const uci = (m: MaiaMoveResult) => m.from + m.to + (m.promotion ?? '');
+        const keeps = (m: MaiaMoveResult) => {
+            const tbMove = tb.moves.find(t => t.uci === uci(m));
+            return tbMove ? moveKeepsResult(tbMove, tb.category) : true;
+        };
+
+        if (keeps(top) || this.random() >= MAIA_ENDGAME_GUARD_RATE[this.opponent]) return top;
+        return ranked.find(keeps) ?? top;
     }
 
     /**

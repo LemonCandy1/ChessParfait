@@ -9,9 +9,9 @@ export interface LevelTier {
 export const LEVEL_TIERS: LevelTier[] = [
     { level: 1, title: 'Pawn Blunderer', minPoints: 0, maxPoints: 100, badgeName: 'Pawn' },
     { level: 2, title: 'Trojan\'s Knight', minPoints: 100, maxPoints: 250, badgeName: 'Knight' },
-    { level: 3, title: 'Bishop Tactician', minPoints: 250, maxPoints: 500, badgeName: 'Bishop' },
-    { level: 4, title: 'Rook Master', minPoints: 500, maxPoints: 900, badgeName: 'Rook' },
-    { level: 5, title: 'Queen Sovereign', minPoints: 900, maxPoints: 1500, badgeName: 'Queen' },
+    { level: 3, title: 'Tactic Seer', minPoints: 250, maxPoints: 500, badgeName: 'Bishop' },
+    { level: 4, title: 'Parfait Endgame', minPoints: 500, maxPoints: 900, badgeName: 'Rook' },
+    { level: 5, title: 'Sweet Swindler', minPoints: 900, maxPoints: 1500, badgeName: 'Queen' },
     { level: 6, title: 'Grandmaster Parfait', minPoints: 1500, maxPoints: 2500, badgeName: 'King' },
     { level: 7, title: 'Legend', minPoints: 2500, maxPoints: 4000, badgeName: 'Crown' }
 ];

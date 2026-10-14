@@ -1,5 +1,8 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { EndgameEngine } from './stockfishEngine';
+import { maiaOnnxService, type MaiaMoveResult } from './maiaOnnxService';
+
+vi.mock('./maiaOnnxService', () => ({ maiaOnnxService: { getRankedMoves: vi.fn() } }));
 
 /** Stubs the Lichess tablebase API with a fixed answer for every position. */
 function mockTablebase(body: object) {
@@ -43,5 +46,55 @@ describe('EndgameEngine.getEvaluation', () => {
         const result = await new EndgameEngine().getEvaluation(fen, 'b');
         expect(result.evalText).toBe('Losing (Mated in 11)');
         expect(result.score).toBeLessThan(0);
+    });
+});
+
+describe('Maia endgame guard', () => {
+    // Queen vs rook: 1.Qxg3+?? lets the king recapture (draw); 1.Qh5 keeps the win.
+    const fen = '8/8/8/4Q3/8/6r1/4K1k1/8 w - - 0 1';
+    const maiaMove = (san: string, from: string, to: string): MaiaMoveResult =>
+        ({ san, from, to, evalText: 'Maia 1900 (ONNX Neural)', confidence: 0.5, score: 0 });
+    const rankedByMaia = [maiaMove('Qxg3+', 'e5', 'g3'), maiaMove('Qh5', 'e5', 'h5')];
+
+    const setUp = (random: number) => {
+        vi.mocked(maiaOnnxService.getRankedMoves).mockResolvedValue(rankedByMaia);
+        mockTablebase({
+            category: 'win',
+            dtm: 27,
+            moves: [
+                { uci: 'e5g3', san: 'Qxg3+', category: 'draw', dtm: 0 },
+                { uci: 'e5h5', san: 'Qh5', category: 'loss', dtm: -26 }
+            ]
+        });
+        const engine = new EndgameEngine(() => random);
+        engine.setOpponent('maia_1900');
+        return engine;
+    };
+
+    it('usually avoids a move that throws away the win, playing its next most likely move', async () => {
+        const move = await setUp(0.5).getBestMove(fen);
+        expect(move?.san).toBe('Qh5');
+        expect(move?.isNeural).toBe(true);
+    });
+
+    it('still makes the human mistake some of the time', async () => {
+        const move = await setUp(0.95).getBestMove(fen);
+        expect(move?.san).toBe('Qxg3+');
+    });
+
+    it('keeps its first choice when that move already holds the result', async () => {
+        const engine = setUp(0);
+        vi.mocked(maiaOnnxService.getRankedMoves).mockResolvedValue([rankedByMaia[1], rankedByMaia[0]]);
+        expect((await engine.getBestMove(fen))?.san).toBe('Qh5');
+    });
+
+    it('does not consult the tablebase with more than 7 pieces', async () => {
+        const fetchSpy = vi.fn();
+        vi.stubGlobal('fetch', fetchSpy);
+        vi.mocked(maiaOnnxService.getRankedMoves).mockResolvedValue([maiaMove('b6', 'b5', 'b6')]);
+        const engine = new EndgameEngine(() => 0);
+        engine.setOpponent('maia_1900');
+        expect((await engine.getBestMove('8/ppp3k1/8/PPP5/8/8/8/6K1 w - - 0 1'))?.san).toBe('b6');
+        expect(fetchSpy).not.toHaveBeenCalled();
     });
 });

@@ -26,7 +26,8 @@ import {
 import { useSearchParams, Link } from 'react-router-dom';
 import Navbar from '../components/Navbar/Navbar';
 import { playMoveSound, playCaptureSound, playWinSound, playLoseSound } from '../lib/soundEffects';
-import { drillGoalFor, goalAchievedBy } from '../lib/endgameGoals';
+import { drawReason, drillGoalFor, goalAchievedBy } from '../lib/endgameGoals';
+import { pointsForDifficulty } from '../lib/endgameRewards';
 import { BotAvatar } from '../components/BotAvatars';
 import endgamesData from '../data/endgames.json';
 import { endgameEngine, OPPONENT_PRESETS, type PracticeOpponent } from '../lib/stockfishEngine';
@@ -54,7 +55,6 @@ export interface EndgamePosition {
     playerColor: 'w' | 'b';
     target: 'win' | 'draw';
     difficulty: 'Piece of Cake' | 'Hard Tart' | 'Cherry Bomb';
-    totalDrills?: number;
     iconType?: string;
     description: string;
     theoryNotes: string;
@@ -81,6 +81,13 @@ function objectiveText(endgame: EndgamePosition): string {
  * Return the starting FEN with the player to move, so practice always begins on the
  * player's turn. Falls back to the original FEN if switching the turn is not legal.
  */
+/** Copies a game WITH its move history, so threefold repetition can be detected (a FEN copy forgets it). */
+function cloneGame(game: Chess): Chess {
+    const copy = new Chess();
+    copy.loadPgn(game.pgn());
+    return copy;
+}
+
 function fenForPlayer(fen: string, color: 'w' | 'b'): string {
     const parts = fen.split(' ');
     if (parts[1] === color) return fen;
@@ -210,7 +217,7 @@ const renderEndgameIcon = (iconType?: string, category?: string) => {
 export default function EndgamePractice() {
     const endgames = endgamesData as EndgamePosition[];
     const [searchParams, setSearchParams] = useSearchParams();
-    const { user, loading: authLoading } = useAuth();
+    const { user, loading: authLoading, updateUserStats } = useAuth();
 
     // Determine initial endgame from URL param or default
     const paramId = searchParams.get('id');
@@ -276,6 +283,8 @@ export default function EndgamePractice() {
     // The opponent reached the drill's goal (safe promotion or won the rook): the attempt is over.
     const [isFailed, setIsFailed] = useState(false);
     const [showSolvedOverlay, setShowSolvedOverlay] = useState(false);
+    // What the user achieved and the points result, shown on the success overlay
+    const [completionInfo, setCompletionInfo] = useState<{ label: string; reward: string | null } | null>(null);
     const [selectedSquare, setSelectedSquare] = useState<string | null>(null);
     const [lastMove, setLastMove] = useState<{ from: string; to: string } | null>(null);
     const [circledSquares, setCircledSquares] = useState<string[]>([]);
@@ -364,22 +373,15 @@ export default function EndgamePractice() {
     }, [authLoading, user?.username, viewMode]);
 
     // Overall user account progress calculation
+    // A drill is complete once the user has finished it successfully one time
+    const isCompleted = useCallback((id: string) => (drillProgress[id] || 0) > 0, [drillProgress]);
+
     const progressStats = useMemo(() => {
-        let totalDrills = 0;
-        let completedDrills = 0;
-        let fullyCompletedEndgames = 0;
-
-        endgames.forEach((eg) => {
-            const max = eg.totalDrills || 10;
-            totalDrills += max;
-            const completed = Math.min(max, drillProgress[eg.id] || 0);
-            completedDrills += completed;
-            if (completed >= max) fullyCompletedEndgames++;
-        });
-
-        const percent = totalDrills > 0 ? Math.round((completedDrills / totalDrills) * 100) : 0;
-        return { totalDrills, completedDrills, fullyCompletedEndgames, percent };
-    }, [endgames, drillProgress]);
+        const total = endgames.length;
+        const completed = endgames.filter(eg => isCompleted(eg.id)).length;
+        const percent = total > 0 ? Math.round((completed / total) * 100) : 0;
+        return { total, completed, percent };
+    }, [endgames, isCompleted]);
 
     // Filter endgames for catalog search
     const filteredCategorizedEndgames = useMemo(() => {
@@ -441,8 +443,8 @@ export default function EndgamePractice() {
         setSelectedSquare(null);
         setLastMove(null);
         setCircledSquares([]);
-        const isAlreadyDone = (drillProgress[endgame.id] || 0) >= (endgame.totalDrills || 10);
-        setIsSolved(isAlreadyDone);
+        setIsSolved(false);
+        setCompletionInfo(null);
         setIsFailed(false);
         setShowSolvedOverlay(false);
         setIsAiThinking(false);
@@ -481,6 +483,7 @@ export default function EndgamePractice() {
         setIsSolved(false);
         setIsFailed(false);
         setShowSolvedOverlay(false);
+        setCompletionInfo(null);
         setIsAiThinking(false);
         setRevealedHint(null);
         setStatusMessage({
@@ -553,14 +556,11 @@ export default function EndgamePractice() {
         } catch {}
     };
 
-    // Save drill completion rate directly to user's account
+    // Mark the drill complete (one successful finish is enough)
     const markSolved = useCallback((id: string) => {
         setDrillProgress((prev) => {
-            const cur = prev[id] || 0;
-            const targetEg = endgames.find(e => e.id === id);
-            const max = targetEg?.totalDrills || 10;
-            const next = Math.min(max, cur + 1);
-            const updated = { ...prev, [id]: next };
+            if ((prev[id] || 0) > 0) return prev;
+            const updated = { ...prev, [id]: 1 };
             try {
                 localStorage.setItem(storageKey, JSON.stringify(updated));
                 // Sync legacy key
@@ -573,23 +573,53 @@ export default function EndgamePractice() {
             } catch {}
             return updated;
         });
-    }, [endgames, storageKey]);
+    }, [storageKey]);
+
+    // Award points for the first completion. The server decides the amount and only pays once per account.
+    const awardCompletion = useCallback(async (endgame: EndgamePosition) => {
+        const points = pointsForDifficulty(endgame.difficulty);
+        if (!user) {
+            setCompletionInfo((prev) => prev && { ...prev, reward: `Sign in to earn +${points} points for this endgame.` });
+            return;
+        }
+        try {
+            const res = await fetch('/api/endgames/complete', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ endgameId: endgame.id })
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.message);
+            updateUserStats(data.totalPoints, user.solvedPuzzles ?? []);
+            setCompletionInfo((prev) => prev && {
+                ...prev,
+                reward: data.alreadyCompleted ? 'Already completed: points were awarded the first time.' : `+${data.pointsAwarded} points earned!`
+            });
+        } catch {
+            setCompletionInfo((prev) => prev && { ...prev, reward: 'Completed, but the points could not be saved. Check your connection.' });
+        }
+    }, [updateUserStats, user]);
+
+    /** Shared success handling for every way of finishing a drill. */
+    const completeDrill = useCallback((label: string, statusText: string) => {
+        if (!isSoundMuted) playWinSound();
+        setIsSolved(true);
+        setShowSolvedOverlay(true);
+        setCompletionInfo({ label, reward: null });
+        markSolved(activeEndgame.id);
+        setStatusMessage({ type: 'celebrate', text: statusText });
+        void awardCompletion(activeEndgame);
+    }, [activeEndgame, awardCompletion, isSoundMuted, markSolved]);
 
     // Check end condition
     const evaluateEndCondition = useCallback((currentGame: Chess) => {
         if (currentGame.isCheckmate()) {
             const winner = currentGame.turn() === 'w' ? 'b' : 'w';
             if (winner === playerColor) {
-                if (!isSoundMuted) playWinSound();
-                setIsSolved(true);
-                setShowSolvedOverlay(true);
-                markSolved(activeEndgame.id);
-                setStatusMessage({
-                    type: 'celebrate',
-                    text: 'Victory! Flawless checkmate execution.'
-                });
+                completeDrill('Checkmate delivered', 'Victory! Flawless checkmate execution.');
             } else {
                 if (!isSoundMuted) playLoseSound();
+                setIsFailed(true);
                 setStatusMessage({
                     type: 'error',
                     text: 'Defeat. The opponent delivered checkmate. Reset and try again!'
@@ -599,20 +629,15 @@ export default function EndgamePractice() {
         }
 
         if (currentGame.isDraw()) {
+            const reason = drawReason(currentGame) ?? 'agreement';
             if (activeEndgame.target === 'draw') {
-                if (!isSoundMuted) playWinSound();
-                setIsSolved(true);
-                setShowSolvedOverlay(true);
-                markSolved(activeEndgame.id);
-                setStatusMessage({
-                    type: 'celebrate',
-                    text: 'Draw secured! Masterful defensive technique.'
-                });
+                completeDrill(`Draw held by ${reason}`, `Draw secured by ${reason}! Masterful defensive technique.`);
             } else {
                 if (!isSoundMuted) playLoseSound();
+                setIsFailed(true);
                 setStatusMessage({
                     type: 'error',
-                    text: 'Position is drawn (Stalemate / 50-move rule). Goal was to win.'
+                    text: `Draw by ${reason}. The goal was to win: reset and try again!`
                 });
             }
             return true;
@@ -624,16 +649,12 @@ export default function EndgamePractice() {
         if (achievedBy) {
             const promoted = goal === 'pawn-promotion';
             if (achievedBy === playerColor) {
-                if (!isSoundMuted) playWinSound();
-                setIsSolved(true);
-                setShowSolvedOverlay(true);
-                markSolved(activeEndgame.id);
-                setStatusMessage({
-                    type: 'celebrate',
-                    text: promoted
+                completeDrill(
+                    promoted ? 'Pawn queened safely' : 'Rook won safely',
+                    promoted
                         ? 'Success! Your pawn queened safely. The rest is a textbook win.'
                         : 'Success! Your queen won the rook and is safe. Queen vs king is a textbook win.'
-                });
+                );
             } else {
                 if (!isSoundMuted) playLoseSound();
                 setIsFailed(true);
@@ -648,7 +669,7 @@ export default function EndgamePractice() {
         }
 
         return false;
-    }, [activeEndgame, isSoundMuted, markSolved, playerColor]);
+    }, [activeEndgame, completeDrill, isSoundMuted, playerColor]);
 
     // AI Move Trigger
     const triggerAiResponse = useCallback((currentGame: Chess) => {
@@ -662,7 +683,7 @@ export default function EndgamePractice() {
                 const recommendation = await endgameEngine.getBestMove(fen);
 
                 {
-                    const gameCopy = new Chess(currentGame.fen());
+                    const gameCopy = cloneGame(currentGame);
                     let move = null;
                     if (recommendation) {
                         try {
@@ -787,7 +808,7 @@ export default function EndgamePractice() {
         }
 
         try {
-            const gameCopy = new Chess(currentGame.fen());
+            const gameCopy = cloneGame(currentGame);
             const move = gameCopy.move({
                 from: sourceSquare,
                 to: targetSquare,
@@ -1047,7 +1068,7 @@ export default function EndgamePractice() {
                                         <span>{user?.username ? `@${user.username}` : 'Local Account'}</span>
                                     </div>
                                     <div className="text-lg font-black font-mono text-plum mt-0.5">
-                                        {progressStats.completedDrills} / {progressStats.totalDrills} <span className="text-xs font-bold text-plum/60">Drills ({progressStats.percent}%)</span>
+                                        {progressStats.completed} / {progressStats.total} <span className="text-xs font-bold text-plum/60">Endgames completed ({progressStats.percent}%)</span>
                                     </div>
                                     <div className="w-full bg-slate-200 h-2 rounded-full mt-2 overflow-hidden">
                                         <div
@@ -1119,7 +1140,7 @@ export default function EndgamePractice() {
                                                 </div>
                                                 <div className="font-serif font-black text-plum truncate">{lastPractice.endgame.title}</div>
                                                 <div className="text-[11px] font-bold text-plum/60">
-                                                    {lastPractice.endgame.category} · {drillProgress[lastPractice.endgame.id] || 0}/{lastPractice.endgame.totalDrills || 10} drills
+                                                    {lastPractice.endgame.category} · {isCompleted(lastPractice.endgame.id) ? 'Completed' : 'Not completed yet'}
                                                 </div>
                                             </div>
                                             <span className="shrink-0 inline-flex items-center gap-1 text-xs font-black text-berry">
@@ -1156,22 +1177,17 @@ export default function EndgamePractice() {
                                 const items = filteredCategorizedEndgames[catKey];
                                 if (!items || items.length === 0) return null;
 
-                                // Format category title with spaced out letters: P A W N   E N D G A M E S
-                                const spacedTitle = catKey.toUpperCase().split('').join(' ');
-
                                 return (
                                     <div key={catKey} className="space-y-4">
-                                        {/* Centered Spaced Section Header in ChessParfait brand styling */}
-                                        <h2 className="text-center font-serif font-black text-sm md:text-base tracking-[0.25em] text-plum uppercase select-none pt-4 pb-1">
-                                            {spacedTitle}
+                                        {/* Section header, matching the site's heading style */}
+                                        <h2 className="text-xl md:text-2xl font-serif font-black text-plum leading-tight pt-4 pb-1">
+                                            {catKey}
                                         </h2>
 
                                         {/* 2-Column Cards Grid */}
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                             {items.map((endgame) => {
-                                                const completed = drillProgress[endgame.id] || 0;
-                                                const total = endgame.totalDrills || 10;
-                                                const hasProgress = completed > 0;
+                                                const hasProgress = isCompleted(endgame.id);
 
                                                 return (
                                                     <div
@@ -1195,7 +1211,7 @@ export default function EndgamePractice() {
                                                                     clipPath: 'polygon(20% 0%, 100% 0%, 100% 100%, 0% 100%)'
                                                                 }}
                                                             >
-                                                                {completed} / {total}
+                                                                {hasProgress ? '✓ Done' : `+${pointsForDifficulty(endgame.difficulty)} pts`}
                                                             </div>
                                                         </div>
 
@@ -1269,7 +1285,7 @@ export default function EndgamePractice() {
                                     Overall Progress
                                 </span>
                                 <span className="text-[10px] font-mono font-bold text-slate-500 bg-white px-2 py-0.5 rounded border border-slate-200">
-                                    {progressStats.completedDrills}/{progressStats.totalDrills}
+                                    {progressStats.completed}/{progressStats.total}
                                 </span>
                             </div>
                         )}
@@ -1337,8 +1353,7 @@ export default function EndgamePractice() {
                                             <div className="space-y-0.5">
                                                 {categoryItems.map((item) => {
                                                     const isSelected = activeEndgame.id === item.id;
-                                                    const drillsDone = drillProgress[item.id] || 0;
-                                                    const isItemSolved = drillsDone >= (item.totalDrills || 10);
+                                                    const isItemSolved = isCompleted(item.id);
 
                                                     return (
                                                         <button
@@ -1361,7 +1376,7 @@ export default function EndgamePractice() {
                                                                 <span className="truncate">{item.title}</span>
                                                             </div>
                                                             <span className="text-[10px] font-mono text-plum/50 shrink-0">
-                                                                {drillsDone}/{item.totalDrills || 10}
+                                                                {isItemSolved ? 'Done' : `+${pointsForDifficulty(item.difficulty)}`}
                                                             </span>
                                                         </button>
                                                     );
@@ -1393,7 +1408,7 @@ export default function EndgamePractice() {
                                 <span>Back to Endgames Catalog</span>
                             </button>
                             <span className="hidden sm:inline text-[11px] font-bold text-slate-400 font-mono">
-                                Drill Progress: {drillProgress[activeEndgame.id] || 0} / {activeEndgame.totalDrills || 10}
+                                {isCompleted(activeEndgame.id) ? 'Completed ✓' : `Reward: +${pointsForDifficulty(activeEndgame.difficulty)} points`}
                             </span>
                         </div>
 
@@ -1548,8 +1563,11 @@ export default function EndgamePractice() {
                                         </div>
                                         <h3 className="font-serif font-black text-2xl text-white mb-1">Target Achieved!</h3>
                                         <p className="text-emerald-200 text-xs font-bold uppercase tracking-wider mb-4">
-                                            {activeEndgame.target === 'win' ? 'Checkmate Delivered' : 'Draw Successfully Held'}
+                                            {completionInfo?.label ?? (activeEndgame.target === 'win' ? 'Goal achieved' : 'Draw held')}
                                         </p>
+                                        {completionInfo?.reward && (
+                                            <p className="text-white text-sm font-black mb-4 -mt-2">{completionInfo.reward}</p>
+                                        )}
                                         <div className="flex items-center gap-3">
                                             <button
                                                 onClick={() => setShowSolvedOverlay(false)}

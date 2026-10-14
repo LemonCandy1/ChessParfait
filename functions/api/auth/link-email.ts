@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import { getProfile, updateProfile } from '../../_lib/profiles';
 
 const CORS_HEADERS = {
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
@@ -120,15 +121,11 @@ export async function onRequestPost(context: any) {
 
         const updatedUser = updateData.user;
 
-        // Also store the pending email in user metadata for password reset lookups
+        // Also store the pending email in the profile for password reset lookups
         if (env.SUPABASE_SERVICE_ROLE_KEY && updatedUser?.id) {
             const supabaseAdmin = createClient(env.VITE_SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY);
-            await supabaseAdmin.auth.admin.updateUserById(updatedUser.id, {
-                user_metadata: {
-                    ...updatedUser.user_metadata,
-                    real_email: newEmail.trim()
-                }
-            });
+            await getProfile(supabaseAdmin, updatedUser);
+            await updateProfile(supabaseAdmin, updatedUser.id, { real_email: newEmail.trim() });
         }
 
         return new Response(JSON.stringify({

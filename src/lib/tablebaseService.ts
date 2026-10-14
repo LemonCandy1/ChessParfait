@@ -83,6 +83,14 @@ const OUTCOME_RANK: Record<TablebaseOutcome, number> = {
     loss: 0
 };
 
+/**
+ * True if playing `move` keeps the result the side to move already has in the position
+ * (`positionCategory`, from the side to move's point of view): a win stays a win, a draw stays at least a draw.
+ */
+export function moveKeepsResult(move: TablebaseMove, positionCategory: TablebaseCategory | string): boolean {
+    return OUTCOME_RANK[outcomeForMover(move)] >= OUTCOME_RANK[outcomeOf(positionCategory)];
+}
+
 /** Moves to mate after the move (falls back to DTZ when DTM is unavailable). */
 function distanceAfter(move: TablebaseMove): number {
     const d = move.dtm ?? move.dtz;

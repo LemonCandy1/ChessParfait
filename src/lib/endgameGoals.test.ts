@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { Chess } from 'chess.js';
-import { drillGoalFor, goalAchievedBy } from './endgameGoals';
+import { drawReason, drillGoalFor, goalAchievedBy } from './endgameGoals';
 
 const play = (fen: string, move: string) => {
     const game = new Chess(fen);
@@ -70,5 +70,23 @@ describe('queen wins rook goal', () => {
     it('ignores the king taking the rook', () => {
         const { game, played } = play('8/8/8/4k3/8/8/1r6/1K1Q4 w - - 0 1', 'Kxb2');
         expect(goalAchievedBy('queen-wins-rook', game, played)).toBeNull();
+    });
+});
+
+describe('drawReason', () => {
+    it('detects threefold repetition when the game keeps its history', () => {
+        const game = new Chess('4k3/7R/1r6/3KP3/8/8/8/8 w - - 0 1');
+        for (const move of ['Kc5', 'Rb1', 'Kd5', 'Rb6', 'Kc5', 'Rb1', 'Kd5', 'Rb6']) game.move(move);
+        expect(game.isDraw()).toBe(true);
+        expect(drawReason(game)).toBe('threefold repetition');
+    });
+
+    it('names stalemate', () => {
+        const { game } = play('k7/8/1K6/8/8/8/8/2Q5 w - - 0 1', 'Qc7');
+        expect(drawReason(game)).toBe('stalemate');
+    });
+
+    it('returns null when the game is not drawn', () => {
+        expect(drawReason(new Chess('4k3/8/8/8/8/8/4P3/4K3 w - - 0 1'))).toBeNull();
     });
 });

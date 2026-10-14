@@ -1,41 +1,132 @@
-import { useState, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import {
-    Trophy,
-    Award,
-    Crown,
-    Calendar,
-    CheckCircle2,
-    Mail,
-    LogOut,
-    ArrowRight,
-    Zap,
-    Flame,
-    Lock,
-    Camera,
-    Trash2,
-    Loader2
-} from 'lucide-react';
+import { ArrowRight, Camera, Loader2, Lock, Trash2 } from 'lucide-react';
 import Navbar from '../components/Navbar/Navbar';
 import { useAuth } from '../context/AuthContext';
-import { calculateLevelInfo, formatJoinDate, LEVEL_TIERS } from '../lib/levelSystem';
-import { ChessCakeSliceIcon, PieIcon, CherryBombIcon, PuzzleIcon, ChessPawnIcon, RouletteIcon } from '../components/Icons';
+import { calculateLevelInfo, LEVEL_TIERS } from '../lib/levelSystem';
+import { ChessCakeSliceIcon, PieIcon, CherryBombIcon } from '../components/Icons';
 import { ProfileSkeleton } from '../components/skeletons/PageSkeletons';
+import { findPlan } from '../data/trainingPlans';
+import { toDayKey, addDays, type TrainingLog } from '../lib/training';
+import { getTraining, type TrainingOverview } from '../lib/trainingApi';
+
+/** One dessert layer per rank, bottom of the glass first. */
+const LAYER_COLOURS = ['#C89B66', '#EBD7AE', '#E58AA0', '#D23157', '#7B2D6B', '#4A154B', '#E2B24C'];
+
+/** Glass geometry in SVG units: a tapered bowl on a short stem. */
+const BOWL_TOP = 16;
+const BOWL_BOTTOM = 296;
+const GLASS_HEIGHT = 344;
+const BAND = (BOWL_BOTTOM - BOWL_TOP) / LEVEL_TIERS.length;
+const edgeAt = (y: number) => {
+    // Bowl is 184 wide at the rim and 116 wide at the bottom, centred on x = 100.
+    const t = (y - BOWL_TOP) / (BOWL_BOTTOM - BOWL_TOP);
+    const half = 92 - 34 * t;
+    return [100 - half, 100 + half];
+};
+const bandPath = (index: number) => {
+    const bottom = BOWL_BOTTOM - index * BAND;
+    const top = bottom - BAND;
+    const [bl, br] = edgeAt(bottom);
+    const [tl, tr] = edgeAt(top);
+    return `M${bl},${bottom} L${br},${bottom} L${tr},${top} L${tl},${top} Z`;
+};
+
+const DIFFICULTY = {
+    'Piece of Cake': { Icon: ChessCakeSliceIcon, tone: 'text-emerald-700' },
+    'Hard Tart': { Icon: PieIcon, tone: 'text-amber-700' },
+    'Cherry Bomb': { Icon: CherryBombIcon, tone: 'text-berry' }
+} as const;
+
+const formatDate = (iso: string) =>
+    new Date(iso).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' });
+
+function ParfaitGlass({ level, progress, label }: { level: number; progress: number; label: string }) {
+    // Fill the current layer after mount so it pours in once; reduced motion shows it filled.
+    const [poured, setPoured] = useState(false);
+    useEffect(() => {
+        const frame = requestAnimationFrame(() => setPoured(true));
+        return () => cancelAnimationFrame(frame);
+    }, []);
+
+    return (
+        <svg viewBox={`0 0 200 ${GLASS_HEIGHT}`} className="w-[150px] sm:w-[180px] h-auto shrink-0" role="img" aria-label={label}>
+            <defs>
+                <clipPath id="parfait-bowl">
+                    <path d={`M${edgeAt(BOWL_TOP)[0]},${BOWL_TOP} L${edgeAt(BOWL_TOP)[1]},${BOWL_TOP} L${edgeAt(BOWL_BOTTOM)[1]},${BOWL_BOTTOM} L${edgeAt(BOWL_BOTTOM)[0]},${BOWL_BOTTOM} Z`} />
+                </clipPath>
+            </defs>
+            <g clipPath="url(#parfait-bowl)">
+                {LEVEL_TIERS.map((tier, i) => {
+                    const done = tier.level < level;
+                    const current = tier.level === level;
+                    const bottom = BOWL_BOTTOM - i * BAND;
+                    return (
+                        <g key={tier.level}>
+                            <path d={bandPath(i)} fill={done ? LAYER_COLOURS[i] : '#FFFFFF'} fillOpacity={done ? 1 : 0.7} />
+                            {current && (
+                                <rect
+                                    x={0}
+                                    y={bottom - BAND}
+                                    width={200}
+                                    height={BAND}
+                                    fill={LAYER_COLOURS[i]}
+                                    className="motion-safe:transition-transform motion-safe:duration-[1200ms] motion-safe:ease-[cubic-bezier(0.16,1,0.3,1)]"
+                                    style={{
+                                        transformBox: 'fill-box',
+                                        transformOrigin: 'bottom',
+                                        transform: `scaleY(${poured ? Math.max(progress, 0.04) : 0})`
+                                    }}
+                                />
+                            )}
+                            {i > 0 && <line x1={0} x2={200} y1={bottom} y2={bottom} stroke="#4A154B" strokeOpacity={0.14} strokeWidth={1} />}
+                        </g>
+                    );
+                })}
+            </g>
+            {/* Glass, stem and foot */}
+            <path
+                d={`M${edgeAt(BOWL_TOP)[0]},${BOWL_TOP} L${edgeAt(BOWL_BOTTOM)[0]},${BOWL_BOTTOM} Q100,${BOWL_BOTTOM + 14} ${edgeAt(BOWL_BOTTOM)[1]},${BOWL_BOTTOM} L${edgeAt(BOWL_TOP)[1]},${BOWL_TOP}`}
+                fill="none"
+                stroke="#4A154B"
+                strokeWidth={2.5}
+                strokeLinejoin="round"
+            />
+            <path d={`M94,${BOWL_BOTTOM + 7} L94,330 M106,${BOWL_BOTTOM + 7} L106,330`} stroke="#4A154B" strokeWidth={2.5} />
+            <ellipse cx={100} cy={334} rx={46} ry={7} fill="none" stroke="#4A154B" strokeWidth={2.5} />
+            <path d={`M${edgeAt(BOWL_TOP)[0] + 10},${BOWL_TOP + 14} L${edgeAt(BOWL_BOTTOM)[0] + 10},${BOWL_BOTTOM - 20}`} stroke="#FFFFFF" strokeOpacity={0.8} strokeWidth={3} strokeLinecap="round" />
+        </svg>
+    );
+}
+
+interface NextStep {
+    title: string;
+    detail: string;
+    to: string;
+    action: string;
+}
 
 export default function Profile() {
     const { user, loading, logout, updateAvatar, removeAvatar } = useAuth();
     const navigate = useNavigate();
-    const [showTierModal, setShowTierModal] = useState(false);
     const [uploadingAvatar, setUploadingAvatar] = useState(false);
     const [avatarError, setAvatarError] = useState<string | null>(null);
+    const [showAllPuzzles, setShowAllPuzzles] = useState(false);
+    const [training, setTraining] = useState<TrainingOverview | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const today = useMemo(() => toDayKey(new Date()), []);
+
+    useEffect(() => {
+        if (!user) return;
+        getTraining(addDays(today, -13), today, today).then(setTraining).catch(() => setTraining(null));
+    }, [today, user]);
 
     const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
 
         if (!file.type.startsWith('image/')) {
-            setAvatarError('Please select a valid image file (PNG, JPEG, WebP).');
+            setAvatarError('Please choose an image file (PNG, JPEG or WebP).');
             return;
         }
 
@@ -47,30 +138,22 @@ export default function Profile() {
             reader.onload = (event) => {
                 const img = new Image();
                 img.onload = async () => {
-                    // Create canvas for 256x256 square crop
+                    // Centre-crop to a 256x256 square
                     const canvas = document.createElement('canvas');
                     const size = 256;
                     canvas.width = size;
                     canvas.height = size;
                     const ctx = canvas.getContext('2d');
                     if (!ctx) {
-                        setAvatarError('Could not process image.');
+                        setAvatarError('Could not process that image.');
                         setUploadingAvatar(false);
                         return;
                     }
-
-                    // Center-crop to square
                     const minDim = Math.min(img.width, img.height);
-                    const startX = (img.width - minDim) / 2;
-                    const startY = (img.height - minDim) / 2;
+                    ctx.drawImage(img, (img.width - minDim) / 2, (img.height - minDim) / 2, minDim, minDim, 0, 0, size, size);
 
-                    ctx.drawImage(img, startX, startY, minDim, minDim, 0, 0, size, size);
-
-                    const dataUrl = canvas.toDataURL('image/jpeg', 0.88);
-                    const res = await updateAvatar(dataUrl);
-                    if (!res.success) {
-                        setAvatarError(res.message);
-                    }
+                    const res = await updateAvatar(canvas.toDataURL('image/jpeg', 0.88));
+                    if (!res.success) setAvatarError(res.message);
                     setUploadingAvatar(false);
                     if (fileInputRef.current) fileInputRef.current.value = '';
                 };
@@ -79,43 +162,33 @@ export default function Profile() {
             reader.readAsDataURL(file);
         } catch (err) {
             console.error('Avatar upload processing error:', err);
-            setAvatarError('Failed to process image upload.');
+            setAvatarError('Could not upload that picture. Please try again.');
             setUploadingAvatar(false);
         }
     };
 
     const handleRemoveAvatar = async () => {
-        if (!window.confirm('Are you sure you want to remove your profile picture?')) return;
+        if (!window.confirm('Remove your profile picture?')) return;
         setUploadingAvatar(true);
         await removeAvatar();
         setUploadingAvatar(false);
     };
 
-    if (loading) {
-        return <ProfileSkeleton />;
-    }
+    if (loading) return <ProfileSkeleton />;
 
     if (!user) {
         return (
             <div className="min-h-screen bg-cream flex flex-col font-sans text-plum">
                 <Navbar />
-                <main className="flex-1 max-w-4xl mx-auto w-full px-6 py-16 flex flex-col items-center justify-center text-center">
-                    <div className="p-6 bg-berry/10 rounded-full text-berry mb-6">
-                        <Lock size={48} />
-                    </div>
-                    <h1 className="text-4xl md:text-5xl font-black font-serif text-plum mb-4">
-                        Profile <span className="text-berry italic">Access</span>
-                    </h1>
-                    <p className="text-lg text-plum/60 max-w-md mb-8">
-                        Sign in to ChessParfait to track your points, account levels, and puzzle solving achievements.
+                <main className="flex-1 max-w-xl mx-auto w-full px-6 py-20 flex flex-col items-center justify-center text-center">
+                    <Lock size={36} className="text-berry mb-5" />
+                    <h1 className="text-4xl font-black font-serif text-plum mb-3">Your profile</h1>
+                    <p className="text-plum/70 mb-8">
+                        Sign in to see your rank, your points and the next step in your training.
                     </p>
-                    <div className="flex gap-4">
-                        <Link to="/login" className="py-3 px-8 soft-button-berry font-bold text-sm">
-                            Log In
-                        </Link>
-                        <Link to="/register" className="py-3 px-8 soft-button font-bold text-sm">
-                            Create Account
-                        </Link>
+                    <div className="flex gap-3">
+                        <Link to="/login" className="py-3 px-7 soft-button-berry text-sm">Log in</Link>
+                        <Link to="/register" className="py-3 px-7 soft-button text-sm">Create account</Link>
                     </div>
                 </main>
             </div>
@@ -125,568 +198,250 @@ export default function Profile() {
     const totalPoints = user.points || 0;
     const solvedPuzzles = user.solvedPuzzles || [];
     const levelInfo = calculateLevelInfo(totalPoints);
-    const { formattedDate, relativeTime } = formatJoinDate(user.createdAt);
+    const nextTier = LEVEL_TIERS.find((t) => t.level === levelInfo.level + 1);
+    const memberSince = user.createdAt
+        ? new Date(user.createdAt).toLocaleDateString('en-AU', { day: 'numeric', month: 'long', year: 'numeric' })
+        : null;
+const pawn = user.pawnStats || { whiteWins: 0, whiteLosses: 0, blackWins: 0, blackLosses: 0 };
+    const pawnWins = pawn.whiteWins + pawn.blackWins;
+    const pawnLosses = pawn.whiteLosses + pawn.blackLosses;
 
-    // Calculate puzzle breakdown
-    const cakeCount = solvedPuzzles.filter((p) => p.difficulty === 'Piece of Cake').length;
-    const tartCount = solvedPuzzles.filter((p) => p.difficulty === 'Hard Tart').length;
-    const bombCount = solvedPuzzles.filter((p) => p.difficulty === 'Cherry Bomb' || p.difficulty === 'Challenge').length;
+    const weekStart = addDays(today, -6);
+    const solvedThisWeek = solvedPuzzles.some((p) => p.solvedAt && toDayKey(new Date(p.solvedAt)) >= weekStart);
+    const plan = findPlan(training?.planId);
+    const todayLog: TrainingLog | undefined = training?.logs.find((l) => l.day === today);
+    const requiredItems = plan?.items.filter((i) => i.required) ?? [];
+    const requiredDone = requiredItems.filter((i) => todayLog?.completedItems.includes(i.id)).length;
+    const streak = training?.streak ?? 0;
 
-    // Calculate pawn game performance stats
-    const pawnStats = user.pawnStats || { whiteWins: 0, whiteLosses: 0, blackWins: 0, blackLosses: 0 };
-    const totalWhiteGames = pawnStats.whiteWins + pawnStats.whiteLosses;
-    const whiteWinRate = totalWhiteGames > 0 ? Math.round((pawnStats.whiteWins / totalWhiteGames) * 100) : 0;
-    const totalBlackGames = pawnStats.blackWins + pawnStats.blackLosses;
-    const blackWinRate = totalBlackGames > 0 ? Math.round((pawnStats.blackWins / totalBlackGames) * 100) : 0;
-    const totalPawnGames = totalWhiteGames + totalBlackGames;
-    const totalPawnWins = pawnStats.whiteWins + pawnStats.blackWins;
-    const totalPawnLosses = pawnStats.whiteLosses + pawnStats.blackLosses;
-    const overallPawnWinRate = totalPawnGames > 0 ? Math.round((totalPawnWins / totalPawnGames) * 100) : 0;
+    // One next step: today's plan first, then this week's puzzle, then a plan, then an endgame.
+    const nextStep: NextStep =
+        plan && !todayLog?.completed
+            ? {
+                  title: "Finish today's training",
+                  detail: `${requiredDone} of ${requiredItems.length} activities done on your ${plan.name} plan. Finishing earns 30 points.`,
+                  to: '/training',
+                  action: "Open today's plan"
+              }
+            : !solvedThisWeek
+              ? {
+                    title: "Solve this week's puzzle",
+                    detail: 'Three new puzzles every Monday, worth 25, 50 or 100 points.',
+                    to: '/TrainingPuzzles',
+                    action: 'Go to the puzzles'
+                }
+              : !plan
+                ? {
+                      title: 'Choose a daily training plan',
+                      detail: 'A checklist for each day that earns 30 points when you finish it.',
+                      to: '/training',
+                      action: 'Choose a plan'
+                  }
+                : {
+                      title: 'Practise an endgame',
+                      detail: 'Each endgame earns 10 to 30 points the first time you complete it.',
+                      to: '/EndgamePractice',
+                      action: 'Pick an endgame'
+                  };
+
+    const toGo = levelInfo.pointsToNextLevel;
+    const hardTarts = Math.ceil(toGo / 50);
+    const glassLabel = levelInfo.isMaxLevel
+        ? `Top rank reached: ${levelInfo.title}, with ${totalPoints} points.`
+        : `Level ${levelInfo.level} of ${LEVEL_TIERS.length}, ${levelInfo.title}: ${levelInfo.progressPercentage}% of the way to ${nextTier?.title}.`;
+
+    const shownPuzzles = showAllPuzzles ? solvedPuzzles : solvedPuzzles.slice(0, 6);
 
     return (
-        <div className="min-h-screen bg-cream flex flex-col font-sans text-plum relative overflow-x-clip">
-            {/* Background Glows */}
-            <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-berry/5 rounded-full blur-3xl -z-10 translate-x-1/3 -translate-y-1/3 pointer-events-none" />
-            <div className="absolute bottom-0 left-0 w-[600px] h-[600px] bg-amber-500/5 rounded-full blur-3xl -z-10 -translate-x-1/3 translate-y-1/3 pointer-events-none" />
-
+        <div className="min-h-screen bg-cream flex flex-col font-sans text-plum selection:bg-berry/20">
             <Navbar />
 
-            <main className="flex-1 max-w-6xl mx-auto w-full px-6 py-10 space-y-8">
-
-                {/* ── Top Header Profile Card ── */}
-                <div className="bg-white/80 backdrop-blur-md rounded-[2.5rem] p-8 md:p-10 border-2 border-plum/15 shadow-xl relative overflow-hidden">
-                    <div className="flex flex-col md:flex-row items-center md:items-start justify-between gap-6 relative z-10">
-                        <div className="flex flex-col md:flex-row items-center gap-6 text-center md:text-left">
-                            {/* Avatar with Upload Capability */}
-                            <div className="relative group/avatar">
-                                <div className="w-24 h-24 md:w-28 md:h-28 rounded-3xl bg-gradient-to-br from-berry to-berry/80 text-cream font-serif font-black text-4xl md:text-5xl flex items-center justify-center shadow-lg border-4 border-white uppercase overflow-hidden relative">
-                                    {user.avatarUrl ? (
-                                        <img
-                                            src={user.avatarUrl}
-                                            alt={user.username}
-                                            className="w-full h-full object-cover"
-                                        />
-                                    ) : (
-                                        <span>{user.username.charAt(0)}</span>
-                                    )}
-
-                                    {/* Hover Upload Overlay */}
-                                    <button
-                                        onClick={() => fileInputRef.current?.click()}
-                                        disabled={uploadingAvatar}
-                                        className="absolute inset-0 bg-plum/70 backdrop-blur-[2px] opacity-0 group-hover/avatar:opacity-100 transition-opacity flex flex-col items-center justify-center text-white cursor-pointer"
-                                        title="Upload profile picture"
-                                    >
-                                        {uploadingAvatar ? (
-                                            <Loader2 size={24} className="animate-spin text-white" />
-                                        ) : (
-                                            <>
-                                                <Camera size={22} className="text-white drop-shadow" />
-                                                <span className="text-[9px] font-black uppercase tracking-wider mt-1 text-white/90">Change</span>
-                                            </>
-                                        )}
-                                    </button>
-                                </div>
-
-                                {/* Level badge */}
-                                <div className="absolute -bottom-2 -right-2 bg-plum text-white text-[11px] font-black uppercase px-2.5 py-1 rounded-full shadow-md border-2 border-white flex items-center gap-1 z-10">
-                                    <Award size={12} className="text-amber-300" />
-                                    <span>Lvl {levelInfo.level}</span>
-                                </div>
-
-                                {/* Remove Avatar button */}
-                                {user.avatarUrl && (
-                                    <button
-                                        onClick={handleRemoveAvatar}
-                                        disabled={uploadingAvatar}
-                                        className="absolute -top-2 -left-2 bg-white hover:bg-rose-50 text-rose-500 hover:text-rose-600 p-1.5 rounded-full shadow-md border border-plum/10 transition-all opacity-0 group-hover/avatar:opacity-100 z-10"
-                                        title="Remove profile picture"
-                                    >
-                                        <Trash2 size={12} />
-                                    </button>
-                                )}
-
-                                {/* Hidden file input */}
-                                <input
-                                    ref={fileInputRef}
-                                    type="file"
-                                    accept="image/png, image/jpeg, image/webp, image/gif"
-                                    onChange={handleFileChange}
-                                    className="hidden"
-                                />
-                            </div>
-
-                            {/* User details */}
-                            <div className="space-y-2">
-                                {avatarError && (
-                                    <div className="bg-rose-50 text-rose-700 text-xs font-bold px-3 py-1.5 rounded-xl border border-rose-200 mb-1">
-                                        {avatarError}
-                                    </div>
-                                )}
-                                <div className="flex flex-wrap items-center justify-center md:justify-start gap-3">
-                                    <h1 className="text-3xl md:text-4xl font-serif font-black text-plum tracking-tight">
-                                        {user.username}
-                                    </h1>
-                                    <span className="bg-berry/10 text-berry border border-berry/20 text-xs font-black uppercase tracking-wider px-3 py-1 rounded-full flex items-center gap-1.5">
-                                        <Crown size={14} />
-                                        {levelInfo.title}
-                                    </span>
-                                </div>
-
-                                <div className="flex flex-wrap items-center justify-center md:justify-start gap-4 text-xs font-bold text-plum/60">
-                                    <div className="flex items-center gap-1.5" title="Account creation date">
-                                        <Calendar size={14} className="text-berry" />
-                                        <span>Member since {formattedDate}</span>
-                                        <span className="text-plum/30">•</span>
-                                        <span className="text-berry font-extrabold">{relativeTime}</span>
-                                    </div>
-                                    {user.email && (
-                                        <div className="flex items-center gap-1.5">
-                                            <Mail size={14} className="text-plum/40" />
-                                            <span>{user.email}</span>
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Actions */}
-                        <div className="flex items-center gap-3 w-full md:w-auto justify-center">
-                            <Link
-                                to="/link-email"
-                                className="soft-button py-2.5 px-4 text-xs font-bold flex items-center gap-2"
-                            >
-                                <Mail size={14} />
-                                <span>{user.email ? 'Change Email' : 'Link Email'}</span>
-                            </Link>
-                            <button
-                                onClick={async () => {
-                                    await logout();
-                                    navigate('/');
-                                }}
-                                className="p-2.5 rounded-2xl border-2 border-plum/15 hover:border-berry/40 text-plum/60 hover:text-berry transition-all bg-white shadow-sm"
-                                title="Sign out"
-                            >
-                                <LogOut size={16} />
-                            </button>
-                        </div>
-                    </div>
-                </div>
-
-                {/* ── Level & Points Progression Card ── */}
-                <div className="bg-white/80 backdrop-blur-md rounded-[2.5rem] p-8 md:p-10 border-2 border-plum/15 shadow-xl space-y-6">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                        <div>
-                            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-plum/40">Account Progression</span>
-                            <h2 className="text-2xl md:text-3xl font-serif font-black text-plum flex items-center gap-3">
-                                Level {levelInfo.level}: <span className="text-berry italic">{levelInfo.title}</span>
-                            </h2>
-                        </div>
-
-                        {/* Points Counter Badge */}
-                        <div className="inline-flex items-center gap-3 bg-cream px-5 py-2.5 rounded-2xl border-2 border-plum/10 self-start sm:self-auto shadow-inner">
-                            <Trophy size={20} className="text-amber-500" />
-                            <div>
-                                <span className="text-xl font-black text-plum leading-none">{totalPoints}</span>
-                                <span className="text-[10px] font-black uppercase tracking-wider text-plum/40 ml-1.5">Total Points</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Progress Bar Container */}
-                    <div className="space-y-3 bg-cream/70 p-6 rounded-2xl border border-plum/10 shadow-inner">
-                        <div className="flex justify-between items-center text-xs font-bold">
-                            <span className="text-plum/70 flex items-center gap-1.5">
-                                <Flame size={14} className="text-berry" />
-                                {levelInfo.isMaxLevel ? (
-                                    <span className="text-berry font-black">Max Rank Achieved!</span>
-                                ) : (
-                                    <span>
-                                        <strong className="text-plum font-black">{totalPoints - levelInfo.currentTierMin}</strong> / {levelInfo.nextTierPoints - levelInfo.currentTierMin} XP to next level
-                                    </span>
-                                )}
-                            </span>
-                            <span className="text-berry font-black text-sm">
-                                {levelInfo.progressPercentage}%
-                            </span>
-                        </div>
-
-                        {/* Animated Bar */}
-                        <div className="h-4 w-full bg-white rounded-full overflow-hidden p-0.5 border border-plum/15 shadow-inner">
-                            <div
-                                className="h-full bg-gradient-to-r from-amber-400 via-berry to-berry rounded-full transition-all duration-1000 ease-out shadow-sm"
-                                style={{ width: `${Math.max(4, levelInfo.progressPercentage)}%` }}
-                            />
-                        </div>
-
-                        {/* Subtext info */}
-                        <div className="flex justify-between items-center text-[11px] font-bold text-plum/50">
-                            <span>Level {levelInfo.level} ({levelInfo.currentTierMin} pts)</span>
-                            {!levelInfo.isMaxLevel ? (
-                                <span className="text-berry font-extrabold flex items-center gap-1">
-                                    <Zap size={12} />
-                                    {levelInfo.pointsToNextLevel} more points till Level {levelInfo.level + 1}
-                                </span>
-                            ) : (
-                                <span>Grand Champion</span>
-                            )}
-                        </div>
-                    </div>
-
-                    {/* Tier Roadmap Preview Toggle */}
-                    <div className="pt-2 flex justify-between items-center border-t border-plum/10">
-                        <p className="text-xs text-plum/60 font-medium">
-                            Earn points by solving weekly puzzles (Piece of Cake +25, Hard Tart +50, Challenge +100).
-                        </p>
+            <main className="flex-1 max-w-5xl mx-auto w-full px-5 sm:px-8 py-10 md:py-14">
+                {/* Identity */}
+                <header className="flex flex-col sm:flex-row sm:items-center gap-5 pb-8 border-b border-plum/15">
+                    <div className="relative group/avatar self-start">
                         <button
-                            onClick={() => setShowTierModal(!showTierModal)}
-                            className="text-xs font-black uppercase tracking-wider text-berry hover:text-plum transition-colors flex items-center gap-1"
+                            type="button"
+                            onClick={() => fileInputRef.current?.click()}
+                            disabled={uploadingAvatar}
+                            className="relative block w-20 h-20 rounded-2xl overflow-hidden bg-plum text-cream font-serif font-black text-3xl uppercase focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-berry focus-visible:ring-offset-2 focus-visible:ring-offset-cream"
+                            aria-label="Change profile picture"
                         >
-                            <span>{showTierModal ? 'Hide Ranks' : 'View All Ranks'}</span>
-                            <ArrowRight size={14} className={`transition-transform ${showTierModal ? 'rotate-90' : ''}`} />
+                            {user.avatarUrl ? (
+                                <img src={user.avatarUrl} alt="" className="w-full h-full object-cover" />
+                            ) : (
+                                <span className="flex w-full h-full items-center justify-center">{user.username.charAt(0)}</span>
+                            )}
+                            <span className="absolute inset-0 flex items-center justify-center bg-plum/65 text-white opacity-0 group-hover/avatar:opacity-100 group-focus-within/avatar:opacity-100 transition-opacity">
+                                {uploadingAvatar ? <Loader2 size={22} className="animate-spin" /> : <Camera size={20} />}
+                            </span>
+                        </button>
+                        {user.avatarUrl && (
+                            <button
+                                type="button"
+                                onClick={handleRemoveAvatar}
+                                disabled={uploadingAvatar}
+                                className="absolute -top-2 -right-2 p-1.5 rounded-full bg-white text-rose-600 shadow-[0_2px_6px_rgb(74,21,75,0.18)] opacity-0 group-hover/avatar:opacity-100 focus-visible:opacity-100 transition-opacity"
+                                aria-label="Remove profile picture"
+                            >
+                                <Trash2 size={12} />
+                            </button>
+                        )}
+                        <input
+                            ref={fileInputRef}
+                            type="file"
+                            accept="image/png, image/jpeg, image/webp, image/gif"
+                            onChange={handleFileChange}
+                            className="hidden"
+                        />
+                    </div>
+
+                    <div className="flex-1 min-w-0">
+                        <h1 className="text-3xl md:text-4xl font-serif font-black tracking-tight truncate">{user.username}</h1>
+                        <p className="mt-1 text-plum/70">
+                            <span className="font-bold text-berry">{levelInfo.title}</span>
+                            <span className="mx-2 text-plum/30" aria-hidden="true">·</span>
+                            Level {levelInfo.level} of {LEVEL_TIERS.length}
+                            {memberSince && (
+                                <>
+                                    <span className="mx-2 text-plum/30" aria-hidden="true">·</span>
+                                    Member since {memberSince}
+                                </>
+                            )}
+                        </p>
+                        {avatarError && <p className="mt-2 text-sm font-bold text-rose-700" role="alert">{avatarError}</p>}
+                    </div>
+
+                    <div className="flex items-center gap-5 text-sm font-bold">
+                        <Link to="/link-email" className="text-plum/70 hover:text-berry underline-offset-4 hover:underline">
+                            {user.email ? 'Change email' : 'Link an email'}
+                        </Link>
+                        <button
+                            type="button"
+                            onClick={async () => {
+                                await logout();
+                                navigate('/');
+                            }}
+                            className="text-plum/70 hover:text-berry underline-offset-4 hover:underline"
+                        >
+                            Sign out
                         </button>
                     </div>
+                </header>
 
-                    {/* Expandable Tier List */}
-                    {showTierModal && (
-                        <div className="grid sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 pt-4 border-t border-plum/10 animate-in fade-in slide-in-from-top-2 duration-300">
-                            {LEVEL_TIERS.map((tier) => {
+                {/* The parfait and the next step */}
+                <section className="grid md:grid-cols-[minmax(0,5fr)_minmax(0,6fr)] gap-10 md:gap-14 py-10" aria-labelledby="progress-heading">
+                    <div className="order-2 md:order-1 self-center flex justify-center md:justify-start gap-5">
+                        <ParfaitGlass level={levelInfo.level} progress={levelInfo.progressPercentage / 100} label={glassLabel} />
+                        {/* Each rank name sits at the height of its own layer in the glass */}
+                        <ol className="relative w-44 sm:w-48 text-sm" aria-label="Ranks">
+                            {LEVEL_TIERS.map((tier, i) => {
                                 const isCurrent = tier.level === levelInfo.level;
-                                const isUnlocked = totalPoints >= tier.minPoints;
-
+                                const reached = tier.level <= levelInfo.level;
+                                const centre = (BOWL_BOTTOM - (i + 0.5) * BAND) / GLASS_HEIGHT;
                                 return (
-                                    <div
+                                    <li
                                         key={tier.level}
-                                        className={`p-4 rounded-2xl border-2 transition-all flex flex-col justify-between gap-2 ${isCurrent
-                                                ? 'bg-berry/10 border-berry shadow-md'
-                                                : isUnlocked
-                                                    ? 'bg-white border-plum/15'
-                                                    : 'bg-white/40 border-plum/5 opacity-60'
-                                            }`}
+                                        className={`absolute left-0 right-0 -translate-y-1/2 leading-tight ${isCurrent ? 'text-plum' : reached ? 'text-plum font-semibold' : 'text-plum/70'}`}
+                                        style={{ top: `${centre * 100}%` }}
+                                        aria-current={isCurrent ? 'step' : undefined}
                                     >
-                                        <div className="flex items-center justify-between">
-                                            <span className={`text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full ${isCurrent ? 'bg-berry text-white' : 'bg-plum/10 text-plum/70'
-                                                }`}>
-                                                Lvl {tier.level}
+                                        <span className={isCurrent ? 'font-serif font-black text-base' : undefined}>{tier.title}</span>
+                                        {isCurrent && (
+                                            <span className="block text-xs tabular-nums">
+                                                {totalPoints} of {tier.maxPoints} points
                                             </span>
-                                            {isCurrent ? (
-                                                <Award size={14} className="text-berry" />
-                                            ) : isUnlocked ? (
-                                                <CheckCircle2 size={14} className="text-emerald-500" />
-                                            ) : (
-                                                <Lock size={12} className="text-plum/30" />
-                                            )}
-                                        </div>
-                                        <div>
-                                            <h4 className="font-serif font-black text-sm text-plum">{tier.title}</h4>
-                                            <p className="text-[10px] font-bold text-plum/50">{tier.minPoints} - {tier.maxPoints} pts</p>
-                                        </div>
-                                    </div>
+                                        )}
+                                    </li>
                                 );
                             })}
-                        </div>
-                    )}
-                </div>
-
-                {/* ── Stats Summary Grid ── */}
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
-                    <div className="bg-white/80 backdrop-blur-md rounded-3xl p-6 border-2 border-plum/15 shadow-md flex flex-col items-center text-center gap-2">
-                        <div className="p-3 bg-amber-50 rounded-2xl text-amber-600 border border-amber-200 shadow-sm">
-                            <Trophy size={24} />
-                        </div>
-                        <span className="text-2xl md:text-3xl font-black text-plum">{totalPoints}</span>
-                        <span className="text-[10px] font-black uppercase tracking-widest text-plum/40">Total Points</span>
+                        </ol>
                     </div>
 
-                    <div className="bg-white/80 backdrop-blur-md rounded-3xl p-6 border-2 border-plum/15 shadow-md flex flex-col items-center text-center gap-2">
-                        <div className="p-3 bg-berry/10 rounded-2xl text-berry border border-berry/20 shadow-sm">
-                            <Crown size={24} />
-                        </div>
-                        <span className="text-2xl md:text-3xl font-black text-plum">Level {levelInfo.level}</span>
-                        <span className="text-[10px] font-black uppercase tracking-widest text-plum/40">{levelInfo.title}</span>
-                    </div>
-
-                    <div className="bg-white/80 backdrop-blur-md rounded-3xl p-6 border-2 border-plum/15 shadow-md flex flex-col items-center text-center gap-2">
-                        <div className="p-3 bg-emerald-50 rounded-2xl text-emerald-600 border border-emerald-200 shadow-sm">
-                            <PuzzleIcon size={24} />
-                        </div>
-                        <span className="text-2xl md:text-3xl font-black text-plum">{solvedPuzzles.length}</span>
-                        <span className="text-[10px] font-black uppercase tracking-widest text-plum/40">Puzzles Solved</span>
-                    </div>
-
-                    <div className="bg-white/80 backdrop-blur-md rounded-3xl p-6 border-2 border-plum/15 shadow-md flex flex-col items-center text-center gap-2">
-                        <div className="p-3 bg-purple-50 rounded-2xl text-purple-600 border border-purple-200 shadow-sm">
-                            <Award size={24} />
-                        </div>
-                        <span className="text-2xl md:text-3xl font-black text-plum">{relativeTime}</span>
-                        <span className="text-[10px] font-black uppercase tracking-widest text-plum/40">Account Age</span>
-                    </div>
-                </div>
-
-                {/* ── Pawn Game Performance Card ── */}
-                <div className="bg-white/80 backdrop-blur-md rounded-[2.5rem] p-8 md:p-10 border-2 border-plum/15 shadow-xl space-y-6">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div className="order-1 md:order-2 flex flex-col justify-center gap-8">
                         <div>
-                            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-plum/40">Endgame Training</span>
-                            <h2 className="text-2xl md:text-3xl font-serif font-black text-plum flex items-center gap-3">
-                                Pawn Game <span className="text-berry italic">Record</span>
+                            <h2 id="progress-heading" className="text-3xl md:text-4xl font-serif font-black tracking-tight leading-tight">
+                                {levelInfo.isMaxLevel ? 'Your parfait is complete.' : `${toGo} points to ${nextTier?.title}.`}
                             </h2>
+                            <p className="mt-3 text-plum/70 max-w-prose">
+                                {levelInfo.isMaxLevel
+                                    ? `You have reached the top rank with ${totalPoints} points.`
+                                    : `You have ${totalPoints} points. That is about ${hardTarts} Hard Tart ${hardTarts === 1 ? 'puzzle' : 'puzzles'} away from the next layer.`}
+                            </p>
                         </div>
 
-                        {/* Overall Record Summary Pill */}
-                        <div className="flex items-center gap-2 flex-wrap">
-                            <span className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-plum/5 text-plum border border-plum/15 text-xs font-black">
-                                <ChessPawnIcon size={16} /> Total Games: {totalPawnGames}
-                            </span>
-                            <span className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-emerald-50 text-emerald-800 border border-emerald-200 text-xs font-black">
-                                {totalPawnWins}W - {totalPawnLosses}L ({overallPawnWinRate}%)
-                            </span>
-                        </div>
-                    </div>
-
-                    {totalPawnGames === 0 ? (
-                        <div className="p-8 bg-cream/50 rounded-3xl border-2 border-dashed border-plum/15 flex flex-col items-center justify-center text-center gap-3">
-                            <div className="p-3.5 bg-white rounded-2xl shadow-sm text-plum/40">
-                                <ChessPawnIcon size={32} />
-                            </div>
-                            <div className="space-y-1 max-w-sm">
-                                <h4 className="font-serif font-black text-base text-plum">No Pawn Games Played Yet</h4>
-                                <p className="text-xs text-plum/60 leading-relaxed">
-                                    Play the Pawn Game against our AI to master pawn endgames, zugzwang, and breakthrough techniques!
-                                </p>
-                            </div>
-                            <Link to="/PawnGame" className="soft-button-berry py-2.5 px-6 text-xs font-bold flex items-center gap-2 mt-2">
-                                <ChessPawnIcon size={16} />
-                                <span>Play Pawn Game</span>
+                        <div className="rounded-2xl bg-plum text-cream p-6 sm:p-7 shadow-[0_10px_30px_-12px_rgb(74,21,75,0.55)]" role="region" aria-label="Your next step">
+                            <h3 className="text-2xl font-serif font-black">{nextStep.title}</h3>
+                            <p className="mt-2 text-cream/80">{nextStep.detail}</p>
+                            <Link
+                                to={nextStep.to}
+                                className="mt-5 inline-flex items-center gap-2 py-3 px-6 soft-button-berry text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cream focus-visible:ring-offset-2 focus-visible:ring-offset-plum"
+                            >
+                                {nextStep.action} <ArrowRight size={16} />
                             </Link>
                         </div>
-                    ) : (
-                        <div className="grid md:grid-cols-2 gap-6">
-                            {/* Playing as White */}
-                            <div className="bg-white p-6 rounded-3xl border-2 border-plum/10 shadow-sm space-y-4">
-                                <div className="flex items-center justify-between">
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-10 h-10 rounded-2xl bg-cream flex items-center justify-center text-plum shadow-inner border border-plum/10 font-bold">
-                                            <div className="w-4 h-4 rounded-full bg-white border-2 border-plum/40 shadow-sm" />
-                                        </div>
-                                        <div>
-                                            <h4 className="font-serif font-black text-lg text-plum">Playing as White</h4>
-                                            <span className="text-[10px] font-bold text-plum/50 uppercase tracking-wider">Moves First</span>
-                                        </div>
-                                    </div>
-                                    <div className="text-right">
-                                        <span className="text-xl font-black text-plum">{whiteWinRate}%</span>
-                                        <p className="text-[10px] font-bold text-plum/40">Win Rate</p>
-                                    </div>
-                                </div>
 
-                                <div className="space-y-2">
-                                    <div className="flex justify-between text-xs font-bold text-plum/70">
-                                        <span className="text-emerald-600 font-extrabold">{pawnStats.whiteWins} Wins</span>
-                                        <span className="text-rose-500 font-extrabold">{pawnStats.whiteLosses} Losses</span>
-                                    </div>
-                                    <div className="h-3 w-full bg-rose-100 rounded-full overflow-hidden flex shadow-inner">
-                                        <div
-                                            className="h-full bg-emerald-500 rounded-full transition-all duration-500"
-                                            style={{ width: `${totalWhiteGames > 0 ? (pawnStats.whiteWins / totalWhiteGames) * 100 : 0}%` }}
-                                        />
-                                    </div>
-                                    <p className="text-[11px] font-bold text-plum/40 text-center pt-1">
-                                        {totalWhiteGames} matches played as White
-                                    </p>
-                                </div>
-                            </div>
+                        <p className="text-sm text-plum/70">
+                            {streak > 0 ? `${streak}-day training streak` : 'No training streak yet'}
+                            <span className="mx-2 text-plum/30" aria-hidden="true">·</span>
+                            {solvedPuzzles.length} {solvedPuzzles.length === 1 ? 'puzzle' : 'puzzles'} solved
+                            {pawnWins + pawnLosses > 0 && (
+                                <>
+                                    <span className="mx-2 text-plum/30" aria-hidden="true">·</span>
+                                    Pawn game {pawnWins} {pawnWins === 1 ? 'win' : 'wins'}, {pawnLosses} {pawnLosses === 1 ? 'loss' : 'losses'}
+                                </>
+                            )}
+                        </p>
+                    </div>
+                </section>
 
-                            {/* Playing as Black */}
-                            <div className="bg-white p-6 rounded-3xl border-2 border-plum/10 shadow-sm space-y-4">
-                                <div className="flex items-center justify-between">
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-10 h-10 rounded-2xl bg-cream flex items-center justify-center text-plum shadow-inner border border-plum/10 font-bold">
-                                            <div className="w-4 h-4 rounded-full bg-plum shadow-sm" />
-                                        </div>
-                                        <div>
-                                            <h4 className="font-serif font-black text-lg text-plum">Playing as Black</h4>
-                                            <span className="text-[10px] font-bold text-plum/50 uppercase tracking-wider">Defending Second</span>
-                                        </div>
-                                    </div>
-                                    <div className="text-right">
-                                        <span className="text-xl font-black text-plum">{blackWinRate}%</span>
-                                        <p className="text-[10px] font-bold text-plum/40">Win Rate</p>
-                                    </div>
-                                </div>
-
-                                <div className="space-y-2">
-                                    <div className="flex justify-between text-xs font-bold text-plum/70">
-                                        <span className="text-emerald-600 font-extrabold">{pawnStats.blackWins} Wins</span>
-                                        <span className="text-rose-500 font-extrabold">{pawnStats.blackLosses} Losses</span>
-                                    </div>
-                                    <div className="h-3 w-full bg-rose-100 rounded-full overflow-hidden flex shadow-inner">
-                                        <div
-                                            className="h-full bg-emerald-500 rounded-full transition-all duration-500"
-                                            style={{ width: `${totalBlackGames > 0 ? (pawnStats.blackWins / totalBlackGames) * 100 : 0}%` }}
-                                        />
-                                    </div>
-                                    <p className="text-[11px] font-bold text-plum/40 text-center pt-1">
-                                        {totalBlackGames} matches played as Black
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
-                    )}
-                </div>
-
-                {/* ── Solved Weekly Puzzles History ── */}
-                <div className="bg-white/80 backdrop-blur-md rounded-[2.5rem] p-8 md:p-10 border-2 border-plum/15 shadow-xl space-y-6">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                        <div>
-                            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-plum/40">Activity & Records</span>
-                            <h2 className="text-2xl md:text-3xl font-serif font-black text-plum flex items-center gap-3">
-                                Weekly Puzzles <span className="text-berry italic">Solved</span>
-                            </h2>
-                        </div>
-
-                        {/* Breakdown pills */}
-                        <div className="flex items-center gap-2 flex-wrap">
-                            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-black">
-                                <ChessCakeSliceIcon size={14} /> Cake: {cakeCount}
-                            </span>
-                            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-amber-50 text-amber-700 border border-amber-200 text-xs font-black">
-                                <PieIcon size={14} /> Tart: {tartCount}
-                            </span>
-                            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-berry/10 text-berry border border-berry/20 text-xs font-black">
-                                <CherryBombIcon size={14} /> Bomb: {bombCount}
-                            </span>
-                        </div>
+                {/* Puzzle history */}
+                <section className="pt-10 border-t border-plum/15" aria-labelledby="history-heading">
+                    <div className="flex items-baseline justify-between gap-4 mb-5">
+                        <h2 id="history-heading" className="text-2xl font-serif font-black">Puzzle history</h2>
+                        <Link to="/TrainingPuzzles" className="text-sm font-bold text-berry hover:text-plum underline-offset-4 hover:underline">
+                            This week's puzzles
+                        </Link>
                     </div>
 
                     {solvedPuzzles.length === 0 ? (
-                        <div className="p-10 bg-cream/50 rounded-3xl border-2 border-dashed border-plum/15 flex flex-col items-center justify-center text-center gap-4">
-                            <div className="p-4 bg-white rounded-2xl shadow-sm text-plum/40">
-                                <PuzzleIcon size={36} />
-                            </div>
-                            <div className="space-y-1 max-w-sm">
-                                <h4 className="font-serif font-black text-lg text-plum">No Puzzles Solved Yet</h4>
-                                <p className="text-xs text-plum/60 leading-relaxed">
-                                    Take on this week's strategic puzzles to earn points, level up your profile, and climb the ranks!
-                                </p>
-                            </div>
-                            <Link to="/TrainingPuzzles" className="soft-button-berry py-2.5 px-6 text-xs font-bold flex items-center gap-2 mt-2">
-                                <PuzzleIcon size={16} />
-                                <span>Go to Weekly Puzzles</span>
-                            </Link>
-                        </div>
+                        <p className="text-plum/70 max-w-prose">
+                            No puzzles solved yet. Each Monday brings three new puzzles: a Piece of Cake, a Hard Tart and a Cherry Bomb.
+                            Solve one to add your first layer of points.
+                        </p>
                     ) : (
-                        <div className="space-y-3">
-                            <div className="grid gap-3">
-                                {solvedPuzzles.map((puzzle, idx) => {
-                                    const dateStr = puzzle.solvedAt
-                                        ? new Date(puzzle.solvedAt).toLocaleDateString('en-US', {
-                                            month: 'short',
-                                            day: 'numeric',
-                                            year: 'numeric'
-                                        })
-                                        : 'Completed';
-
-                                    const isCherryBomb = puzzle.difficulty === 'Cherry Bomb' || puzzle.difficulty === 'Challenge';
-                                    const displayDifficulty = isCherryBomb ? 'Cherry Bomb' : puzzle.difficulty;
-
-                                    const diffBadge =
-                                        puzzle.difficulty === 'Piece of Cake'
-                                            ? { bg: 'bg-emerald-50 text-emerald-700 border-emerald-200', icon: <ChessCakeSliceIcon size={14} /> }
-                                            : puzzle.difficulty === 'Hard Tart'
-                                                ? { bg: 'bg-amber-50 text-amber-700 border-amber-200', icon: <PieIcon size={14} /> }
-                                                : { bg: 'bg-berry/10 text-berry border-berry/20', icon: <CherryBombIcon size={14} /> };
-
+                        <>
+                            <ul className="divide-y divide-plum/10 border-y border-plum/10">
+                                {shownPuzzles.map((puzzle, idx) => {
+                                    const difficulty = puzzle.difficulty === 'Challenge' ? 'Cherry Bomb' : puzzle.difficulty;
+                                    const style = DIFFICULTY[difficulty as keyof typeof DIFFICULTY] ?? DIFFICULTY['Cherry Bomb'];
                                     return (
-                                        <div
-                                            key={puzzle.id || idx}
-                                            className="bg-white p-4 sm:p-5 rounded-2xl border-2 border-plum/10 shadow-sm flex items-center justify-between gap-4 hover:border-plum/20 transition-all"
-                                        >
-                                            <div className="flex items-center gap-4 min-w-0">
-                                                <div className="w-10 h-10 rounded-xl bg-cream flex items-center justify-center text-plum font-bold shrink-0 border border-plum/10">
-                                                    <CheckCircle2 size={20} className="text-emerald-600" />
-                                                </div>
-                                                <div className="min-w-0">
-                                                    <div className="flex items-center gap-2 flex-wrap mb-1">
-                                                        <span className="text-[10px] font-black uppercase tracking-wider text-plum/40">
-                                                            Week {puzzle.week}
-                                                        </span>
-                                                        <span className={`inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md border ${diffBadge.bg}`}>
-                                                            {diffBadge.icon}
-                                                            {displayDifficulty}
-                                                        </span>
-                                                    </div>
-                                                    <h4 className="font-serif font-black text-sm text-plum truncate">
-                                                        {puzzle.title || `${displayDifficulty} Puzzle`}
-                                                    </h4>
-                                                </div>
+                                        <li key={puzzle.id || idx} className="grid grid-cols-[auto_1fr_auto] items-center gap-4 py-3.5">
+                                            <style.Icon size={20} className={style.tone} aria-hidden="true" />
+                                            <div className="min-w-0">
+                                                <p className="font-semibold truncate">{puzzle.title || `${difficulty} puzzle`}</p>
+                                                <p className="text-xs text-plum/70">
+                                                    Week {puzzle.week} · {difficulty}
+                                                    {puzzle.solvedAt && <> · {formatDate(puzzle.solvedAt)}</>}
+                                                </p>
                                             </div>
-
-                                            <div className="text-right shrink-0">
-                                                <span className="inline-block font-black text-berry text-sm">
-                                                    +{puzzle.points} pts
-                                                </span>
-                                                <p className="text-[10px] font-bold text-plum/40">{dateStr}</p>
-                                            </div>
-                                        </div>
+                                            <span className="font-bold tabular-nums text-berry">+{puzzle.points}</span>
+                                        </li>
                                     );
                                 })}
-                            </div>
-
-                            <div className="pt-4 flex justify-center">
-                                <Link
-                                    to="/TrainingPuzzles"
-                                    className="inline-flex items-center gap-2 text-xs font-black uppercase tracking-wider text-berry hover:text-plum transition-colors"
+                            </ul>
+                            {solvedPuzzles.length > 6 && (
+                                <button
+                                    type="button"
+                                    onClick={() => setShowAllPuzzles(!showAllPuzzles)}
+                                    className="mt-4 text-sm font-bold text-plum/70 hover:text-berry underline-offset-4 hover:underline"
                                 >
-                                    <span>Play More Puzzles</span>
-                                    <ArrowRight size={14} />
-                                </Link>
-                            </div>
-                        </div>
+                                    {showAllPuzzles ? 'Show fewer' : `Show all ${solvedPuzzles.length} puzzles`}
+                                </button>
+                            )}
+                        </>
                     )}
-                </div>
-
-                {/* ── Quick Links / Other Games ── */}
-                <div className="grid sm:grid-cols-3 gap-4">
-                    <Link
-                        to="/TrainingPuzzles"
-                        className="bg-white/70 hover:bg-white p-5 rounded-2xl border-2 border-plum/15 shadow-sm hover:shadow-md transition-all group flex items-center gap-4"
-                    >
-                        <div className="p-3 bg-cream rounded-xl text-berry group-hover:scale-110 transition-transform border border-plum/10">
-                            <PuzzleIcon size={22} />
-                        </div>
-                        <div>
-                            <h4 className="font-serif font-black text-sm text-plum group-hover:text-berry transition-colors">Weekly Puzzles</h4>
-                            <p className="text-[10px] font-bold text-plum/50">Earn points every week</p>
-                        </div>
-                    </Link>
-
-                    <Link
-                        to="/PawnGame"
-                        className="bg-white/70 hover:bg-white p-5 rounded-2xl border-2 border-plum/15 shadow-sm hover:shadow-md transition-all group flex items-center gap-4"
-                    >
-                        <div className="p-3 bg-cream rounded-xl text-plum group-hover:text-berry group-hover:scale-110 transition-transform border border-plum/10">
-                            <ChessPawnIcon size={22} />
-                        </div>
-                        <div>
-                            <h4 className="font-serif font-black text-sm text-plum group-hover:text-berry transition-colors">Pawn Game</h4>
-                            <p className="text-[10px] font-bold text-plum/50">Endgame struct training</p>
-                        </div>
-                    </Link>
-
-                    <Link
-                        to="/Challenge_Rulette"
-                        className="bg-white/70 hover:bg-white p-5 rounded-2xl border-2 border-plum/15 shadow-sm hover:shadow-md transition-all group flex items-center gap-4"
-                    >
-                        <div className="p-3 bg-cream rounded-xl text-plum group-hover:text-berry group-hover:scale-110 transition-transform border border-plum/10">
-                            <RouletteIcon size={22} />
-                        </div>
-                        <div>
-                            <h4 className="font-serif font-black text-sm text-plum group-hover:text-berry transition-colors">Challenge Rulette</h4>
-                            <p className="text-[10px] font-bold text-plum/50">Fun handicap wheel</p>
-                        </div>
-                    </Link>
-                </div>
+                </section>
             </main>
         </div>
     );

@@ -60,37 +60,15 @@ export async function onRequestPost(context: any) {
 
         const supabaseAdmin = createClient(env.VITE_SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY);
 
-        const currentPawnStats = user.user_metadata?.pawn_stats || {
-            whiteWins: 0,
-            whiteLosses: 0,
-            blackWins: 0,
-            blackLosses: 0
-        };
-
-        const updatedStats = {
-            whiteWins: typeof currentPawnStats.whiteWins === 'number' ? currentPawnStats.whiteWins : 0,
-            whiteLosses: typeof currentPawnStats.whiteLosses === 'number' ? currentPawnStats.whiteLosses : 0,
-            blackWins: typeof currentPawnStats.blackWins === 'number' ? currentPawnStats.blackWins : 0,
-            blackLosses: typeof currentPawnStats.blackLosses === 'number' ? currentPawnStats.blackLosses : 0
-        };
-
-        if (color === 'white') {
-            if (result === 'win') updatedStats.whiteWins += 1;
-            else updatedStats.whiteLosses += 1;
-        } else {
-            if (result === 'win') updatedStats.blackWins += 1;
-            else updatedStats.blackLosses += 1;
-        }
-
-        const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(user.id, {
-            user_metadata: {
-                ...user.user_metadata,
-                pawn_stats: updatedStats
-            }
+        // One atomic increment in the database, so games finished at the same time are all counted.
+        const { data: updatedStats, error: updateError } = await supabaseAdmin.rpc('record_pawn_game', {
+            p_user: user.id,
+            p_color: color,
+            p_result: result
         });
 
         if (updateError) {
-            console.error('Failed to update pawn stats in metadata:', updateError);
+            console.error('Failed to record pawn game:', updateError);
             return new Response(JSON.stringify({ message: 'Failed to record pawn game stats.' }), {
                 status: 500,
                 headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' }

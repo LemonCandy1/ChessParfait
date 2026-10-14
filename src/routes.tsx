@@ -55,6 +55,7 @@ export const ROUTES: AppRoute[] = [
     { path: '/TrainingPuzzles', Page: lazyPage(() => import('./pages/TrainingPuzzles')), fallback: <DifficultyCardsSkeleton /> },
     { path: '/EndgamePractice', Page: lazyPage(() => import('./pages/EndgamePractice')), fallback: <TileGridSkeleton /> },
     { path: '/EndgameStrategy', Page: lazyPage(() => import('./pages/EndgameStrategy')), fallback: <BoardSkeleton /> },
+    { path: '/training', Page: lazyPage(() => import('./pages/Training')), fallback: <ArticleSkeleton /> },
     { path: '/ImposterChess', Page: lazyPage(() => import('./pages/ImposterChess')), fallback: <SetupSkeleton options={3} cardHeight="h-56" narrow /> },
     { path: '/PawnGame', Page: lazyPage(() => import('./pages/PawnGame')), fallback: <SetupSkeleton options={0} cardHeight="h-96" /> },
     { path: '/PawnGameStrategy', Page: lazyPage(() => import('./pages/PawnGameStrategy')), fallback: <ArticleSkeleton /> },

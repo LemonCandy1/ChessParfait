@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import { getProfile, updateProfile } from '../../_lib/profiles';
 
 const CORS_HEADERS = {
     'Access-Control-Allow-Methods': 'POST, DELETE, OPTIONS',
@@ -60,18 +61,17 @@ export async function onRequestPost(context: any) {
 
         const supabaseAdmin = createClient(env.VITE_SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY);
 
-        const updatedMetadata = {
-            ...user.user_metadata,
-            avatar_url: avatarUrl,
-            picture: avatarUrl
-        };
-
-        const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(user.id, {
-            user_metadata: updatedMetadata
-        });
+        // Pictures live in the profile, not user_metadata, so they never ride along in login tokens.
+        let updateError: unknown = null;
+        try {
+            await getProfile(supabaseAdmin, user);
+            await updateProfile(supabaseAdmin, user.id, { avatar_url: avatarUrl });
+        } catch (err) {
+            updateError = err;
+        }
 
         if (updateError) {
-            console.error('Failed to update avatar in metadata:', updateError);
+            console.error('Failed to save avatar:', updateError);
             return new Response(JSON.stringify({ message: 'Failed to save profile picture.' }), {
                 status: 500,
                 headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' }
@@ -123,18 +123,16 @@ export async function onRequestDelete(context: any) {
 
         const supabaseAdmin = createClient(env.VITE_SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY);
 
-        const updatedMetadata = {
-            ...user.user_metadata,
-            avatar_url: null,
-            picture: null
-        };
-
-        const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(user.id, {
-            user_metadata: updatedMetadata
-        });
+        let updateError: unknown = null;
+        try {
+            await getProfile(supabaseAdmin, user);
+            await updateProfile(supabaseAdmin, user.id, { avatar_url: null });
+        } catch (err) {
+            updateError = err;
+        }
 
         if (updateError) {
-            console.error('Failed to remove avatar from metadata:', updateError);
+            console.error('Failed to remove avatar:', updateError);
             return new Response(JSON.stringify({ message: 'Failed to remove profile picture.' }), {
                 status: 500,
                 headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' }

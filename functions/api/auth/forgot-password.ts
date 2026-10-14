@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import { VIRTUAL_EMAIL_DOMAIN, findProfileByEmail, findProfileByUsername } from '../../_lib/profiles';
 
 const CORS_HEADERS = {
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
@@ -35,16 +36,12 @@ export async function onRequestPost(context: any) {
             resetEmail = email.trim();
         } else if (username) {
             // Look up by username: find user whose virtual email starts with the username
-            // Also check user_metadata.username for real name match
+            // Also matches the username itself (accounts created with Google have a different email)
             const trimmedUser = username.trim().toLowerCase();
             const virtualEmail = `${trimmedUser}@chessparfait.com`;
 
-            // First try fetching by virtual email directly (fastest path)
-            const { data: usersByEmail } = await supabaseAdmin.auth.admin.listUsers();
-            const match = usersByEmail?.users?.find(u =>
-                u.email === virtualEmail ||
-                u.user_metadata?.username?.toLowerCase() === trimmedUser
-            );
+            // Profiles hold every account's username and email, so this is an indexed lookup.
+            const match = (await findProfileByUsername(supabaseAdmin, trimmedUser)) ?? (await findProfileByEmail(supabaseAdmin, virtualEmail));
 
             if (!match) {
                 // Return generic message to prevent username enumeration
@@ -57,8 +54,8 @@ export async function onRequestPost(context: any) {
             }
 
             // Check if user has a real linked email or only the virtual one
-            const realEmail = match.user_metadata?.real_email || match.email;
-            if (!realEmail || realEmail.endsWith('@chessparfait.com')) {
+            const realEmail = match.real_email || match.email;
+            if (!realEmail || realEmail.endsWith(VIRTUAL_EMAIL_DOMAIN)) {
                 // Return generic message to prevent username enumeration and email status leakage
                 return new Response(JSON.stringify({
                     message: 'If a matching account with a linked email was found, a reset link has been sent.'

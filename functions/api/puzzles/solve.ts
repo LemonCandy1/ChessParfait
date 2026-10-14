@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import { awardPoints, solvedPuzzlesFor } from '../../_lib/profiles';
 
 const CORS_HEADERS = {
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
@@ -26,6 +27,16 @@ export async function onRequestPost(context: any) {
 
         if (!week || !difficulty) {
             return new Response(JSON.stringify({ message: 'Missing week or difficulty in request.' }), {
+                status: 400,
+                headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' }
+            });
+        }
+
+        // Only this week's puzzles pay (±1 for time zones; weeks start Monday 2 March 2026, as in TrainingPuzzles.tsx),
+        // otherwise any week number could be claimed for unlimited points.
+        const serverWeek = Math.floor((Date.now() - Date.parse('2026-03-02T00:00:00Z')) / (7 * 24 * 60 * 60 * 1000)) + 1;
+        if (!Number.isInteger(week) || Math.abs(week - serverWeek) > 1 || !(difficulty in DIFFICULTY_POINTS) || (title != null && (typeof title !== 'string' || title.length > 120))) {
+            return new Response(JSON.stringify({ message: 'Invalid puzzle.' }), {
                 status: 400,
                 headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' }
             });
@@ -81,13 +92,7 @@ export async function onRequestPost(context: any) {
         const supabaseAdmin = createClient(env.VITE_SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY);
 
         const currentMetadata = user.user_metadata || {};
-        const currentPoints = typeof currentMetadata.points === 'number' ? currentMetadata.points : 0;
-        const solvedPuzzles: any[] = Array.isArray(currentMetadata.solved_puzzles) ? currentMetadata.solved_puzzles : [];
-
         const puzzleId = `week-${week}-${difficulty}`;
-        const alreadySolved = solvedPuzzles.some(
-            (p: any) => p.id === puzzleId || (p.week === week && p.difficulty === difficulty)
-        );
 
         const username = currentMetadata.username || user.email?.split('@')[0] || 'User';
 
@@ -108,12 +113,21 @@ export async function onRequestPost(context: any) {
             }
         }
 
-        if (alreadySolved) {
+        // Pays once per puzzle: the ledger refuses a second claim for the same week and difficulty.
+        const pointsToAward = DIFFICULTY_POINTS[difficulty] || 25;
+        const { awarded, totalPoints } = await awardPoints(supabaseAdmin, user.id, 'puzzle', puzzleId, pointsToAward, {
+            week: Number(week),
+            difficulty,
+            title: title || `${difficulty} (Week ${week})`
+        });
+        const solvedPuzzles = await solvedPuzzlesFor(supabaseAdmin, user.id);
+
+        if (!awarded) {
             return new Response(JSON.stringify({
                 success: true,
                 alreadySolved: true,
                 pointsAwarded: 0,
-                totalPoints: currentPoints,
+                totalPoints,
                 solvedPuzzles,
                 message: 'Puzzle already solved this week! Points previously claimed.'
             }), {
@@ -122,41 +136,12 @@ export async function onRequestPost(context: any) {
             });
         }
 
-        const pointsToAward = DIFFICULTY_POINTS[difficulty] || 25;
-        const newRecord = {
-            id: puzzleId,
-            week: Number(week),
-            difficulty,
-            title: title || `${difficulty} (Week ${week})`,
-            points: pointsToAward,
-            solvedAt: new Date().toISOString()
-        };
-
-        const updatedSolvedPuzzles = [newRecord, ...solvedPuzzles];
-        const newPoints = currentPoints + pointsToAward;
-
-        const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(user.id, {
-            user_metadata: {
-                ...currentMetadata,
-                points: newPoints,
-                solved_puzzles: updatedSolvedPuzzles
-            }
-        });
-
-        if (updateError) {
-            console.error('Failed to update user points metadata:', updateError);
-            return new Response(JSON.stringify({ message: 'Failed to update user profile points.' }), {
-                status: 500,
-                headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' }
-            });
-        }
-
         return new Response(JSON.stringify({
             success: true,
             alreadySolved: false,
             pointsAwarded: pointsToAward,
-            totalPoints: newPoints,
-            solvedPuzzles: updatedSolvedPuzzles,
+            totalPoints,
+            solvedPuzzles,
             message: `+${pointsToAward} Points earned!`
         }), {
             status: 200,

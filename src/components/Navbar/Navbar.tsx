@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Menu, X, User, LogOut, ChevronDown, Trophy, Award, MessageSquare, Podium } from 'lucide-react';
+import { Menu, X, User, LogOut, ChevronDown, Trophy, Award, MessageSquare, Podium, Calendar } from 'lucide-react';
 import { ChessKnight, Book } from '../../lib/lucideOriginal';
 import logo from '../../assets/Logo-bg-removed.png';
 import { ChessPawnIcon, RouletteIcon, GhostChefIcon } from '../Icons';
@@ -116,6 +116,12 @@ const Navbar = () => {
                                     title="Endgame Strategy" 
                                     description="Interactive diagrams & master lines" 
                                     icon={<Book size={18} strokeWidth={1.75} />} 
+                                />
+                                <DropdownItem
+                                    to="/training"
+                                    title="Daily Training"
+                                    description="Your daily plan, goals and training calendar"
+                                    icon={<Calendar size={18} strokeWidth={1.75} />}
                                 />
                             </div>
                         </div>
@@ -306,6 +312,7 @@ const Navbar = () => {
                     <NavLink to="/" label="Home" onClick={closeMenu} />
                     <NavLink to="/games" label="Play" onClick={closeMenu} />
                     <NavLink to="/EndgamePractice" label="Endgame" onClick={closeMenu} />
+                    <NavLink to="/training" label="Training" onClick={closeMenu} />
                     <NavLink to="/TrainingPuzzles" label="Puzzles" onClick={closeMenu} />
                     <NavLink to="/leaderboard" label="Leaderboard" onClick={closeMenu} />
                     <NavLink to="/forum" label="Forum" onClick={closeMenu} />

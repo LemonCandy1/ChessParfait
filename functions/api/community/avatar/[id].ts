@@ -4,7 +4,7 @@ const RASTER_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp', 'image/gi
 
 // GET /api/community/avatar/:userId
 // Serves a user's avatar so lists (leaderboard, forum) reference a small cached URL
-// instead of embedding base64 images stored in user metadata.
+// instead of embedding base64 images stored in their profile.
 export async function onRequestGet(context: any) {
     const { env, params } = context;
 
@@ -12,11 +12,10 @@ export async function onRequestGet(context: any) {
         if (!isUuid(params.id)) return json({ message: 'Not found.' }, 404);
 
         const admin = getAdminClient(env);
-        const { data, error } = await admin.auth.admin.getUserById(params.id);
-        if (error || !data?.user) return json({ message: 'Not found.' }, 404);
+        const { data, error } = await admin.from('profiles').select('avatar_url').eq('id', params.id).maybeSingle();
+        if (error || !data) return json({ message: 'Not found.' }, 404);
 
-        const meta = data.user.user_metadata || {};
-        const avatar: string | undefined = meta.avatar_url || meta.picture;
+        const avatar: string | undefined = data.avatar_url || undefined;
         if (!avatar) return json({ message: 'Not found.' }, 404, { 'Cache-Control': 'public, max-age=300' });
 
         if (/^https:\/\//i.test(avatar)) {

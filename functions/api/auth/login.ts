@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import { loadClientUser, visibleEmail } from '../../_lib/profiles';
 
 const CORS_HEADERS = {
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
@@ -26,7 +27,7 @@ export async function onRequestPost(context: any) {
         const trimmedUser = username.trim();
 
         // Initialize Supabase Client
-        if (!env.VITE_SUPABASE_URL || !env.VITE_SUPABASE_ANON_KEY) {
+        if (!env.VITE_SUPABASE_URL || !env.VITE_SUPABASE_ANON_KEY || !env.SUPABASE_SERVICE_ROLE_KEY) {
             throw new Error('Missing Supabase configurations in env.');
         }
         const supabase = createClient(env.VITE_SUPABASE_URL, env.VITE_SUPABASE_ANON_KEY);
@@ -84,25 +85,12 @@ export async function onRequestPost(context: any) {
             headers.append('Set-Cookie', `refresh_token=${session.refresh_token}; Path=/; HttpOnly; SameSite=Strict; Secure; Max-Age=86400`);
         }
 
-        const userEmail = data.user.email && !data.user.email.endsWith('@chessparfait.com') ? data.user.email : undefined;
-
-        const points = typeof data.user.user_metadata?.points === 'number' ? data.user.user_metadata.points : 0;
-        const solvedPuzzles = Array.isArray(data.user.user_metadata?.solved_puzzles) ? data.user.user_metadata.solved_puzzles : [];
-        const avatarUrl = data.user.user_metadata?.avatar_url || data.user.user_metadata?.picture || undefined;
-        const pawnStats = data.user.user_metadata?.pawn_stats || { whiteWins: 0, whiteLosses: 0, blackWins: 0, blackLosses: 0 };
+        const admin = createClient(env.VITE_SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY);
+        const { user: payload } = await loadClientUser(admin, data.user, visibleEmail(data.user.email));
 
         return new Response(JSON.stringify({
             message: 'Logged in successfully.',
-            user: {
-                id: data.user.id,
-                username: data.user.user_metadata?.username || trimmedUser,
-                email: userEmail,
-                avatarUrl,
-                pawnStats,
-                createdAt: data.user.created_at,
-                points,
-                solvedPuzzles
-            }
+            user: { ...payload, username: payload.username || trimmedUser }
         }), {
             status: 200,
             headers

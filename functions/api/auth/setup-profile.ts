@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import { UNIQUE_VIOLATION, findProfileByUsername, getProfile, loadClientUser, updateProfile } from '../../_lib/profiles';
 
 const CORS_HEADERS = {
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
@@ -59,19 +60,21 @@ export async function onRequestPost(context: any) {
 
         const supabaseAdmin = createClient(env.VITE_SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY);
 
-        // Check if username is taken (simple global check across metadata)
-        const checkEmail = `${trimmedUser.toLowerCase()}@chessparfait.com`;
-        const { data: existingUsers } = await supabaseAdmin.auth.admin.listUsers();
-        const isTaken = existingUsers?.users.some(u => 
-            u.email?.toLowerCase() === checkEmail || 
-            u.user_metadata?.username?.toLowerCase() === trimmedUser.toLowerCase()
-        );
+        // Usernames are unique regardless of case, across every account (profiles has them all).
+        const owner = await findProfileByUsername(supabaseAdmin, trimmedUser);
+        const taken = () => new Response(JSON.stringify({ message: 'Username is already taken.' }), {
+            status: 409,
+            headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' }
+        });
+        if (owner && owner.id !== user.id) return taken();
 
-        if (isTaken) {
-            return new Response(JSON.stringify({ message: 'Username is already taken.' }), {
-                status: 409,
-                headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' }
-            });
+        await getProfile(supabaseAdmin, user);
+        try {
+            await updateProfile(supabaseAdmin, user.id, { username: trimmedUser });
+        } catch (err) {
+            // Someone claimed it between the check and the update; the unique index catches that.
+            if ((err as { code?: string }).code === UNIQUE_VIOLATION) return taken();
+            throw err;
         }
 
         const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(user.id, {
@@ -90,23 +93,11 @@ export async function onRequestPost(context: any) {
             });
         }
 
-        const points = typeof user.user_metadata?.points === 'number' ? user.user_metadata.points : 0;
-        const solvedPuzzles = Array.isArray(user.user_metadata?.solved_puzzles) ? user.user_metadata.solved_puzzles : [];
-        const avatarUrl = user.user_metadata?.avatar_url || user.user_metadata?.picture || undefined;
-        const pawnStats = user.user_metadata?.pawn_stats || { whiteWins: 0, whiteLosses: 0, blackWins: 0, blackLosses: 0 };
+        const { user: payload } = await loadClientUser(supabaseAdmin, user, user.email);
 
-        return new Response(JSON.stringify({ 
+        return new Response(JSON.stringify({
             message: 'Profile updated successfully!',
-            user: {
-                id: user.id,
-                username: trimmedUser,
-                email: user.email,
-                avatarUrl,
-                pawnStats,
-                createdAt: user.created_at,
-                points,
-                solvedPuzzles
-            }
+            user: { ...payload, username: trimmedUser }
         }), {
             status: 200,
             headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' }

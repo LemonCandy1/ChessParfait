@@ -10,6 +10,13 @@ export function json(body: unknown, status = 200, extraHeaders: Record<string, s
     });
 }
 
+/** The Supabase settings the Pages Functions read from their environment. */
+export interface SupabaseEnv {
+    VITE_SUPABASE_URL?: string;
+    VITE_SUPABASE_ANON_KEY?: string;
+    SUPABASE_SERVICE_ROLE_KEY?: string;
+}
+
 export function getAdminClient(env: any): SupabaseClient {
     if (!env.VITE_SUPABASE_URL || !env.SUPABASE_SERVICE_ROLE_KEY) {
         throw new Error('Missing Supabase configurations in env.');
@@ -34,28 +41,17 @@ export interface ForumUser {
     avatarUrl: string | null;
 }
 
-export function toForumUser(user: User): ForumUser {
-    const meta = user.user_metadata || {};
-    return {
-        id: user.id,
-        username: meta.username || user.email?.split('@')[0] || 'User',
-        avatarUrl: avatarPath(user),
-    };
-}
-
 /**
- * Small, cacheable avatar URL for a user, or null if they have no avatar.
+ * Small, cacheable avatar URL for a user with a picture.
  * Avatars may be large base64 data URLs, so lists never embed them directly.
  */
-export function avatarPath(user: User): string | null {
-    const meta = user.user_metadata || {};
-    return meta.avatar_url || meta.picture ? `/api/community/avatar/${user.id}` : null;
-}
+export const avatarPath = (userId: string) => `/api/community/avatar/${userId}`;
 
 /**
- * Resolves the signed-in user from the auth cookies, or null for guests.
+ * Resolves the full signed-in Supabase user (including user_metadata) from the auth cookies,
+ * or null for guests.
  */
-export async function getSessionUser(request: Request, env: any): Promise<ForumUser | null> {
+export async function getSessionAuthUser(request: Request, env: SupabaseEnv): Promise<User | null> {
     const { auth_token: token, refresh_token: refreshToken } = readCookies(request);
     if (!token) return null;
 
@@ -71,7 +67,29 @@ export async function getSessionUser(request: Request, env: any): Promise<ForumU
         refresh_token: refreshToken || token,
     });
     if (error || !data?.user) return null;
-    return toForumUser(data.user);
+    return data.user;
+}
+
+/**
+ * Resolves the signed-in user from the auth cookies, or null for guests.
+ * Username and picture come from the user's profile (see functions/_lib/profiles.ts).
+ */
+export async function getSessionUser(request: Request, env: any): Promise<ForumUser | null> {
+    const user = await getSessionAuthUser(request, env);
+    if (!user) return null;
+
+    const { data: profile, error } = await getAdminClient(env)
+        .from('profiles')
+        .select('username, avatar_url')
+        .eq('id', user.id)
+        .maybeSingle();
+    if (error) throw error;
+
+    return {
+        id: user.id,
+        username: profile?.username || user.user_metadata?.username || user.email?.split('@')[0] || 'User',
+        avatarUrl: profile?.avatar_url ? avatarPath(user.id) : null,
+    };
 }
 
 export const UNAUTHORIZED = () =>

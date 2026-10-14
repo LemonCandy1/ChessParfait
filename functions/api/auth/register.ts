@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import { findProfileByUsername } from '../../_lib/profiles';
 
 const CORS_HEADERS = {
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
@@ -43,6 +44,13 @@ export async function onRequestPost(context: any) {
 
         // Use Admin API with service role key to bypass email confirmation rate limit
         const supabaseAdmin = createClient(env.VITE_SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY);
+
+        if (await findProfileByUsername(supabaseAdmin, trimmedUser)) {
+            return new Response(JSON.stringify({ message: 'Username is already taken.' }), {
+                status: 409,
+                headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' }
+            });
+        }
 
         const email = `${trimmedUser.toLowerCase()}@chessparfait.com`;
 

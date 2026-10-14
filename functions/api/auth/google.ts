@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import { findProfileByEmail, loadClientUser } from '../../_lib/profiles';
 
 const CORS_HEADERS = {
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
@@ -23,7 +24,7 @@ export async function onRequestPost(context: any) {
             });
         }
 
-        if (!env.VITE_SUPABASE_URL || !env.VITE_SUPABASE_ANON_KEY) {
+        if (!env.VITE_SUPABASE_URL || !env.VITE_SUPABASE_ANON_KEY || !env.SUPABASE_SERVICE_ROLE_KEY) {
             throw new Error('Missing Supabase configurations in env.');
         }
         
@@ -79,9 +80,9 @@ export async function onRequestPost(context: any) {
 
             const supabaseAdmin = createClient(env.VITE_SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY);
 
-            // Find or create user in Supabase
-            const { data: usersList } = await supabaseAdmin.auth.admin.listUsers();
-            let targetUser = usersList?.users.find((u) => u.email?.toLowerCase() === googleUser.email!.toLowerCase());
+            // Find or create user in Supabase (profiles mirror every account's email, see the 20261010 migration)
+            const existing = await findProfileByEmail(supabaseAdmin, googleUser.email);
+            let targetUser = existing ? (await supabaseAdmin.auth.admin.getUserById(existing.id)).data.user ?? undefined : undefined;
 
             if (!targetUser) {
                 const { data: createdUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
@@ -166,26 +167,13 @@ export async function onRequestPost(context: any) {
             headers.append('Set-Cookie', `refresh_token=${session.refresh_token}; Path=/; HttpOnly; SameSite=Strict; Secure; Max-Age=86400`);
         }
 
-        const username = authUser.user_metadata?.username;
-        const needsProfileSetup = !username;
-        const points = typeof authUser.user_metadata?.points === 'number' ? authUser.user_metadata.points : 0;
-        const solvedPuzzles = Array.isArray(authUser.user_metadata?.solved_puzzles) ? authUser.user_metadata.solved_puzzles : [];
-        const avatarUrl = authUser.user_metadata?.avatar_url || authUser.user_metadata?.picture || undefined;
-        const pawnStats = authUser.user_metadata?.pawn_stats || { whiteWins: 0, whiteLosses: 0, blackWins: 0, blackLosses: 0 };
+        const admin = createClient(env.VITE_SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY);
+        const { profile, user: payload } = await loadClientUser(admin, authUser, authUser.email);
 
         return new Response(JSON.stringify({
             message: 'Logged in successfully.',
-            needsProfileSetup,
-            user: {
-                id: authUser.id,
-                username: username || '',
-                email: authUser.email,
-                avatarUrl,
-                pawnStats,
-                createdAt: authUser.created_at,
-                points,
-                solvedPuzzles
-            }
+            needsProfileSetup: !profile.username,
+            user: { ...payload, username: profile.username || '' }
         }), {
             status: 200,
             headers

@@ -35,6 +35,18 @@ function queenIsSafe(game: Chess, square: string): boolean {
 }
 
 /**
+ * Why a drawn game is drawn, for messages. `game` must keep its move history
+ * (not be rebuilt from a FEN) for threefold repetition to be detected.
+ */
+export function drawReason(game: Chess): string | null {
+    if (game.isStalemate()) return 'stalemate';
+    if (game.isThreefoldRepetition()) return 'threefold repetition';
+    if (game.isInsufficientMaterial()) return 'insufficient material';
+    if (game.isDrawByFiftyMoves()) return 'the 50-move rule';
+    return null;
+}
+
+/**
  * Returns the colour that achieved the drill's goal with `lastMove`, or null.
  * `game` is the position after `lastMove` was played.
  */

@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import { loadClientUser } from '../../_lib/profiles';
 
 const CORS_HEADERS = {
     'Access-Control-Allow-Methods': 'GET, OPTIONS',
@@ -34,7 +35,7 @@ export async function onRequestGet(context: any) {
         }
 
         // Initialize Supabase Client
-        if (!env.VITE_SUPABASE_URL || !env.VITE_SUPABASE_ANON_KEY) {
+        if (!env.VITE_SUPABASE_URL || !env.VITE_SUPABASE_ANON_KEY || !env.SUPABASE_SERVICE_ROLE_KEY) {
             throw new Error('Missing Supabase configurations in env.');
         }
         const supabase = createClient(env.VITE_SUPABASE_URL, env.VITE_SUPABASE_ANON_KEY, {
@@ -78,22 +79,11 @@ export async function onRequestGet(context: any) {
             }
         }
 
-        const points = typeof user.user_metadata?.points === 'number' ? user.user_metadata.points : 0;
-        const solvedPuzzles = Array.isArray(user.user_metadata?.solved_puzzles) ? user.user_metadata.solved_puzzles : [];
-        const avatarUrl = user.user_metadata?.avatar_url || user.user_metadata?.picture || undefined;
-        const pawnStats = user.user_metadata?.pawn_stats || { whiteWins: 0, whiteLosses: 0, blackWins: 0, blackLosses: 0 };
+        const admin = createClient(env.VITE_SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY);
+        const { user: payload } = await loadClientUser(admin, user, userEmail);
 
         return new Response(JSON.stringify({
-            user: {
-                id: user.id,
-                username,
-                email: userEmail,
-                avatarUrl,
-                pawnStats,
-                createdAt: user.created_at,
-                points,
-                solvedPuzzles
-            }
+            user: { ...payload, username: payload.username || username }
         }), {
             status: 200,
             headers

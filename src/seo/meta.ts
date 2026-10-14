@@ -70,6 +70,11 @@ export const PAGE_META: Record<string, PageMeta> = {
         description: 'Interactive chess endgame lessons with diagrams and master lines, from rook endgames to queen vs rook.',
         sitemap: true,
     },
+    '/training': {
+        title: 'Daily Chess Training Plans | Chess Parfait',
+        description: 'Structured daily chess training plans for every level: tactics, calculation, positional study and games, with a calendar to track your progress.',
+        sitemap: true,
+    },
     '/PawnGame': {
         title: 'Play the Pawn Game | Chess Parfait',
         description: 'Race your pawns to the back rank against the computer in this classic chess training game.',

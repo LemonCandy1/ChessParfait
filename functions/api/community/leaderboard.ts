@@ -1,41 +1,25 @@
-import { avatarPath, getAdminClient, json } from '../../_lib/community';
+import { getAdminClient, json, type SupabaseEnv } from '../../_lib/community';
 
-const LEADERBOARD_SIZE = 50;
-
-// Public leaderboard of users ranked by points. Points live in auth user_metadata,
-// so this reads users with the service-role key and returns only public fields.
-export async function onRequestGet(context: any) {
+// Public leaderboard: the top 50 players by points, read from the indexed public.leaderboard view
+// (see the 20261010 migration), so it costs the same with 50 players or 500,000.
+export async function onRequestGet(context: { env: SupabaseEnv }) {
     const { env } = context;
 
     try {
         const admin = getAdminClient(env);
-        const entries: { id: string; username: string; avatarUrl: string | null; points: number; puzzlesSolved: number }[] = [];
+        const { data, error } = await admin.from('leaderboard').select('id, username, has_avatar, points, puzzles_solved');
+        if (error) throw error;
 
-        const perPage = 1000;
-        for (let page = 1; ; page++) {
-            const { data, error } = await admin.auth.admin.listUsers({ page, perPage });
-            if (error) throw error;
-
-            for (const user of data.users) {
-                const meta = user.user_metadata || {};
-                const points = typeof meta.points === 'number' ? meta.points : 0;
-                if (points <= 0 || !meta.username) continue;
-                entries.push({
-                    id: user.id,
-                    username: meta.username,
-                    avatarUrl: avatarPath(user),
-                    points,
-                    puzzlesSolved: Array.isArray(meta.solved_puzzles) ? meta.solved_puzzles.length : 0,
-                });
-            }
-
-            if (data.users.length < perPage) break;
-        }
-
-        entries.sort((a, b) => b.points - a.points || a.username.localeCompare(b.username));
+        const entries = (data ?? []).map((row: { id: string; username: string; has_avatar: boolean; points: number; puzzles_solved: number }) => ({
+            id: row.id,
+            username: row.username,
+            avatarUrl: row.has_avatar ? `/api/community/avatar/${row.id}` : null,
+            points: row.points,
+            puzzlesSolved: row.puzzles_solved,
+        }));
 
         return json(
-            { leaderboard: entries.slice(0, LEADERBOARD_SIZE) },
+            { leaderboard: entries },
             200,
             { 'Cache-Control': 'public, max-age=60' }
         );

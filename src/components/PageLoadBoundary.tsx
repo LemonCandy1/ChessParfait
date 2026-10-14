@@ -15,6 +15,17 @@ export default class PageLoadBoundary extends Component<{ children: ReactNode },
 
     componentDidCatch(error: unknown) {
         console.error('Page failed to load:', error);
+
+        // After a deploy, open tabs ask for page code that no longer exists. Reload once to get the
+        // new build; the timestamp stops a reload loop when the visitor is really offline.
+        if (!/dynamically imported module|Importing a module script failed|module script/i.test(String(error))) return;
+        try {
+            if (Date.now() - Number(sessionStorage.getItem('chunkReloadAt')) < 10_000) return;
+            sessionStorage.setItem('chunkReloadAt', String(Date.now()));
+        } catch {
+            return;
+        }
+        window.location.reload();
     }
 
     render() {

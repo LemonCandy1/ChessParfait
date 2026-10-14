@@ -212,11 +212,12 @@ export default function TrainingPuzzles() {
 
         const select = (diff: Difficulty) => {
             const rawPool = puzzlesData[diff] || (diff === 'Cherry Bomb' ? puzzlesData['Challenge'] : undefined) || [];
-            const pool = rawPool
-                .map((puzzle) => ({ ...puzzle, fen: normalizeFen(puzzle.fen) }))
-                .filter((puzzle) => isLoadableFen(puzzle.fen));
+            const rows = rawPool.map((puzzle) => ({ ...puzzle, fen: normalizeFen(puzzle.fen) }));
+            const pool = rows.filter((puzzle) => isLoadableFen(puzzle.fen));
             if (!pool || pool.length === 0) return { title: `${diff} Puzzle`, fen: 'k7/8/8/8/8/8/8/K7 w - - 0 1', question: 'Find the best move.' };
-            return pool[weekIndex % pool.length];
+            // Week 33 (from 12 October 2026) is sheet row 15 (index 13); each later week moves down one row, wrapping at the end.
+            const row = rows[(((weekIndex - 19) % rows.length) + rows.length) % rows.length];
+            return isLoadableFen(row.fen) ? row : pool[weekIndex % pool.length];
         };
 
         return {

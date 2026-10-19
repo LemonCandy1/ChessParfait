@@ -216,7 +216,14 @@ export const TRAINING_PLANS: TrainingPlan[] = [
                 focus: 'Long, branching lines and candidate moves.',
                 notes: 'Work through the hardest exercises from grandmaster preparation books or ChessBase files from Drive. Write your lines down before checking.',
                 required: true,
-                resources: [{ label: 'Jacob Aagaard: Grandmaster Preparation, Calculation', kind: 'book' }]
+                resources: [
+                    { label: 'Jacob Aagaard: Grandmaster Preparation, Calculation', kind: 'book' },
+                    { label: 'Alexander Kotov: Think Like a Grandmaster', kind: 'book' },
+                    { label: 'Universal Chess Training', kind: 'book' },
+                    { label: 'Mastering Chess Defense', kind: 'book' },
+                    { label: 'Sam Shankland: Calculation', kind: 'book' },
+                    { label: 'John Watson: Mastering the Chess Openings', kind: 'book' }
+                ]
             },
             {
                 id: 'technique',

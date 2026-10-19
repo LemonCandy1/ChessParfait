@@ -4,10 +4,14 @@ import {
     countPieces,
     endgameRatingChange,
     kFactor,
+    moveLabel,
+    movesToMate,
+    nextReviewGap,
     newMilestones,
     pickEndgame,
     randomTransform,
     ratingChange,
+    solveScore,
     solveState,
     transformPosition
 } from './endgameTrainer';
@@ -22,17 +26,17 @@ describe('ratings', () => {
     });
 
     it('gains more for beating a harder endgame and loses more to an easier one', () => {
-        expect(ratingChange(1000, 1000, true, 100)).toBe(8);
-        expect(ratingChange(1000, 1000, false, 100)).toBe(-8);
-        expect(ratingChange(1000, 1400, true, 100)).toBeGreaterThan(ratingChange(1000, 600, true, 100));
-        expect(ratingChange(1000, 600, false, 100)).toBeLessThan(ratingChange(1000, 1400, false, 100));
+        expect(ratingChange(1000, 1000, 1, 100)).toBe(8);
+        expect(ratingChange(1000, 1000, 0, 100)).toBe(-8);
+        expect(ratingChange(1000, 1400, 1, 100)).toBeGreaterThan(ratingChange(1000, 600, 1, 100));
+        expect(ratingChange(1000, 600, 0, 100)).toBeLessThan(ratingChange(1000, 1400, 0, 100));
     });
 
     it('moves the endgame itself the opposite way, slowly', () => {
-        expect(endgameRatingChange(1300, 1300, true)).toBe(-4);
-        expect(endgameRatingChange(1300, 1300, false)).toBe(4);
-        expect(endgameRatingChange(1300, 900, false)).toBeLessThan(endgameRatingChange(1300, 1700, false));
-        expect(Math.abs(endgameRatingChange(800, 2000, false))).toBeLessThanOrEqual(8);
+        expect(endgameRatingChange(1300, 1300, 1)).toBe(-4);
+        expect(endgameRatingChange(1300, 1300, 0)).toBe(4);
+        expect(endgameRatingChange(1300, 900, 0)).toBeLessThan(endgameRatingChange(1300, 1700, 0));
+        expect(Math.abs(endgameRatingChange(800, 2000, 0))).toBeLessThanOrEqual(8);
     });
 
     it('pays each 100-point milestone above 1000 once', () => {
@@ -46,22 +50,59 @@ describe('ratings', () => {
 
 describe('picking the next endgame', () => {
     const endgames = [
-        { id: 'a', rating: 800 }, { id: 'b', rating: 800 }, { id: 'c', rating: 1300 },
+        { id: 'a', rating: 800 }, { id: 'b', rating: 900 }, { id: 'c', rating: 1300 },
         { id: 'd', rating: 1300 }, { id: 'e', rating: 1800 }
     ];
 
-    it('widens the range until 3 endgames qualify and never repeats the last one', () => {
-        for (let i = 0; i < 50; i++) {
-            const picked = pickEndgame(endgames, 1050, 'a');
-            expect(picked.id).not.toBe('a');
-            expect(['b', 'c', 'd']).toContain(picked.id);
+    it('favours endgames about 100 below the player and never repeats the last one', () => {
+        const counts: Record<string, number> = {};
+        let seed = 1;
+        const random = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+        for (let i = 0; i < 4000; i++) {
+            const picked = pickEndgame(endgames, 1000, 'a', random);
+            counts[picked.id] = (counts[picked.id] ?? 0) + 1;
         }
+        expect(counts.a).toBeUndefined();
+        expect(counts.b).toBeGreaterThan(counts.c / 2);  // 900 sits on the target (1000 - 100)
+        expect(counts.b).toBeGreaterThan(1000);
+        expect(counts.e ?? 0).toBeLessThan(5);           // 1800 is far away
     });
 
-    it('stays near the player once enough endgames are close', () => {
-        const withNeighbour = [...endgames, { id: 'f', rating: 1400 }];
-        for (const r of [0, 0.5, 0.99]) expect(['c', 'd', 'f']).toContain(pickEndgame(withNeighbour, 1300, null, () => r).id);
+    it('still returns the only endgame there is', () => {
         expect(pickEndgame([{ id: 'only', rating: 2000 }], 1000, 'only').id).toBe('only');
+    });
+});
+
+describe('credit, reviews and move labels', () => {
+    it('gives full credit up to the fastest mate, a draw at twice as long and nothing at three times', () => {
+        expect(solveScore(8, 8)).toBe(1);
+        expect(solveScore(6, 8)).toBe(1);
+        expect(solveScore(16, 8)).toBe(0.5);
+        expect(solveScore(24, 8)).toBe(0);
+        expect(solveScore(40, 8)).toBe(0);
+        expect(solveScore(40, null)).toBe(1);
+    });
+
+    it('converts half-moves to moves to mate', () => {
+        expect(movesToMate(3)).toBe(2);
+        expect(movesToMate(-2)).toBe(1);
+    });
+
+    it('brings failed endgames back in 5 minutes, then a day, then doubles the gap', () => {
+        expect(nextReviewGap(null, true)).toBeNull();
+        expect(nextReviewGap(null, false)).toBe(5);
+        expect(nextReviewGap(5, true)).toBe(1440);
+        expect(nextReviewGap(1440, true)).toBe(2880);
+        expect(nextReviewGap(2880, false)).toBe(5);
+    });
+
+    it('labels only moves worse than the best, ChessTempo style', () => {
+        expect(moveLabel({ result: 'win', mateIn: 10 }, { result: 'win', mateIn: 8 })).toBe('M10 (M8)');
+        expect(moveLabel({ result: 'draw', mateIn: null }, { result: 'win', mateIn: 3 })).toBe('D (M3)');
+        expect(moveLabel({ result: 'loss', mateIn: 10 }, { result: 'win', mateIn: 2 })).toBe('L10 (M2)');
+        expect(moveLabel({ result: 'loss', mateIn: 12 }, { result: 'draw', mateIn: null })).toBe('L12 (D)');
+        expect(moveLabel({ result: 'win', mateIn: 8 }, { result: 'win', mateIn: 8 })).toBeNull();
+        expect(moveLabel({ result: 'draw', mateIn: null }, { result: 'draw', mateIn: null })).toBeNull();
     });
 });
 

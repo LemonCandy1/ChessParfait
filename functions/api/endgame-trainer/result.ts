@@ -1,33 +1,33 @@
 import { Chess } from 'chess.js';
 import { getAdminClient, getSessionAuthUser, isUuid, json, type SupabaseEnv } from '../../_lib/community';
-import { TRAINER_ENDGAMES, closeAttempt, matchesTarget, playerOutcome, type AttemptRow } from '../../_lib/endgameTrainer';
-import { TABLEBASE_MAX_PIECES, countPieces, solveState } from '../../../src/lib/endgameTrainer';
+import { ATTEMPT_COLUMNS, TRAINER_ENDGAMES, closeAttempt, matchesTarget, playerOutcome, type AttemptRow } from '../../_lib/endgameTrainer';
+import { TABLEBASE_MAX_PIECES, countPieces, solveScore, solveState } from '../../../src/lib/endgameTrainer';
 
-/** Replays `moves` (UCI, both sides) from the served position and checks the player really solved it. */
-async function verifySolve(attempt: AttemptRow, moves: unknown): Promise<boolean> {
+/** Replays `moves` (UCI, both sides) from the served position; returns the player's move count if it is really solved, else null. */
+async function verifySolve(attempt: AttemptRow, moves: unknown): Promise<number | null> {
     const endgame = TRAINER_ENDGAMES.find(e => e.id === attempt.endgame_id);
-    if (!endgame || !Array.isArray(moves) || moves.length > 400) return false;
+    if (!endgame || !Array.isArray(moves) || moves.length > 400) return null;
 
     const game = new Chess(attempt.fen);
     let playerMoves = 0;
     for (const uci of moves) {
-        if (typeof uci !== 'string' || !/^[a-h][1-8][a-h][1-8][qrbn]?$/.test(uci)) return false;
+        if (typeof uci !== 'string' || !/^[a-h][1-8][a-h][1-8][qrbn]?$/.test(uci)) return null;
         if (game.turn() === attempt.player_color) playerMoves++;
         try {
             game.move({ from: uci.slice(0, 2), to: uci.slice(2, 4), promotion: uci[4] });
         } catch {
-            return false;
+            return null;
         }
     }
 
     const state = solveState(game, endgame, attempt.player_color, playerMoves);
-    if (state === 'solved') return true;
-    if (state !== 'confirm') return false;
+    if (state === 'solved') return playerMoves;
+    if (state !== 'confirm') return null;
     // Too many pieces for the database (only possible for a held draw): holding the moves is enough.
-    if (countPieces(game.fen()) > TABLEBASE_MAX_PIECES) return true;
+    if (countPieces(game.fen()) > TABLEBASE_MAX_PIECES) return playerMoves;
     // If the database can't be reached, give the player the benefit of the doubt rather than a miss.
     const outcome = await playerOutcome(game.fen(), attempt.player_color);
-    return outcome === null || matchesTarget(outcome, endgame.target);
+    return outcome === null || matchesTarget(outcome, endgame.target) ? playerMoves : null;
 }
 
 /**
@@ -47,7 +47,7 @@ export async function onRequestPost(context: { request: Request; env: SupabaseEn
         const admin = getAdminClient(env);
         const { data, error } = await admin
             .from('endgame_attempts')
-            .select('id, user_id, endgame_id, fen, player_color, status')
+            .select(ATTEMPT_COLUMNS)
             .eq('id', attemptId)
             .eq('user_id', user.id)
             .maybeSingle();
@@ -55,11 +55,12 @@ export async function onRequestPost(context: { request: Request; env: SupabaseEn
         const attempt = data as AttemptRow | null;
         if (!attempt || attempt.status !== 'open') return json({ message: 'This position has already been scored.' }, 409);
 
-        const solved = outcome === 'solved' && await verifySolve(attempt, moves);
-        const result = await closeAttempt(admin, attempt, solved);
+        const movesTaken = outcome === 'solved' ? await verifySolve(attempt, moves) : null;
+        const solved = movesTaken !== null;
+        const result = await closeAttempt(admin, attempt, solved, solved ? solveScore(movesTaken, attempt.optimal_moves) : 0);
         if (!result) return json({ message: 'This position has already been scored.' }, 409);
 
-        return json({ ...result, solved, rejected: outcome === 'solved' && !solved });
+        return json({ ...result, solved, rejected: outcome === 'solved' && !solved, movesTaken, fastestMate: attempt.optimal_moves });
     } catch (err) {
         console.error('Endgame trainer result error:', err);
         return json({ message: 'Could not save your result.' }, 500);

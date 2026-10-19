@@ -6,7 +6,9 @@ import {
     TABLEBASE_MAX_PIECES,
     countPieces,
     endgameRatingChange,
+    movesToMate,
     newMilestones,
+    nextReviewGap,
     randomTransform,
     ratingChange,
     transformPosition,
@@ -35,6 +37,44 @@ export interface AttemptRow {
     fen: string;
     player_color: Colour;
     status: 'open' | 'solved' | 'failed';
+    optimal_moves: number | null;
+}
+
+export const ATTEMPT_COLUMNS = 'id, user_id, endgame_id, fen, player_color, status, optimal_moves';
+
+/** The fastest mate in moves for the player to move in `fen`, if the endgame database knows it (not for 7 pieces or draws). */
+export async function fastestMate(fen: string, playerColor: Colour): Promise<number | null> {
+    if (countPieces(fen) > TABLEBASE_MAX_PIECES || fen.split(' ')[1] !== playerColor) return null;
+    const result = await queryTablebase(fen);
+    return result?.dtm && result.dtm > 0 ? movesToMate(result.dtm) : null;
+}
+
+/** A failed endgame now due for review (oldest first), skipping the one just played. */
+export async function dueReview(admin: SupabaseClient, userId: string, lastId: string | null): Promise<string | null> {
+    const { data, error } = await admin
+        .from('endgame_reviews')
+        .select('endgame_id')
+        .eq('user_id', userId)
+        .lte('due_at', new Date().toISOString())
+        .order('due_at')
+        .limit(3);
+    if (error) throw error;
+    return ((data ?? []) as { endgame_id: string }[]).map(r => r.endgame_id).find(id => id !== lastId) ?? null;
+}
+
+/** Moves the endgame's review date: back in 5 minutes after a fail, further away after each solve. */
+async function scheduleReview(admin: SupabaseClient, userId: string, endgameId: string, solved: boolean) {
+    const { data, error } = await admin.from('endgame_reviews').select('gap_minutes').eq('user_id', userId).eq('endgame_id', endgameId).maybeSingle();
+    if (error) throw error;
+    const gap = nextReviewGap((data as { gap_minutes: number } | null)?.gap_minutes ?? null, solved);
+    if (gap === null) return;
+    const { error: writeError } = await admin.from('endgame_reviews').upsert({
+        user_id: userId,
+        endgame_id: endgameId,
+        gap_minutes: gap,
+        due_at: new Date(Date.now() + gap * 60000).toISOString()
+    });
+    if (writeError) throw writeError;
 }
 
 export interface TrainerStats {
@@ -88,16 +128,19 @@ export async function makeVariation(endgame: TrainerEndgame): Promise<{ fen: str
 export interface AttemptResult extends TrainerStats {
     change: number;
     pointsAwarded: number;
+    /** Credit for the attempt: 1 for a clean solve, less for a slow one, 0 for a fail. */
+    score: number;
 }
 
 /**
- * Closes an open attempt as solved or failed, moves the rating and pays +5 points for each new 100 the best
- * rating passes. Returns null if the attempt was already closed (a double submit), so it is never counted twice.
+ * Closes an open attempt, moves the player's and the endgame's ratings by `score` (see solveScore), updates the
+ * review schedule and pays +5 points for each new 100 the best rating passes. Returns null if the attempt was
+ * already closed (a double submit), so it is never counted twice.
  */
-export async function closeAttempt(admin: SupabaseClient, attempt: AttemptRow, solved: boolean): Promise<AttemptResult | null> {
+export async function closeAttempt(admin: SupabaseClient, attempt: AttemptRow, solved: boolean, score = solved ? 1 : 0): Promise<AttemptResult | null> {
     const endgame = (await currentEndgames(admin)).find(e => e.id === attempt.endgame_id);
     const stats = await trainerStats(admin, attempt.user_id);
-    const change = endgame ? ratingChange(stats.rating, endgame.rating, solved, stats.played) : 0;
+    const change = endgame ? ratingChange(stats.rating, endgame.rating, score, stats.played) : 0;
     const rating = Math.max(100, stats.rating + change);
 
     const { data: claimed, error: claimError } = await admin
@@ -123,10 +166,12 @@ export async function closeAttempt(admin: SupabaseClient, attempt: AttemptRow, s
         const { error: adjustError } = await admin.rpc('adjust_endgame_rating', {
             p_endgame: endgame.id,
             p_start: start,
-            p_change: endgameRatingChange(endgame.rating, stats.rating, solved)
+            p_change: endgameRatingChange(endgame.rating, stats.rating, score)
         });
         if (adjustError) throw adjustError;
     }
+
+    await scheduleReview(admin, attempt.user_id, attempt.endgame_id, solved);
 
     let pointsAwarded = 0;
     for (const milestone of newMilestones(stats.best, best)) {
@@ -134,5 +179,5 @@ export async function closeAttempt(admin: SupabaseClient, attempt: AttemptRow, s
         if (awarded) pointsAwarded += BEST_RATING_POINTS;
     }
 
-    return { rating, best, played, provisional: played < LEADERBOARD_MIN_PLAYED, change: rating - stats.rating, pointsAwarded };
+    return { rating, best, played, provisional: played < LEADERBOARD_MIN_PLAYED, change: rating - stats.rating, pointsAwarded, score };
 }

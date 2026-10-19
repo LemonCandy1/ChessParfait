@@ -21,6 +21,10 @@ export interface TrainerPosition {
         keyTip: string;
     };
     stats: TrainerStats;
+    /** True when this endgame is back because the player failed it before. */
+    review: boolean;
+    /** Fastest mate in moves from this position, when known. */
+    fastestMate: number | null;
     /** Set when the previous position was left open and counted as a miss. */
     missed: { change: number } | null;
 }
@@ -31,6 +35,10 @@ export interface TrainerResult extends TrainerStats {
     solved: boolean;
     /** The browser said solved but the moves didn't check out. */
     rejected: boolean;
+    /** Credit for the attempt: 1 for a clean solve, less for a slow one, 0 for a fail. */
+    score: number;
+    movesTaken: number | null;
+    fastestMate: number | null;
 }
 
 async function request<T>(url: string, init?: RequestInit): Promise<T> {

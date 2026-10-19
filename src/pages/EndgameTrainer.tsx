@@ -7,8 +7,8 @@ import { SkipForward } from '@/lib/lucideOriginal';
 import Navbar from '../components/Navbar/Navbar';
 import { useAuth } from '../context/AuthContext';
 import { EndgameEngine } from '../lib/stockfishEngine';
-import { flipOutcome, moveKeepsResult, outcomeOf, queryTablebase } from '../lib/tablebaseService';
-import { TABLEBASE_MAX_PIECES, countPieces, solveState, type Colour } from '../lib/endgameTrainer';
+import { flipOutcome, moveKeepsResult, outcomeForMover, outcomeOf, queryTablebase, type TablebaseMove } from '../lib/tablebaseService';
+import { TABLEBASE_MAX_PIECES, countPieces, moveLabel, movesToMate, solveState, type Colour, type MoveResult } from '../lib/endgameTrainer';
 import { getTrainerStats, nextPosition, sendResult, type TrainerPosition, type TrainerResult, type TrainerStats } from '../lib/endgameTrainerApi';
 import { focusRing } from '../lib/calendarFormat';
 
@@ -21,6 +21,21 @@ interface Feedback {
     reason: string;
     played?: string; // UCI
     best?: string;   // UCI
+}
+
+/** One move of the attempt, with a ChessTempo-style label (shown once the position is over) if it wasn't the best. */
+interface LoggedMove {
+    san: string;
+    byPlayer: boolean;
+    label: string | null;
+}
+
+/** A database move as seen by the side playing it: the result, and mate distance counted from before the move. */
+function describeMove(m: TablebaseMove): { result: MoveResult; mateIn: number | null } {
+    const outcome = outcomeForMover(m);
+    const result: MoveResult = outcome === 'win' ? 'win' : outcome === 'loss' ? 'loss' : 'draw';
+    if (result === 'draw' || m.dtm === null) return { result, mateIn: null };
+    return { result, mateIn: result === 'win' ? movesToMate(Math.abs(m.dtm) + 1) : movesToMate(m.dtm) };
 }
 
 const colourName = (c: Colour) => (c === 'w' ? 'White' : 'Black');
@@ -52,6 +67,7 @@ export default function EndgameTrainer() {
     const [promotion, setPromotion] = useState<{ from: Square; to: Square } | null>(null);
     // Moves of this attempt (both sides, UCI), sent with a "solved" so the server can replay them.
     const moves = useRef<string[]>([]);
+    const [moveLog, setMoveLog] = useState<LoggedMove[]>([]);
     const playerMoves = useRef(0);
     // Bumped on every new position or retry so a reply still being computed for an old one is dropped.
     const run = useRef(0);
@@ -90,6 +106,7 @@ export default function EndgameTrainer() {
             setRated(true);
             setNote(next.missed ? `Your last position was left unfinished and counted as a miss (${next.missed.change}).` : '');
             moves.current = [];
+            setMoveLog([]);
             playerMoves.current = 0;
             setPhase('playing');
         } catch (err) {
@@ -103,6 +120,7 @@ export default function EndgameTrainer() {
         run.current++;
         setGame(new Chess(position.fen));
         moves.current = [];
+        setMoveLog([]);
         playerMoves.current = 0;
         setRated(false);
         setFeedback(null);
@@ -133,10 +151,13 @@ export default function EndgameTrainer() {
         setPhase('thinking');
 
         // Did that move throw the result away?
-        if (countPieces(before) <= TABLEBASE_MAX_PIECES) {
+        if (countPieces(before) > TABLEBASE_MAX_PIECES) setMoveLog(log => [...log, { san: move.san, byPlayer: true, label: null }]);
+        else {
             const tb = await queryTablebase(before);
             if (thisRun !== run.current) return;
             const played = tb?.moves.find(m => m.uci === uci);
+            const label = played && tb?.bestMove ? moveLabel(describeMove(played), describeMove(tb.bestMove)) : null;
+            setMoveLog(log => [...log, { san: move.san, byPlayer: true, label }]);
             if (tb && played && !moveKeepsResult(played, tb.category)) {
                 const reason = endgame.target === 'win' ? 'That move lets the win slip away.' : 'That move loses the draw.';
                 return finish(false, { reason, played: uci, best: tb.bestMove?.uci }, wasRated, attemptId);
@@ -164,6 +185,7 @@ export default function EndgameTrainer() {
         const afterReply = new Chess(next.fen());
         afterReply.move({ from: reply.from, to: reply.to, promotion: reply.promotion });
         moves.current.push(uciOf(reply));
+        setMoveLog(log => [...log, { san: reply.san, byPlayer: false, label: null }]);
         setGame(afterReply);
 
         if (await checkSolved(afterReply)) return finish(true, null, wasRated, attemptId);
@@ -272,7 +294,10 @@ export default function EndgameTrainer() {
                                 </div>
 
                                 <section aria-live="polite">
-                                    <p className="text-sm font-bold text-berry">{position.endgame.category}{rated ? '' : ' · practice, unrated'}</p>
+                                    <p className="text-sm font-bold text-berry">
+                                        {position.endgame.category}{rated ? '' : ' · practice, unrated'}
+                                        {position.review && rated && <span className="ml-2 rounded-full bg-amber-100 text-amber-900 px-2 py-0.5 text-xs">Review: you missed this one before</span>}
+                                    </p>
                                     <h2 className="mt-1 text-3xl font-serif font-black">
                                         {colourName(position.playerColor)} to play and {target === 'win' ? 'win' : 'draw'}
                                     </h2>
@@ -283,6 +308,20 @@ export default function EndgameTrainer() {
                                     </p>
                                     {phase === 'thinking' && <p className="mt-4 text-sm text-plum/70">Opponent is thinking…</p>}
 
+                                    {moveLog.length > 0 && (
+                                        <ol className="mt-5 flex flex-wrap gap-x-3 gap-y-1 text-sm tabular-nums" aria-label="Moves played">
+                                            {moveLog.map((m, i) => (
+                                                <li key={i} className={m.byPlayer ? 'font-bold' : 'text-plum/70'}>
+                                                    {m.san}
+                                                    {done && m.label && <span className="ml-1 text-rose-700 font-semibold">{m.label}</span>}
+                                                </li>
+                                            ))}
+                                        </ol>
+                                    )}
+                                    {done && moveLog.some(m => m.label) && (
+                                        <p className="mt-1 text-xs text-plum/70">M10 (M8): mate in 10 when mate in 8 was best. D: a draw. L: being mated.</p>
+                                    )}
+
                                     {done && (
                                         <div className={`mt-6 rounded-2xl px-6 py-5 ${phase === 'solved' ? 'bg-emerald-50 border border-emerald-200' : 'bg-white border-2 border-berry/25'}`}>
                                             <h3 className="text-xl font-serif font-black">
@@ -290,6 +329,12 @@ export default function EndgameTrainer() {
                                                 {result && <span className={`ml-2 tabular-nums ${result.change >= 0 ? 'text-emerald-700' : 'text-rose-700'}`}>{changeText}</span>}
                                             </h3>
                                             <p className="mt-1 text-sm font-bold">{position.endgame.title}</p>
+                                            {phase === 'solved' && result?.movesTaken && result.fastestMate && (
+                                                <p className="mt-2 text-sm text-plum/85">
+                                                    {result.movesTaken} {result.movesTaken === 1 ? 'move' : 'moves'} (fastest mate {result.fastestMate})
+                                                    {' · '}{Math.round(result.score * 100)}% credit{result.score < 1 ? ': slower wins earn less rating' : ''}
+                                                </p>
+                                            )}
                                             {feedback?.reason && <p className="mt-2 text-plum/85">{feedback.reason}</p>}
                                             {feedback?.best && <p className="mt-1 text-sm text-plum/75">Red arrow: your move. Green arrow: the move that kept the result.</p>}
                                             {phase === 'failed' && position.endgame.keyTip && <p className="mt-3 text-plum/85"><span className="font-bold">Key idea: </span>{position.endgame.keyTip}</p>}

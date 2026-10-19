@@ -1,6 +1,6 @@
 import { getAdminClient, getSessionAuthUser, json, type SupabaseEnv } from '../../_lib/community';
 import { UNIQUE_VIOLATION } from '../../_lib/profiles';
-import { closeAttempt, currentEndgames, makeVariation, trainerStats, type AttemptRow } from '../../_lib/endgameTrainer';
+import { ATTEMPT_COLUMNS, closeAttempt, currentEndgames, dueReview, fastestMate, makeVariation, trainerStats, type AttemptRow } from '../../_lib/endgameTrainer';
 import { pickEndgame } from '../../../src/lib/endgameTrainer';
 
 /**
@@ -17,7 +17,7 @@ export async function onRequestPost(context: { request: Request; env: SupabaseEn
 
         const { data: recent, error: recentError } = await admin
             .from('endgame_attempts')
-            .select('id, user_id, endgame_id, fen, player_color, status')
+            .select(ATTEMPT_COLUMNS)
             .eq('user_id', user.id)
             .order('created_at', { ascending: false })
             .limit(1);
@@ -26,12 +26,16 @@ export async function onRequestPost(context: { request: Request; env: SupabaseEn
         const missed = last?.status === 'open' ? await closeAttempt(admin, last, false) : null;
 
         const stats = await trainerStats(admin, user.id);
-        const endgame = pickEndgame(await currentEndgames(admin), stats.rating, last?.endgame_id ?? null);
+        // A failed endgame that is due for review comes first; otherwise one near the player's rating.
+        const endgames = await currentEndgames(admin);
+        const reviewId = await dueReview(admin, user.id, last?.endgame_id ?? null);
+        const endgame = endgames.find(e => e.id === reviewId) ?? pickEndgame(endgames, stats.rating, last?.endgame_id ?? null);
         const variation = await makeVariation(endgame);
+        const optimal = endgame.target === 'win' ? await fastestMate(variation.fen, variation.playerColor) : null;
 
         const { data: attempt, error } = await admin
             .from('endgame_attempts')
-            .insert({ user_id: user.id, endgame_id: endgame.id, fen: variation.fen, player_color: variation.playerColor, rating_before: stats.rating })
+            .insert({ user_id: user.id, endgame_id: endgame.id, fen: variation.fen, player_color: variation.playerColor, rating_before: stats.rating, optimal_moves: optimal })
             .select('id')
             .single();
         if (error) {
@@ -54,6 +58,8 @@ export async function onRequestPost(context: { request: Request; env: SupabaseEn
                 keyTip: endgame.keyTip ?? ''
             },
             stats,
+            review: reviewId === endgame.id,
+            fastestMate: optimal,
             missed: missed ? { change: missed.change } : null
         });
     } catch (err) {

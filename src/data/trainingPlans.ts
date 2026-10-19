@@ -148,7 +148,7 @@ export const TRAINING_PLANS: TrainingPlan[] = [
                 focus: 'Pattern recognition (quantity).',
                 notes: 'Set puzzles to easy on Chess.com, Lichess or ChessTempo.',
                 required: true,
-                resources: [LICHESS_PUZZLES, CHESSCOM_PUZZLES, CHESSTEMPO_TACTICS, PARFAIT_PUZZLES]
+                resources: [LICHESS_PUZZLES, CHESSCOM_PUZZLES, CHESSTEMPO_TACTICS, PARFAIT_PUZZLES, { label: 'John Nunn: 1001 Deadly Checkmates', kind: 'book' }]
             },
             {
                 id: 'calculation',
@@ -166,7 +166,11 @@ export const TRAINING_PLANS: TrainingPlan[] = [
                 focus: 'Imbalances and "reassessing" concepts.',
                 notes: 'Books, puzzles and courses.',
                 required: true,
-                resources: [{ label: 'Jeremy Silman: How to Reassess Your Chess', kind: 'book' }, PARFAIT_STRATEGY]
+                resources: [
+                    { label: 'Jeremy Silman: How to Reassess Your Chess', kind: 'book' },
+                    { label: 'Jesús de la Villa: 100 Endgames You Must Know', kind: 'book' },
+                    PARFAIT_STRATEGY
+                ]
             },
             {
                 id: 'games',

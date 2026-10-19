@@ -19,6 +19,7 @@ export interface ProfileRow {
     points: number;
     pawn_stats: PawnStats;
     training_plan: string | null;
+    is_coach: boolean;
     created_at: string;
 }
 
@@ -33,7 +34,7 @@ export interface SolvedPuzzle {
 
 export type PointsSource = 'puzzle' | 'endgame' | 'training';
 
-const PROFILE_COLUMNS = 'id, username, email, real_email, avatar_url, points, pawn_stats, training_plan, created_at';
+const PROFILE_COLUMNS = 'id, username, email, real_email, avatar_url, points, pawn_stats, training_plan, is_coach, created_at';
 
 export const VIRTUAL_EMAIL_DOMAIN = '@chessparfait.com';
 
@@ -83,7 +84,7 @@ export async function findProfileByEmail(admin: SupabaseClient, email: string): 
     return (data as ProfileRow) ?? null;
 }
 
-export async function updateProfile(admin: SupabaseClient, userId: string, changes: Partial<Omit<ProfileRow, 'id' | 'created_at' | 'points'>>) {
+export async function updateProfile(admin: SupabaseClient, userId: string, changes: Partial<Omit<ProfileRow, 'id' | 'created_at' | 'points' | 'is_coach'>>) {
     const { error } = await admin
         .from('profiles')
         .update({ ...changes, updated_at: new Date().toISOString() })
@@ -148,6 +149,7 @@ export function clientUser(user: User, profile: ProfileRow, solvedPuzzles: Solve
         pawnStats: profile.pawn_stats,
         createdAt: user.created_at,
         points: profile.points,
+        isCoach: profile.is_coach,
         solvedPuzzles
     };
 }

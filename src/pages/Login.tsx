@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, useSearchParams, Link } from 'react-router-dom';
+import { safeNext } from '../lib/redirect';
 import { User, Lock, AlertCircle, ArrowLeft } from 'lucide-react';
 import Navbar from '../components/Navbar/Navbar';
 import { useAuth } from '../context/AuthContext';
@@ -8,6 +9,7 @@ import { GoogleLogin } from '@react-oauth/google';
 export default function Login() {
     const { login, loginWithGoogle } = useAuth();
     const navigate = useNavigate();
+    const next = safeNext(useSearchParams()[0].get('next'));
 
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
@@ -24,7 +26,7 @@ export default function Login() {
         setLoading(false);
 
         if (res.success) {
-            navigate('/');
+            navigate(next);
         } else {
             setErrorMsg(res.message);
         }
@@ -44,7 +46,7 @@ export default function Login() {
             if (res.needsProfileSetup) {
                 navigate('/setup-profile');
             } else {
-                navigate('/');
+                navigate(next);
             }
         } else {
             setErrorMsg(res.message);

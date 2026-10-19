@@ -271,6 +271,16 @@ const Navbar = () => {
                                             <User size={14} className="text-berry" />
                                             <span>My Profile & Stats</span>
                                         </Link>
+                                        {user?.isCoach && (
+                                            <Link
+                                                to="/coach"
+                                                onClick={() => setIsProfileOpen(false)}
+                                                className="w-full flex items-center gap-2.5 p-2 rounded-xl text-plum hover:text-berry hover:bg-berry/5 transition font-bold text-xs"
+                                            >
+                                                <Calendar size={14} className="text-berry" />
+                                                <span>Your Students</span>
+                                            </Link>
+                                        )}
                                         <Link
                                             to="/link-email"
                                             onClick={() => setIsProfileOpen(false)}
@@ -318,6 +328,9 @@ const Navbar = () => {
                     <NavLink to="/forum" label="Forum" onClick={closeMenu} />
                     {user && (
                         <NavLink to="/profile" label={`Profile (Lvl ${levelInfo.level})`} onClick={closeMenu} />
+                    )}
+                    {user?.isCoach && (
+                        <NavLink to="/coach" label="Your Students" onClick={closeMenu} />
                     )}
                     <NavLink to="/contact" label="Contact" onClick={closeMenu} />
                     <NavLink to="/about" label="About" onClick={closeMenu} />

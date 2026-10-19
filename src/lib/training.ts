@@ -6,9 +6,9 @@ import type { TrainingPlan } from '../data/trainingPlans';
  */
 
 /** Points for finishing every required item of the day's plan (paid at most once per day). */
-export const DAILY_TRAINING_POINTS = 30;
+export const DAILY_TRAINING_POINTS = 10;
 /** Extra points each time the streak of finished days reaches a multiple of STREAK_BONUS_EVERY. */
-export const STREAK_BONUS_POINTS = 50;
+export const STREAK_BONUS_POINTS = 25;
 export const STREAK_BONUS_EVERY = 7;
 
 export interface TrainingLog {
@@ -64,11 +64,30 @@ export function isLoggableDay(day: string, now: Date = new Date()): boolean {
     return day >= addDays(utcToday, -1) && day <= addDays(utcToday, 1);
 }
 
-/** Consecutive finished days ending on `day` (0 if `day` itself is not finished). */
+/** The Monday of the (Monday to Sunday) week containing `day`. */
+export const weekStart = (day: string) => addDays(day, -((new Date(`${day}T00:00:00Z`).getUTCDay() + 6) % 7));
+
+/** Each week's first missed day is a free rest day; a second miss that week breaks the streak. */
+function isFirstMissOfWeek(finishedDays: Set<string>, day: string): boolean {
+    for (let d = weekStart(day); d < day; d = addDays(d, 1)) if (!finishedDays.has(d)) return false;
+    return true;
+}
+
+/**
+ * Finished days in the streak that runs up to `day`. Rest days keep the streak alive but don't
+ * add to it, so the count (and the bonus every STREAK_BONUS_EVERY days) is finished days only.
+ */
 export function streakEndingOn(finishedDays: Set<string>, day: string): number {
     let streak = 0;
-    for (let d = day; finishedDays.has(d); d = addDays(d, -1)) streak++;
+    for (let d = day; finishedDays.has(d) || isFirstMissOfWeek(finishedDays, d); d = addDays(d, -1)) {
+        if (finishedDays.has(d)) streak++;
+    }
     return streak;
+}
+
+/** A past missed day that was used as the week's rest day inside a streak. */
+export function isRestDay(finishedDays: Set<string>, day: string): boolean {
+    return !finishedDays.has(day) && isFirstMissOfWeek(finishedDays, day) && streakEndingOn(finishedDays, addDays(day, -1)) > 0;
 }
 
 /** The streak to show today: it stays alive until the end of today even if today isn't finished yet. */

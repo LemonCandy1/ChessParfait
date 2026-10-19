@@ -51,6 +51,36 @@ const PARFAIT_STRATEGY: TrainingResource = { label: 'Endgame Strategy diagrams',
 
 export const TRAINING_PLANS: TrainingPlan[] = [
     {
+        id: 'quick',
+        name: 'Quick',
+        level: 'Any level',
+        summary: 'About half an hour a day: a short burst of tactics and one rapid game you check yourself.',
+        goals: [
+            'Keep your tactical eye sharp every day',
+            'Play one game a day and find a mistake before an engine does'
+        ],
+        items: [
+            {
+                id: 'warmup',
+                minutes: 10,
+                activity: 'Warm-up Tactics',
+                focus: 'This week\'s puzzles, then a few more at your level.',
+                notes: 'Start with the ChessParfait weekly puzzles, then keep going on Lichess or Chess.com until the 10 minutes are up.',
+                required: true,
+                resources: [PARFAIT_PUZZLES, LICHESS_PUZZLES, CHESSCOM_PUZZLES]
+            },
+            {
+                id: 'games',
+                minutes: 20,
+                activity: 'Quick Game',
+                focus: 'One 10+5 game.',
+                notes: 'Afterwards, find one mistake on your own before checking with an engine.',
+                required: true,
+                resources: [LICHESS_PLAY, CHESSCOM_PLAY, LICHESS_ANALYSIS]
+            }
+        ]
+    },
+    {
         id: 'beginner',
         name: 'Beginner',
         level: 'Under 1200',
@@ -219,7 +249,7 @@ export const TRAINING_PLANS: TrainingPlan[] = [
     }
 ];
 
-export const DEFAULT_PLAN_ID = 'club';
+export const DEFAULT_PLAN_ID = 'quick';
 
 export function findPlan(id: string | null | undefined): TrainingPlan | undefined {
     return TRAINING_PLANS.find(p => p.id === id);

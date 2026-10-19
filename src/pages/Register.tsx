@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, useSearchParams, Link } from 'react-router-dom';
+import { safeNext } from '../lib/redirect';
 import { User, Lock, AlertCircle, Check, ArrowLeft } from 'lucide-react';
 import Navbar from '../components/Navbar/Navbar';
 import { useAuth } from '../context/AuthContext';
@@ -7,6 +8,7 @@ import { useAuth } from '../context/AuthContext';
 export default function Register() {
     const { register } = useAuth();
     const navigate = useNavigate();
+    const next = safeNext(useSearchParams()[0].get('next'));
 
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
@@ -53,7 +55,7 @@ export default function Register() {
             if (res.success) {
                 setSuccessMsg(res.message);
                 setTimeout(() => {
-                    navigate('/');
+                    navigate(next);
                 }, 1500);
             } else {
                 setErrorMsg(res.message);

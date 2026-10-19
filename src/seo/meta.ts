@@ -107,6 +107,7 @@ export const PAGE_META: Record<string, PageMeta> = {
     '/link-email': { title: 'Link Email | Chess Parfait', description: DEFAULT_DESCRIPTION, noindex: true },
     '/setup-profile': { title: 'Set Up Profile | Chess Parfait', description: DEFAULT_DESCRIPTION, noindex: true },
     '/profile': { title: 'My Profile | Chess Parfait', description: DEFAULT_DESCRIPTION, noindex: true },
+    '/coach': { title: 'Your Students | Chess Parfait', description: DEFAULT_DESCRIPTION, noindex: true },
 };
 
 export const FALLBACK_META: PageMeta = { title: 'Chess Parfait', description: DEFAULT_DESCRIPTION };

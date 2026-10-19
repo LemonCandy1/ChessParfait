@@ -65,6 +65,7 @@ export const ROUTES: AppRoute[] = [
     { path: '/contact', Page: lazyPage(() => import('./pages/Contact')), fallback: <ContactSkeleton /> },
     { path: '/games', Page: lazyPage(() => import('./pages/Games')), fallback: <ListSkeleton /> },
     { path: '/profile', Page: lazyPage(() => import('./pages/Profile')), fallback: <ProfileSkeleton /> },
+    { path: '/coach', Page: lazyPage(() => import('./pages/Coach')), fallback: <ListSkeleton rows={6} /> },
     { path: '/login', Page: lazyPage(() => import('./pages/Login')), fallback: <FormSkeleton fields={2} /> },
     { path: '/setup-profile', Page: lazyPage(() => import('./pages/SetupProfile')), fallback: <FormSkeleton fields={1} /> },
     { path: '/register', Page: lazyPage(() => import('./pages/Register')), fallback: <FormSkeleton fields={3} /> },

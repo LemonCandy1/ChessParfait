@@ -32,6 +32,7 @@ const profile: ProfileRow = {
     points: 95,
     pawn_stats: { whiteWins: 3, whiteLosses: 1, blackWins: 0, blackLosses: 2 },
     training_plan: 'club',
+    is_coach: false,
     created_at: '2026-01-01T00:00:00Z'
 };
 

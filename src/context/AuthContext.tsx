@@ -26,6 +26,7 @@ export interface User {
     points?: number;
     solvedPuzzles?: SolvedPuzzle[];
     pawnStats?: PawnGameStats;
+    isCoach?: boolean;
 }
 
 export interface Remembered {

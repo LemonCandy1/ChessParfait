@@ -2,6 +2,7 @@ import { Chess } from 'chess.js';
 import { describe, expect, it } from 'vitest';
 import {
     countPieces,
+    endgameRatingChange,
     kFactor,
     newMilestones,
     pickEndgame,
@@ -25,6 +26,13 @@ describe('ratings', () => {
         expect(ratingChange(1000, 1000, false, 100)).toBe(-8);
         expect(ratingChange(1000, 1400, true, 100)).toBeGreaterThan(ratingChange(1000, 600, true, 100));
         expect(ratingChange(1000, 600, false, 100)).toBeLessThan(ratingChange(1000, 1400, false, 100));
+    });
+
+    it('moves the endgame itself the opposite way, slowly', () => {
+        expect(endgameRatingChange(1300, 1300, true)).toBe(-4);
+        expect(endgameRatingChange(1300, 1300, false)).toBe(4);
+        expect(endgameRatingChange(1300, 900, false)).toBeLessThan(endgameRatingChange(1300, 1700, false));
+        expect(Math.abs(endgameRatingChange(800, 2000, false))).toBeLessThanOrEqual(8);
     });
 
     it('pays each 100-point milestone above 1000 once', () => {

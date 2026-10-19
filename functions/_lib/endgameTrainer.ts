@@ -5,6 +5,7 @@ import {
     LEADERBOARD_MIN_PLAYED,
     TABLEBASE_MAX_PIECES,
     countPieces,
+    endgameRatingChange,
     newMilestones,
     randomTransform,
     ratingChange,
@@ -18,6 +19,14 @@ import { awardPoints } from './profiles';
 // Shared helpers for the /api/endgame-trainer endpoints. No onRequest handlers, so Pages does not route it.
 
 export const TRAINER_ENDGAMES = endgames as TrainerEndgame[];
+
+/** The endgames with their live ratings: endgames.json holds starting values, endgame_ratings the adjusted ones. */
+export async function currentEndgames(admin: SupabaseClient): Promise<TrainerEndgame[]> {
+    const { data, error } = await admin.from('endgame_ratings').select('endgame_id, rating');
+    if (error) throw error;
+    const live = new Map(((data ?? []) as { endgame_id: string; rating: number }[]).map(r => [r.endgame_id, r.rating]));
+    return TRAINER_ENDGAMES.map(e => ({ ...e, rating: live.get(e.id) ?? e.rating }));
+}
 
 export interface AttemptRow {
     id: string;
@@ -86,7 +95,7 @@ export interface AttemptResult extends TrainerStats {
  * rating passes. Returns null if the attempt was already closed (a double submit), so it is never counted twice.
  */
 export async function closeAttempt(admin: SupabaseClient, attempt: AttemptRow, solved: boolean): Promise<AttemptResult | null> {
-    const endgame = TRAINER_ENDGAMES.find(e => e.id === attempt.endgame_id);
+    const endgame = (await currentEndgames(admin)).find(e => e.id === attempt.endgame_id);
     const stats = await trainerStats(admin, attempt.user_id);
     const change = endgame ? ratingChange(stats.rating, endgame.rating, solved, stats.played) : 0;
     const rating = Math.max(100, stats.rating + change);
@@ -107,6 +116,17 @@ export async function closeAttempt(admin: SupabaseClient, attempt: AttemptRow, s
         .update({ endgame_rating: rating, endgame_best: best, endgame_played: played, updated_at: new Date().toISOString() })
         .eq('id', attempt.user_id);
     if (error) throw error;
+
+    // The endgame moves the other way: up when failed, down when solved.
+    if (endgame) {
+        const start = TRAINER_ENDGAMES.find(e => e.id === endgame.id)!.rating;
+        const { error: adjustError } = await admin.rpc('adjust_endgame_rating', {
+            p_endgame: endgame.id,
+            p_start: start,
+            p_change: endgameRatingChange(endgame.rating, stats.rating, solved)
+        });
+        if (adjustError) throw adjustError;
+    }
 
     let pointsAwarded = 0;
     for (const milestone of newMilestones(stats.best, best)) {

@@ -1,6 +1,6 @@
 import { getAdminClient, getSessionAuthUser, json, type SupabaseEnv } from '../../_lib/community';
 import { UNIQUE_VIOLATION } from '../../_lib/profiles';
-import { TRAINER_ENDGAMES, closeAttempt, makeVariation, trainerStats, type AttemptRow } from '../../_lib/endgameTrainer';
+import { closeAttempt, currentEndgames, makeVariation, trainerStats, type AttemptRow } from '../../_lib/endgameTrainer';
 import { pickEndgame } from '../../../src/lib/endgameTrainer';
 
 /**
@@ -26,7 +26,7 @@ export async function onRequestPost(context: { request: Request; env: SupabaseEn
         const missed = last?.status === 'open' ? await closeAttempt(admin, last, false) : null;
 
         const stats = await trainerStats(admin, user.id);
-        const endgame = pickEndgame(TRAINER_ENDGAMES, stats.rating, last?.endgame_id ?? null);
+        const endgame = pickEndgame(await currentEndgames(admin), stats.rating, last?.endgame_id ?? null);
         const variation = await makeVariation(endgame);
 
         const { data: attempt, error } = await admin

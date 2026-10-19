@@ -44,6 +44,15 @@ export function ratingChange(player: number, endgame: number, solved: boolean, p
     return Math.round(kFactor(played) * ((solved ? 1 : 0) - expected));
 }
 
+/** The most an endgame's own rating moves per attempt. Kept low so one player can't drag an endgame around. */
+export const ENDGAME_K = 8;
+
+/** How an endgame's rating moves after a player rated `player` solves (or fails) it: down when solved, up when failed. */
+export function endgameRatingChange(endgame: number, player: number, solved: boolean): number {
+    const expected = 1 / (1 + 10 ** ((player - endgame) / 400));
+    return Math.round(ENDGAME_K * ((solved ? 0 : 1) - expected));
+}
+
 /** Milestones (1100, 1200, ...) passed when the best rating rises from `oldBest` to `newBest`. Each pays once. */
 export function newMilestones(oldBest: number, newBest: number): number[] {
     const passed: number[] = [];

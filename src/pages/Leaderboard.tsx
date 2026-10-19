@@ -4,13 +4,16 @@ import Navbar from '../components/Navbar/Navbar';
 import { Avatar } from '../components/community/CommunityUI';
 import { useAuth } from '../context/AuthContext';
 import { calculateLevelInfo } from '../lib/levelSystem';
-import { getLeaderboard, type LeaderboardEntry } from '../lib/communityApi';
+import { getEndgameLeaderboard, getLeaderboard, type EndgameLeaderboardEntry, type LeaderboardEntry } from '../lib/communityApi';
+import { LEADERBOARD_MIN_PLAYED } from '../lib/endgameTrainer';
 
 const PODIUM_STYLES = ['text-amber-500', 'text-slate-400', 'text-orange-400'];
 
 export default function Leaderboard() {
     const { user } = useAuth();
+    const [tab, setTab] = useState<'points' | 'endgame'>('points');
     const [entries, setEntries] = useState<LeaderboardEntry[] | null>(null);
+    const [endgameEntries, setEndgameEntries] = useState<EndgameLeaderboardEntry[] | null>(null);
     const [error, setError] = useState('');
 
     useEffect(() => {
@@ -18,6 +21,17 @@ export default function Leaderboard() {
             .then(setEntries)
             .catch((err) => setError(err.message));
     }, []);
+
+    useEffect(() => {
+        if (tab === 'endgame' && !endgameEntries) {
+            getEndgameLeaderboard()
+                .then(setEndgameEntries)
+                .catch((err) => setError(err.message));
+        }
+    }, [tab, endgameEntries]);
+
+    const tabClass = (active: boolean) =>
+        `px-4 py-2 rounded-full text-sm font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-berry ${active ? 'bg-plum text-cream' : 'text-plum/70 hover:text-berry'}`;
 
     const viewerRanked = !!user?.id && !!entries?.some((e) => e.id === user.id);
 
@@ -31,8 +45,58 @@ export default function Leaderboard() {
                 <header className="mb-8">
                     <p className="text-xs font-bold uppercase tracking-widest text-berry mb-2">Community</p>
                     <h1 className="text-4xl md:text-5xl font-black tracking-tight mb-2">Leaderboard</h1>
-                    <p className="text-plum/70">Top players by points earned from puzzles.</p>
+                    <p className="text-plum/70">
+                        {tab === 'points'
+                            ? 'Top players by points earned from puzzles, endgames and training.'
+                            : `Top players by Endgame Trainer rating, after at least ${LEADERBOARD_MIN_PLAYED} positions.`}
+                    </p>
+                    <div className="mt-5 flex gap-2" role="tablist" aria-label="Leaderboard">
+                        <button type="button" role="tab" aria-selected={tab === 'points'} onClick={() => setTab('points')} className={tabClass(tab === 'points')}>Points</button>
+                        <button type="button" role="tab" aria-selected={tab === 'endgame'} onClick={() => setTab('endgame')} className={tabClass(tab === 'endgame')}>Endgame rating</button>
+                    </div>
                 </header>
+
+                {tab === 'endgame' && (
+                    <section className="glass rounded-3xl overflow-hidden">
+                        <div className="grid grid-cols-[2.5rem_1fr_auto] gap-3 px-5 py-3 text-[10px] font-bold uppercase tracking-widest text-plum/50 border-b border-plum/10">
+                            <span>#</span>
+                            <span>Player</span>
+                            <span className="text-right">Rating</span>
+                        </div>
+                        {error && <p className="px-5 py-10 text-center text-sm text-rose-700">{error}</p>}
+                        {!error && !endgameEntries && <p className="px-5 py-10 text-center text-sm text-plum/60" aria-busy="true">Loading…</p>}
+                        {endgameEntries && endgameEntries.length === 0 && (
+                            <p className="px-5 py-10 text-center text-sm text-plum/60">
+                                Nobody has played {LEADERBOARD_MIN_PLAYED} positions yet. <Link to="/endgame-trainer" className="text-berry font-semibold hover:underline">Start the Endgame Trainer</Link> to be first.
+                            </p>
+                        )}
+                        {endgameEntries && endgameEntries.length > 0 && (
+                            <ol>
+                                {endgameEntries.map((entry, i) => (
+                                    <li
+                                        key={entry.id}
+                                        className={`grid grid-cols-[2.5rem_1fr_auto] items-center gap-3 px-5 py-3.5 border-b border-plum/5 last:border-0 ${entry.id === user?.id ? 'bg-berry/5' : ''}`}
+                                    >
+                                        <span className={`font-serif font-black text-lg tabular-nums ${PODIUM_STYLES[i] ?? 'text-plum/40'}`}>{i + 1}</span>
+                                        <div className="flex items-center gap-3 min-w-0">
+                                            <Avatar name={entry.username} url={entry.avatarUrl} />
+                                            <div className="min-w-0">
+                                                <p className="font-semibold truncate">
+                                                    {entry.username}
+                                                    {entry.id === user?.id && <span className="ml-2 text-[10px] font-bold uppercase tracking-wider text-berry">You</span>}
+                                                </p>
+                                                <p className="text-xs text-plum/55">{entry.played} positions</p>
+                                            </div>
+                                        </div>
+                                        <span className="font-bold tabular-nums text-right">{entry.rating}</span>
+                                    </li>
+                                ))}
+                            </ol>
+                        )}
+                    </section>
+                )}
+
+                {tab === 'points' && (<>
 
                 <section className="glass rounded-3xl overflow-hidden">
                     <div className="grid grid-cols-[2.5rem_1fr_auto] gap-3 px-5 py-3 text-[10px] font-bold uppercase tracking-widest text-plum/50 border-b border-plum/10">
@@ -108,6 +172,7 @@ export default function Leaderboard() {
                         ) : null}
                     </p>
                 )}
+                </>)}
             </main>
         </div>
     );

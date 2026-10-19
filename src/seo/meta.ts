@@ -70,6 +70,11 @@ export const PAGE_META: Record<string, PageMeta> = {
         description: 'Interactive chess endgame lessons with diagrams and master lines, from rook endgames to queen vs rook.',
         sitemap: true,
     },
+    '/endgame-trainer': {
+        title: 'Endless Endgame Trainer | Chess Parfait',
+        description: 'Endless chess endgame positions matched to your rating, checked by endgame tablebases, with diagrams that teach every technique.',
+        sitemap: true,
+    },
     '/training': {
         title: 'Daily Chess Training Plans | Chess Parfait',
         description: 'Structured daily chess training plans for every level: tactics, calculation, positional study and games, with a calendar to track your progress.',

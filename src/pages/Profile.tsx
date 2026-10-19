@@ -7,7 +7,8 @@ import { calculateLevelInfo, LEVEL_TIERS } from '../lib/levelSystem';
 import { ChessCakeSliceIcon, PieIcon, CherryBombIcon } from '../components/Icons';
 import { ProfileSkeleton } from '../components/skeletons/PageSkeletons';
 import { findPlan } from '../data/trainingPlans';
-import { toDayKey, addDays, type TrainingLog } from '../lib/training';
+import { DAILY_TRAINING_POINTS, toDayKey, addDays, type TrainingLog } from '../lib/training';
+import { LEADERBOARD_MIN_PLAYED } from '../lib/endgameTrainer';
 import { getTraining, type TrainingOverview } from '../lib/trainingApi';
 
 /** One dessert layer per rank, bottom of the glass first. */
@@ -219,7 +220,7 @@ const pawn = user.pawnStats || { whiteWins: 0, whiteLosses: 0, blackWins: 0, bla
         plan && !todayLog?.completed
             ? {
                   title: "Finish today's training",
-                  detail: `${requiredDone} of ${requiredItems.length} activities done on your ${plan.name} plan. Finishing earns 30 points.`,
+                  detail: `${requiredDone} of ${requiredItems.length} activities done on your ${plan.name} plan. Finishing earns ${DAILY_TRAINING_POINTS} points.`,
                   to: '/training',
                   action: "Open today's plan"
               }
@@ -233,7 +234,7 @@ const pawn = user.pawnStats || { whiteWins: 0, whiteLosses: 0, blackWins: 0, bla
               : !plan
                 ? {
                       title: 'Choose a daily training plan',
-                      detail: 'A checklist for each day that earns 30 points when you finish it.',
+                      detail: `A checklist for each day that earns ${DAILY_TRAINING_POINTS} points when you finish it.`,
                       to: '/training',
                       action: 'Choose a plan'
                   }
@@ -385,6 +386,14 @@ const pawn = user.pawnStats || { whiteWins: 0, whiteLosses: 0, blackWins: 0, bla
                             {streak > 0 ? `${streak}-day training streak` : 'No training streak yet'}
                             <span className="mx-2 text-plum/30" aria-hidden="true">·</span>
                             {solvedPuzzles.length} {solvedPuzzles.length === 1 ? 'puzzle' : 'puzzles'} solved
+                            {!!user.endgamePlayed && (
+                                <>
+                                    <span className="mx-2 text-plum/30" aria-hidden="true">·</span>
+                                    <Link to="/endgame-trainer" className="hover:text-berry">
+                                        Endgame rating {user.endgameRating}{user.endgamePlayed < LEADERBOARD_MIN_PLAYED ? '?' : ''} (best {user.endgameBest})
+                                    </Link>
+                                </>
+                            )}
                             {pawnWins + pawnLosses > 0 && (
                                 <>
                                     <span className="mx-2 text-plum/30" aria-hidden="true">·</span>

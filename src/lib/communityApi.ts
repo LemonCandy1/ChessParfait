@@ -56,6 +56,17 @@ async function request<T>(url: string, init?: RequestInit): Promise<T> {
 export const getLeaderboard = () =>
     request<{ leaderboard: LeaderboardEntry[] }>('/api/community/leaderboard').then((d) => d.leaderboard);
 
+export interface EndgameLeaderboardEntry {
+    id: string;
+    username: string;
+    avatarUrl: string | null;
+    rating: number;
+    played: number;
+}
+
+export const getEndgameLeaderboard = () =>
+    request<{ leaderboard: EndgameLeaderboardEntry[] }>('/api/community/endgame-leaderboard').then((d) => d.leaderboard);
+
 export const getPosts = (params: { sort: 'new' | 'top'; category?: ForumCategory | null; following?: boolean }) => {
     const qs = new URLSearchParams({ sort: params.sort });
     if (params.category) qs.set('category', params.category);

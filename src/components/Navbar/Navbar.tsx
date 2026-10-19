@@ -118,6 +118,12 @@ const Navbar = () => {
                                     icon={<Book size={18} strokeWidth={1.75} />} 
                                 />
                                 <DropdownItem
+                                    to="/endgame-trainer"
+                                    title="Endgame Trainer"
+                                    description="Endless positions matched to your rating"
+                                    icon={<Trophy size={18} strokeWidth={1.75} />}
+                                />
+                                <DropdownItem
                                     to="/training"
                                     title="Daily Training"
                                     description="Your daily plan, goals and training calendar"
@@ -322,6 +328,7 @@ const Navbar = () => {
                     <NavLink to="/" label="Home" onClick={closeMenu} />
                     <NavLink to="/games" label="Play" onClick={closeMenu} />
                     <NavLink to="/EndgamePractice" label="Endgame" onClick={closeMenu} />
+                    <NavLink to="/endgame-trainer" label="Endgame Trainer" onClick={closeMenu} />
                     <NavLink to="/training" label="Training" onClick={closeMenu} />
                     <NavLink to="/TrainingPuzzles" label="Puzzles" onClick={closeMenu} />
                     <NavLink to="/leaderboard" label="Leaderboard" onClick={closeMenu} />

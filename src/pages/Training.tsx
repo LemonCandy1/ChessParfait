@@ -51,7 +51,7 @@ function ResourceRow({ resource }: { resource: TrainingResource }) {
         return (
             <li className={row}>
                 <span className="flex items-center gap-2.5"><BookOpen size={16} className="text-berry shrink-0" />{resource.label}</span>
-                {hint('Book')}
+                {hint(resource.kind === 'file' ? 'PGN file' : 'Book')}
             </li>
         );
     }

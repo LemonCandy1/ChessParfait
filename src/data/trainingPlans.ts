@@ -219,10 +219,10 @@ export const TRAINING_PLANS: TrainingPlan[] = [
                 resources: [
                     { label: 'Jacob Aagaard: Grandmaster Preparation, Calculation', kind: 'book' },
                     { label: 'Alexander Kotov: Think Like a Grandmaster', kind: 'book' },
-                    { label: 'Universal Chess Training', kind: 'book' },
-                    { label: 'Mastering Chess Defense', kind: 'book' },
+                    { label: 'Wojciech Moranda: Universal Chess Training', kind: 'book' },
+                    { label: 'Johan Hellsten: Mastering Chess Defense', kind: 'file' },
                     { label: 'Sam Shankland: Calculation', kind: 'book' },
-                    { label: 'John Watson: Mastering the Chess Openings', kind: 'book' }
+                    { label: 'Johan Hellsten: Mastering Chess Openings', kind: 'file' }
                 ]
             },
             {

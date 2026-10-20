@@ -28,3 +28,6 @@ dist-ssr
 .env.test.local
 .dev.vars
 .wrangler
+
+# Endgame source books (copyrighted): kept locally, never committed or deployed
+resources/

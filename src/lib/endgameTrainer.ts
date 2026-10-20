@@ -30,31 +30,39 @@ export interface TrainerEndgame {
     keyTip?: string;
 }
 
-/** The most a rating can move on the player's next position: 64 for positions 1 to 10, settling to 16 by position 50. */
+/** Swing on a player's first position: about +-100 against an evenly rated endgame. */
+const FIRST_K = 200;
+/** Each position shrinks the swing by about 6%, so ratings settle over roughly 40 positions. */
+const K_DECAY = 0.9388;
+/** The smallest swing, reached around position 40, so improving players still climb. */
+const MIN_K = 16;
+
+/** The most a rating can move on the player's next position, after `played` positions. */
 export function kFactor(played: number): number {
-    const position = played + 1;
-    if (position <= 10) return 64;
-    if (position >= 50) return 16;
-    return Math.round(64 - ((position - 10) * 48) / 40);
+    return Math.max(MIN_K, Math.round(FIRST_K * K_DECAY ** played));
 }
 
 /**
  * Elo change for a player rated `player` (with `played` positions behind them) against an endgame rated
- * `endgame`. `score` is 1 for a clean solve, less for a slow one (see solveScore) and 0 for a fail.
+ * `endgame`. `credit` is 0 for a fail, otherwise the share of the full gain a solve earns (see solveScore):
+ * a solve never loses rating, a slow one just gains less.
  */
-export function ratingChange(player: number, endgame: number, score: number, played: number): number {
+export function ratingChange(player: number, endgame: number, credit: number, played: number): number {
     const expected = 1 / (1 + 10 ** ((endgame - player) / 400));
-    return Math.round(kFactor(played) * (score - expected));
+    const k = kFactor(played);
+    return credit > 0 ? Math.round(k * (1 - expected) * credit) : Math.round(-k * expected);
 }
 
+/** The least a solve earns: even a very slow win gains a quarter of the full amount. */
+export const MIN_CREDIT = 0.25;
+
 /**
- * Credit for a solve, like ChessTempo's practice mode: full marks up to the fastest possible number of moves,
- * falling to 0.5 (a draw) at twice that, and to 0 (no worse than a fail) at three times. Draws and positions
- * without a known fastest mate always get full marks.
+ * Share of the full rating gain a solve earns: all of it up to the fastest possible mate, half at twice as
+ * many moves, and never less than a quarter. Draws and positions without a known fastest mate earn all of it.
  */
 export function solveScore(movesTaken: number, fastest: number | null): number {
     if (!fastest || movesTaken <= fastest) return 1;
-    return Math.max(0, 1 - (0.5 * (movesTaken - fastest)) / fastest);
+    return Math.max(MIN_CREDIT, 1 - (0.5 * (movesTaken - fastest)) / fastest);
 }
 
 /** Moves to mate from the endgame database's distance to mate, which counts half-moves. */
@@ -63,10 +71,10 @@ export const movesToMate = (dtmPlies: number) => Math.ceil(Math.abs(dtmPlies) / 
 /** The most an endgame's own rating moves per attempt. Kept low so one player can't drag an endgame around. */
 export const ENDGAME_K = 8;
 
-/** How an endgame's rating moves after a player rated `player` scores `score` on it: down when solved, up when failed. */
-export function endgameRatingChange(endgame: number, player: number, score: number): number {
-    const expected = 1 / (1 + 10 ** ((player - endgame) / 400));
-    return Math.round(ENDGAME_K * (1 - score - expected));
+/** How an endgame's rating moves after a player rated `player` earns `credit` on it (0 = failed): down when solved, up when failed. */
+export function endgameRatingChange(endgame: number, player: number, credit: number): number {
+    const playerExpected = 1 / (1 + 10 ** ((endgame - player) / 400));
+    return credit > 0 ? -Math.round(ENDGAME_K * (1 - playerExpected) * credit) : Math.round(ENDGAME_K * playerExpected);
 }
 
 /** Milestones (1100, 1200, ...) passed when the best rating rises from `oldBest` to `newBest`. Each pays once. */

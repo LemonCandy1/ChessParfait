@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
     countPieces,
     endgameRatingChange,
+    MIN_CREDIT,
     kFactor,
     moveLabel,
     movesToMate,
@@ -17,12 +18,22 @@ import {
 } from './endgameTrainer';
 
 describe('ratings', () => {
-    it('moves fast for new players and settles to 16 by position 50', () => {
-        expect(kFactor(0)).toBe(64);
-        expect(kFactor(9)).toBe(64);
-        expect(kFactor(29)).toBe(40);
-        expect(kFactor(49)).toBe(16);
+    it('swings about 100 on the first position and decays smoothly to 16', () => {
+        expect(kFactor(0)).toBe(200);
+        expect(ratingChange(1000, 1000, 1, 0)).toBe(100);
+        expect(ratingChange(1000, 1000, 0, 0)).toBe(-100);
+        for (let played = 1; played < 60; played++) expect(kFactor(played)).toBeLessThanOrEqual(kFactor(played - 1));
+        expect(kFactor(20)).toBeGreaterThan(40);
+        expect(kFactor(41)).toBe(16);
         expect(kFactor(500)).toBe(16);
+    });
+
+    it('never takes rating away for a slow win, just gains less', () => {
+        const full = ratingChange(1500, 1300, 1, 100);
+        const slow = ratingChange(1500, 1300, solveScore(40, 8), 100);
+        expect(slow).toBeGreaterThan(0);
+        expect(slow).toBeLessThan(full);
+        expect(ratingChange(2000, 800, MIN_CREDIT, 0)).toBeGreaterThanOrEqual(0);
     });
 
     it('gains more for beating a harder endgame and loses more to an easier one', () => {
@@ -74,12 +85,12 @@ describe('picking the next endgame', () => {
 });
 
 describe('credit, reviews and move labels', () => {
-    it('gives full credit up to the fastest mate, a draw at twice as long and nothing at three times', () => {
+    it('gives full credit up to the fastest mate, half at twice as long and never less than a quarter', () => {
         expect(solveScore(8, 8)).toBe(1);
         expect(solveScore(6, 8)).toBe(1);
         expect(solveScore(16, 8)).toBe(0.5);
-        expect(solveScore(24, 8)).toBe(0);
-        expect(solveScore(40, 8)).toBe(0);
+        expect(solveScore(20, 8)).toBe(0.25);
+        expect(solveScore(40, 8)).toBe(0.25);
         expect(solveScore(40, null)).toBe(1);
     });
 

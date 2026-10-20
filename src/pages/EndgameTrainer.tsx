@@ -332,7 +332,7 @@ export default function EndgameTrainer() {
                                             {phase === 'solved' && result?.movesTaken && result.fastestMate && (
                                                 <p className="mt-2 text-sm text-plum/85">
                                                     {result.movesTaken} {result.movesTaken === 1 ? 'move' : 'moves'} (fastest mate {result.fastestMate})
-                                                    {' · '}{Math.round(result.score * 100)}% credit{result.score < 1 ? ': slower wins earn less rating' : ''}
+                                                    {' · '}{Math.round(result.score * 100)}% of the full gain{result.score < 1 ? ': a faster win earns more' : ''}
                                                 </p>
                                             )}
                                             {feedback?.reason && <p className="mt-2 text-plum/85">{feedback.reason}</p>}

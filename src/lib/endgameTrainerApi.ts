@@ -35,7 +35,7 @@ export interface TrainerResult extends TrainerStats {
     solved: boolean;
     /** The browser said solved but the moves didn't check out. */
     rejected: boolean;
-    /** Credit for the attempt: 1 for a clean solve, less for a slow one, 0 for a fail. */
+    /** Share of the full rating gain earned: 1 for a clean solve, as little as 0.25 for a slow one, 0 for a fail. */
     score: number;
     movesTaken: number | null;
     fastestMate: number | null;

@@ -128,7 +128,7 @@ export async function makeVariation(endgame: TrainerEndgame): Promise<{ fen: str
 export interface AttemptResult extends TrainerStats {
     change: number;
     pointsAwarded: number;
-    /** Credit for the attempt: 1 for a clean solve, less for a slow one, 0 for a fail. */
+    /** Share of the full rating gain earned: 1 for a clean solve, as little as 0.25 for a slow one, 0 for a fail. */
     score: number;
 }
 

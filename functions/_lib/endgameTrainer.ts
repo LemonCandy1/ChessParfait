@@ -1,5 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import endgames from '../../src/data/endgames.json';
+import library from '../../src/data/trainerPositions.json';
+import themes from '../../src/data/trainerThemes.json';
 import {
     BEST_RATING_POINTS,
     LEADERBOARD_MIN_PLAYED,
@@ -21,14 +23,53 @@ import { awardPoints } from './profiles';
 
 // Shared helpers for the /api/endgame-trainer endpoints. No onRequest handlers, so Pages does not route it.
 
-export const TRAINER_ENDGAMES = endgames as TrainerEndgame[];
+interface LibraryTheme { id: string; group: string; name: string; rating: number; explanation: string }
+const THEMES = new Map((themes as LibraryTheme[]).map(t => [t.id, t]));
+// Basic mates against a bare king: reaching "a queen or rook against a bare king" is where they start, so they need mate.
+const MATE_THEMES = new Set(['queen-mate', 'rook-mate']);
 
-/** The endgames with their live ratings: endgames.json holds starting values, endgame_ratings the adjusted ones. */
+/** The original 20 endgames, then the library built from the endgame books (scripts/endgames). */
+export const TRAINER_ENDGAMES: TrainerEndgame[] = [
+    ...(endgames as TrainerEndgame[]),
+    ...(library as { id: string; theme: string; fen: string; target: 'win' | 'draw'; rating: number }[]).map(p => {
+        const theme = THEMES.get(p.theme)!;
+        return {
+            id: p.id,
+            theme: p.theme,
+            title: theme.name,
+            category: theme.group,
+            fen: p.fen,
+            playerColor: p.fen.split(' ')[1] as Colour,
+            target: p.target,
+            rating: p.rating,
+            mateRequired: MATE_THEMES.has(p.theme),
+            description: theme.explanation
+        };
+    })
+];
+
+/** Rating row for a whole theme, which learns from every position in it. */
+const themeKey = (theme: string) => `theme:${theme}`;
+
+/**
+ * The endgames with their live ratings: the JSON files hold starting values, endgame_ratings the adjusted ones.
+ * A library position not played yet starts from its theme's live rating, keeping its own difficulty offset.
+ */
 export async function currentEndgames(admin: SupabaseClient): Promise<TrainerEndgame[]> {
-    const { data, error } = await admin.from('endgame_ratings').select('endgame_id, rating');
-    if (error) throw error;
-    const live = new Map(((data ?? []) as { endgame_id: string; rating: number }[]).map(r => [r.endgame_id, r.rating]));
-    return TRAINER_ENDGAMES.map(e => ({ ...e, rating: live.get(e.id) ?? e.rating }));
+    const live = new Map<string, number>();
+    // Supabase returns at most 1000 rows at a time.
+    for (let from = 0; ; from += 1000) {
+        const { data, error } = await admin.from('endgame_ratings').select('endgame_id, rating').order('endgame_id').range(from, from + 999);
+        if (error) throw error;
+        (data as { endgame_id: string; rating: number }[]).forEach(r => live.set(r.endgame_id, r.rating));
+        if (data.length < 1000) break;
+    }
+    return TRAINER_ENDGAMES.map(e => {
+        const own = live.get(e.id);
+        if (own !== undefined || !e.theme) return { ...e, rating: own ?? e.rating };
+        const themeLive = live.get(themeKey(e.theme));
+        return { ...e, rating: themeLive === undefined ? e.rating : themeLive + (e.rating - THEMES.get(e.theme)!.rating) };
+    });
 }
 
 export interface AttemptRow {
@@ -168,12 +209,16 @@ export async function closeAttempt(admin: SupabaseClient, attempt: AttemptRow, s
     // The endgame moves the other way: up when failed, down when solved.
     const adjustEndgame = async () => {
         if (!endgame) return;
-        const { error } = await admin.rpc('adjust_endgame_rating', {
-            p_endgame: endgame.id,
-            p_start: TRAINER_ENDGAMES.find(e => e.id === endgame.id)!.rating,
-            p_change: endgameRatingChange(endgame.rating, stats.rating, score)
-        });
-        if (error) throw error;
+        const p_change = endgameRatingChange(endgame.rating, stats.rating, score);
+        const adjust = async (p_endgame: string, p_start: number) => {
+            const { error } = await admin.rpc('adjust_endgame_rating', { p_endgame, p_start, p_change });
+            if (error) throw error;
+        };
+        // A library position starts from its live (theme-based) rating, and its theme learns from it too.
+        await Promise.all([
+            adjust(endgame.id, endgame.rating),
+            endgame.theme ? adjust(themeKey(endgame.theme), THEMES.get(endgame.theme)!.rating) : undefined
+        ]);
     };
     const payMilestones = async () => {
         const paid = await Promise.all(newMilestones(stats.best, best).map(milestone =>
@@ -217,7 +262,10 @@ export interface NewAttempt {
  */
 export async function createAttempt(admin: SupabaseClient, userId: string, lastId: string | null, status: 'open' | 'queued'): Promise<NewAttempt | null> {
     const [stats, endgames, reviewId] = await Promise.all([trainerStats(admin, userId), currentEndgames(admin), dueReview(admin, userId, lastId)]);
-    const endgame = endgames.find(e => e.id === reviewId) ?? pickEndgame(endgames, stats.rating, lastId);
+    // Never the same theme twice in a row, so a run of positions feels varied.
+    const lastTheme = endgames.find(e => e.id === lastId)?.theme;
+    const fresh = lastTheme ? endgames.filter(e => e.theme !== lastTheme) : endgames;
+    const endgame = endgames.find(e => e.id === reviewId) ?? pickEndgame(fresh, stats.rating, lastId);
     const variation = await makeVariation(endgame);
     const optimal = endgame.target === 'win' ? await fastestMate(variation.fen, variation.playerColor) : null;
 

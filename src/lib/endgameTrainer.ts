@@ -30,6 +30,8 @@ export interface TrainerEndgame {
     keyTip?: string;
     description?: string;
     theoryNotes?: string;
+    /** For library positions: the theme it belongs to (src/data/trainerThemes.json). */
+    theme?: string;
 }
 
 /** Swing on a player's first position: about +-100 against an evenly rated endgame. */

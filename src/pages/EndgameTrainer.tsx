@@ -574,12 +574,16 @@ export default function EndgameTrainer() {
                                 )}
                             </div>
 
-                            {/* The theme, with a link to its strategy diagrams */}
+                            {/* The theme: library positions explain it here, the original endgames link to their strategy diagrams */}
                             <article className="mt-8 rounded-xl bg-cream px-5 py-4" aria-labelledby="theme-heading">
                                 <h3 id="theme-heading" className="text-xl font-serif font-black">{endgame.title}</h3>
-                                <Link to={`/EndgameStrategy?endgame=${endgame.id}`} className={`mt-2 inline-flex items-center gap-2 font-bold text-berry hover:underline underline-offset-4 ${focusRing}`}>
-                                    <GraduationCap size={18} /> Learn more
-                                </Link>
+                                {endgame.id.startsWith('lib-') ? (
+                                    <p className="mt-2 text-plum/85 leading-relaxed">{endgame.description}</p>
+                                ) : (
+                                    <Link to={`/EndgameStrategy?endgame=${endgame.id}`} className={`mt-2 inline-flex items-center gap-2 font-bold text-berry hover:underline underline-offset-4 ${focusRing}`}>
+                                        <GraduationCap size={18} /> Learn more
+                                    </Link>
+                                )}
                             </article>
                         </div>
                     )}

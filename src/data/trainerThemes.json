@@ -1,0 +1,282 @@
+[
+  {
+    "id": "queen-mate",
+    "group": "Basic mates",
+    "name": "Queen checkmate",
+    "rating": 700,
+    "explanation": "Use the queen to shrink the enemy king's box, staying a knight's move away from it and taking squares rather than giving checks. Once the king is pinned to the edge, bring your own king up, because the queen can't mate on its own. Before every queen move, check the defending king still has a legal move, or it's stalemate."
+  },
+  {
+    "id": "rook-mate",
+    "group": "Basic mates",
+    "name": "Rook checkmate",
+    "rating": 850,
+    "explanation": "The rook cuts the enemy king off along a rank or file, and your king does the pushing. When the kings stand facing each other with one square between them, a rook check drives the defender back a rank. When they don't, make a waiting move with the rook along its line, keeping it far from the enemy king so it can't be attacked. With two rooks, let them take turns: one checks, the other cuts off the next rank."
+  },
+  {
+    "id": "two-bishops-mate",
+    "group": "Basic mates",
+    "name": "Two bishops checkmate",
+    "rating": 1300,
+    "explanation": "Side by side on neighbouring diagonals, the two bishops form a wall the enemy king can't cross. Work with your king to herd the defender into a corner, any corner, tightening the box one step at a time. In the final phase the defender has very few squares, so look out for stalemate."
+  },
+  {
+    "id": "bishop-knight-mate",
+    "group": "Basic mates",
+    "name": "Bishop and knight checkmate",
+    "rating": 1900,
+    "explanation": "The hardest basic mate: it can only be forced in a corner of the same colour as your bishop. First drive the king to the edge, then walk it from the wrong corner to the right one, with the knight making a W-shaped tour and the bishop covering the escape squares. You have 50 moves, so work methodically and never let the king off the edge."
+  },
+  {
+    "id": "key-squares",
+    "group": "Basic mates",
+    "name": "King and pawn: key squares",
+    "rating": 900,
+    "explanation": "With king and pawn against king, the pawn queens if your king reaches a key square. For a pawn on its own half of the board, those are the three squares two ranks in front of it. Lead with the king, not the pawn: use the opposition to shoulder the defender aside, and only push the pawn once your king controls its path. Rook pawns are the exception, because a defender who reaches the corner draws."
+  },
+  {
+    "id": "kp-defence",
+    "group": "Basic mates",
+    "name": "King and pawn: holding the draw",
+    "rating": 900,
+    "explanation": "Against a lone pawn, the defending king belongs directly in front of it. When the attacking king comes forward, take the opposition, standing face to face with one square between, so it can't get past. If you have to give ground, step straight back down the pawn's file, so you can take the opposition again when the pawn reaches the sixth rank."
+  },
+  {
+    "id": "rule-of-square",
+    "group": "Pawn endings",
+    "name": "The rule of the square",
+    "rating": 800,
+    "explanation": "Can the king catch a passed pawn on its own? Picture a square from the pawn to its promotion rank: if the defending king can step inside it on its move, the pawn is caught. As the attacker, push the pawn the moment the king is outside the square. Remember that a pawn on its starting rank can move two squares, so measure from where it will land."
+  },
+  {
+    "id": "triangulation",
+    "group": "Pawn endings",
+    "name": "Triangulation",
+    "rating": 1600,
+    "explanation": "When the same position with the other side to move would win, lose a move on purpose. Walk your king around a triangle of three squares and back while the defending king, with fewer squares to use, can't copy you. It only works when your king has more room than the defender's, so first work out which squares the defender must keep."
+  },
+  {
+    "id": "outside-passer",
+    "group": "Pawn endings",
+    "name": "The outside passed pawn",
+    "rating": 1300,
+    "explanation": "A passed pawn far from the other pawns is a decoy. Push it so the enemy king has to go and stop it, then march your king into the pawns it has left behind. Often you give the outside pawn away on purpose: by the time the enemy king has taken it, yours is already eating the other side."
+  },
+  {
+    "id": "breakthrough",
+    "group": "Pawn endings",
+    "name": "The pawn breakthrough",
+    "rating": 1400,
+    "explanation": "When pawns face each other, a sacrifice can create a passed pawn nobody can stop. Three pawns against three on neighbouring files is the classic case: the middle pawn goes first, and the recapture opens the way for another pawn. Count before you start: it only works if the enemy king is too far away to catch the new passed pawn."
+  },
+  {
+    "id": "distant-opposition",
+    "group": "Pawn endings",
+    "name": "Opposition at a distance",
+    "rating": 1500,
+    "explanation": "The opposition still counts when the kings are far apart. With an odd number of squares between them on the same file, rank or diagonal, the side not to move has it. Take it early and keep it as the kings approach, and the other king will have to give way when they meet."
+  },
+  {
+    "id": "corresponding-squares",
+    "group": "Pawn endings",
+    "name": "Corresponding squares",
+    "rating": 1900,
+    "explanation": "In blocked pawn endings, each square your king can reach has a matching square the defending king must answer with. Find the square your king wants to reach, work back to the squares that correspond to it, and manoeuvre until the defender can't keep up the match. It's the opposition and triangulation turned into a map."
+  },
+  {
+    "id": "reti",
+    "group": "Pawn endings",
+    "name": "The Réti manoeuvre",
+    "rating": 1500,
+    "explanation": "A king moving along a diagonal can do two jobs at once: head towards the enemy pawn and towards its own pawn. That's how a king that looks hopelessly outside the square still draws. Choose the route that keeps both threats alive, so the opponent has to spend a move dealing with one of them."
+  },
+  {
+    "id": "protected-passer",
+    "group": "Pawn endings",
+    "name": "The protected passed pawn",
+    "rating": 1200,
+    "explanation": "A protected passed pawn ties the enemy king down: it has to keep watch on the pawn but can never safely take it. That frees your king to raid the other side of the board. Keep the pawn and its protector together, and use your king's extra freedom to win the remaining pawns."
+  },
+  {
+    "id": "pawn-races",
+    "group": "Pawn endings",
+    "name": "Pawn races",
+    "rating": 1200,
+    "explanation": "When both sides have passed pawns, count the moves to queen, then look one move further: a pawn that queens with check, or a new queen that can capture the other, decides the race. Sometimes the right plan is to stop the enemy pawn with your king first and queen your own afterwards."
+  },
+  {
+    "id": "lucena",
+    "group": "Rook endings",
+    "name": "The Lucena position",
+    "rating": 1500,
+    "explanation": "Your pawn is on the seventh rank, your king stands in front of it and the defending king is cut off. To get your king out without endless checks, build a bridge: put your rook on the fourth rank, step out with the king, and when the checks come, block them with the rook. If the defending king is only one file away, drive it one file further with a rook check first."
+  },
+  {
+    "id": "philidor",
+    "group": "Rook endings",
+    "name": "The Philidor defence",
+    "rating": 1500,
+    "explanation": "Defending rook and pawn against rook with your king in front of the pawn: keep your rook on your third rank (the sixth rank when you're Black), so the enemy king can't come forward. As soon as the pawn advances to that rank, the attacking king loses its shelter: swing your rook to the far end of the board and check it from behind."
+  },
+  {
+    "id": "vancura",
+    "group": "Rook endings",
+    "name": "The Vancura position",
+    "rating": 2000,
+    "explanation": "Against a rook pawn on the sixth rank, with the attacking rook in front of it, attack the pawn from the side along the sixth rank. That keeps the enemy rook tied to the pawn, and your rook is ready to check the king from a distance whenever it comes to help. Your own king stays near the opposite corner, out of the way."
+  },
+  {
+    "id": "short-side",
+    "group": "Rook endings",
+    "name": "The short side and the long side",
+    "rating": 1700,
+    "explanation": "When your king is cut off from the pawn's file, put it on the short side, the side with fewer files, and your rook on the long side. Checks from the side only work from a distance: from at least three files away, your rook can check the attacking king without being blocked. Get this the wrong way round and the checks run out."
+  },
+  {
+    "id": "rook-behind",
+    "group": "Rook endings",
+    "name": "Rooks behind passed pawns",
+    "rating": 1500,
+    "explanation": "Rooks belong behind passed pawns: behind your own, where the rook gains scope as the pawn advances, and behind the enemy's, where your rook stays active while their rook is stuck guarding. A rook in front of a passed pawn becomes passive, and it is left to the king to do all the work."
+  },
+  {
+    "id": "cut-off",
+    "group": "Rook endings",
+    "name": "Cutting off the king",
+    "rating": 1600,
+    "explanation": "In rook and pawn endings, the rook's best job is often to keep the enemy king away from the pawn. A king cut off along a file or rank can't help defend, and the further away it is, the easier the win. Cut it off first, then bring your king and pawn forward together."
+  },
+  {
+    "id": "rook-vs-pawn",
+    "group": "Rook endings",
+    "name": "Rook against pawn",
+    "rating": 1600,
+    "explanation": "Rook against pawn is a race of moves. The rook wants to get behind the pawn or cut the defending king off while your own king hurries back. Check only when it gains time: driving the enemy king in front of its own pawn blocks the pawn's path. Count the moves to see whether your king arrives in time."
+  },
+  {
+    "id": "rook-vs-two-pawns",
+    "group": "Rook endings",
+    "name": "Rook against two pawns",
+    "rating": 1800,
+    "explanation": "Two connected passed pawns on the sixth rank can beat a rook that has no help from its king, so bring your king close first. Pawns that are split apart are easier to deal with: the rook can stop one while the king catches the other. As the pawns' side, keep them side by side and let your king escort them."
+  },
+  {
+    "id": "rook-two-pawns",
+    "group": "Rook endings",
+    "name": "Rook and two pawns against rook",
+    "rating": 1800,
+    "explanation": "Two extra pawns usually win, but doubled pawns, rook pawns and some split pawns can be drawn. Use one pawn as a shield for your king against checks, and aim for a Lucena-type position with the other while the defender is tied down. As the defender, keep your rook active and give checks from a distance."
+  },
+  {
+    "id": "rook-practical",
+    "group": "Rook endings",
+    "name": "Rook endings in practice",
+    "rating": 1700,
+    "explanation": "Rook endings are the most common endings in real games. Keep your rook active, even at the cost of a pawn, and use your king as a fighting piece. Create a passed pawn, cut the enemy king off and avoid passive defence: a defender with an active rook holds far more often than one with a passive one."
+  },
+  {
+    "id": "wrong-bishop",
+    "group": "Minor piece endings",
+    "name": "The wrong bishop",
+    "rating": 1200,
+    "explanation": "Bishop and rook pawn can't win if the bishop doesn't cover the promotion square and the defending king reaches the corner. As the defender, race for that corner. As the attacker, keep the enemy king out of the corner, or win before it gets there."
+  },
+  {
+    "id": "same-colour-bishops",
+    "group": "Minor piece endings",
+    "name": "Bishop and pawn against bishop",
+    "rating": 1600,
+    "explanation": "With bishops of the same colour, the defender draws by getting their king in front of the pawn, or by keeping their bishop on a diagonal that crosses the pawn's path. The attacker wins by breaking that control: escort the pawn with the king and put your bishop where it blocks the defending bishop's diagonal."
+  },
+  {
+    "id": "knight-vs-pawn",
+    "group": "Minor piece endings",
+    "name": "Knight against pawn",
+    "rating": 1500,
+    "explanation": "A knight can stop a pawn on its own if it reaches a square in front of it, using checks to gain time and forks against a new queen. Rook pawns on the seventh rank are its worst enemy, because the knight has so few squares near the edge. Count carefully: a knight is easily outrun."
+  },
+  {
+    "id": "bishop-vs-knight",
+    "group": "Minor piece endings",
+    "name": "Bishop against knight",
+    "rating": 1700,
+    "explanation": "A bishop is usually stronger with pawns on both sides of the board, because it can switch quickly from one side to the other. A knight prefers blocked pawns on one side. The bishop's side should fix enemy pawns on squares of the bishop's colour, and the knight's side should keep its pawns on squares the bishop can't attack."
+  },
+  {
+    "id": "opposite-bishops",
+    "group": "Minor piece endings",
+    "name": "Opposite-coloured bishops",
+    "rating": 1600,
+    "explanation": "With opposite-coloured bishops, even two extra pawns often aren't enough. The defender blockades on squares of their own bishop's colour, where the enemy bishop can never challenge. The attacker needs passed pawns far apart, so the king and the bishop can't stop both."
+  },
+  {
+    "id": "minor-practical",
+    "group": "Minor piece endings",
+    "name": "Minor piece endings in practice",
+    "rating": 1700,
+    "explanation": "Knight and bishop endings reward an active king and well-placed pawns. Create a passed pawn where the enemy piece is weakest, fix the opponent's pawns where your piece can attack them, and remember knights are short-range pieces, so an outside passed pawn is especially strong against them."
+  },
+  {
+    "id": "queen-vs-pawn",
+    "group": "Queen endings",
+    "name": "Queen against a pawn on the seventh",
+    "rating": 1300,
+    "explanation": "With checks and attacks on the pawn, the queen forces the defending king to stand in front of its own pawn, which gains a move for your king to come closer. Repeat the process until your king can help win the pawn or mate. This works against centre and knight pawns."
+  },
+  {
+    "id": "queen-vs-pawn-draw",
+    "group": "Queen endings",
+    "name": "Queen against a rook or bishop pawn",
+    "rating": 1500,
+    "explanation": "Against a rook pawn or bishop pawn on the seventh rank, the defender has a stalemate resource: the king goes into the corner, and if the queen takes away its last moves, it's stalemate. As the defender, head for that corner. As the attacker, you only win if your king is already close enough to help."
+  },
+  {
+    "id": "queen-vs-rook",
+    "group": "Queen endings",
+    "name": "Queen against rook",
+    "rating": 2100,
+    "explanation": "Queen against rook is a win, but it takes technique. Drive the defending king and rook to the edge, reach the position where the defender is in zugzwang, and use the queen to separate the rook from its king, then win it with a fork. Watch out for stalemate tricks and rook checks aimed at forking king and queen."
+  },
+  {
+    "id": "queen-pawn-vs-queen",
+    "group": "Queen endings",
+    "name": "Queen and pawn against queen",
+    "rating": 2100,
+    "explanation": "With queen and pawn against queen, hide your king from the checks, often close to the enemy king or in front of the pawn, and push the pawn when a check can be answered with a cross-check or a block. Centre and knight pawns win more often than rook pawns. As the defender, check from a distance and from the front."
+  },
+  {
+    "id": "queen-practical",
+    "group": "Queen endings",
+    "name": "Queen endings in practice",
+    "rating": 1900,
+    "explanation": "Queen endings are about checks: the side whose king is safer usually wins. A far-advanced passed pawn is worth more than extra material, and a centralised queen both defends and attacks. Look for perpetual check when defending, and for cross-checks and queen trades when attacking."
+  },
+  {
+    "id": "fortress",
+    "group": "Fortresses and mixed",
+    "name": "Fortresses",
+    "rating": 1800,
+    "explanation": "A fortress is a position the stronger side can't break into, despite extra material. Learn the shapes: a rook guarded by a pawn against a queen, a bishop's blockade, a king in the right corner. As the defender, place your pieces so there are no entry squares and simply wait. As the attacker, find a way in before the defender sets up."
+  },
+  {
+    "id": "rook-vs-minor",
+    "group": "Fortresses and mixed",
+    "name": "Rook against a minor piece",
+    "rating": 1800,
+    "explanation": "Rook against bishop or knight without pawns is usually a draw, if the defender is careful. Against a bishop, the defending king heads for a corner the bishop doesn't cover; against a knight, it keeps the knight close to the king. With pawns on the board, the rook's side tries to trade into a won pawn ending or tie the piece down to defence."
+  },
+  {
+    "id": "piece-vs-pawns",
+    "group": "Fortresses and mixed",
+    "name": "Pieces against pawns",
+    "rating": 1600,
+    "explanation": "A piece usually beats a few pawns, unless they're far advanced and supported by their king. Stop the most dangerous pawn first, blockade with the piece, and bring your king to collect the rest. For the pawns' side, connected pawns on the sixth rank can be worth a whole piece."
+  },
+  {
+    "id": "other-material",
+    "group": "Fortresses and mixed",
+    "name": "Unusual material",
+    "rating": 1800,
+    "explanation": "Not every ending fits a textbook pattern. Weigh up what each side's pieces can actually do: which pawns are weak, whose king is more active, whether trades help. When you're ahead in material, trade pieces, not pawns. When you're defending, trade pawns, and keep your king active."
+  }
+]

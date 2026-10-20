@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Chess } from 'chess.js';
 import { ArrowRight, BookOpen, Check, RotateCcw, Volume2, VolumeX, X } from 'lucide-react';
-import { Lightbulb, SkipForward } from '@/lib/lucideOriginal';
+import { SkipForward } from '@/lib/lucideOriginal';
 import Navbar from '../components/Navbar/Navbar';
 import EndgameBoard from '../components/EndgameBoard';
 import { BotAvatar } from '../components/BotAvatars';
@@ -164,7 +164,6 @@ export default function EndgameTrainer() {
     const [boardKey, setBoardKey] = useState(0);
     const [muted, setMuted] = useState(false);
     const [evaluation, setEvaluation] = useState('');
-    const [hint, setHint] = useState('');
     const [note, setNote] = useState('');
     const [error, setError] = useState('');
     // Moves of this attempt (both sides, UCI), sent with a "solved" so the server can replay them.
@@ -208,7 +207,6 @@ export default function EndgameTrainer() {
         setMoveLog([]);
         setFeedback(null);
         setResult(null);
-        setHint('');
         setEvaluation('');
         setThinking(false);
         setRated(wasRated);
@@ -358,17 +356,11 @@ export default function EndgameTrainer() {
         playerMoves.current++;
         busy.current = true;
         setThinking(true);
-        setHint('');
         sound(move.captured ? 'capture' : 'move');
         setLastMove({ from: move.from, to: move.to });
         setGame(next);
         void continueAfterMove(next, before, uciOf(move), move.san);
         return true;
-    };
-
-    const showHint = async () => {
-        const tb = await queryTablebase(game.fen());
-        setHint(tb?.bestMove ? `Try ${tb.bestMove.san}.` : 'No hint for this position.');
     };
 
     const done = phase === 'solved' || phase === 'failed';
@@ -516,40 +508,27 @@ export default function EndgameTrainer() {
                         </p>
                     )}
 
-                    {playing && !rated && (
-                        <div className="mt-4 flex flex-wrap items-center gap-3 text-sm">
-                            {evaluation && <span className="rounded-lg bg-plum/5 px-3 py-1.5 font-bold tabular-nums">{evaluation}</span>}
-                            <button type="button" onClick={showHint} disabled={thinking || countPieces(game.fen()) > TABLEBASE_MAX_PIECES} className={`inline-flex items-center gap-1.5 font-bold text-berry hover:underline underline-offset-4 disabled:opacity-40 ${focusRing}`}>
-                                <Lightbulb size={16} /> Hint
-                            </button>
-                            {hint && <span className="text-plum/85">{hint}</span>}
-                        </div>
-                    )}
-
-                    {playing && endgame && PRINCIPLES[endgame.category] && (
-                        <section className="mt-6 rounded-xl bg-cream/70 px-5 py-4" aria-labelledby="principles-heading">
-                            <h3 id="principles-heading" className="text-sm font-bold text-plum/80">{endgame.category}: what usually decides them</h3>
-                            <ul className="mt-2 space-y-2 text-sm leading-relaxed text-plum/90">
-                                {PRINCIPLES[endgame.category].map(p => (
-                                    <li key={p} className="flex gap-2.5">
-                                        <span className="mt-2 w-1.5 h-1.5 rotate-45 bg-berry shrink-0" aria-hidden="true" />
-                                        {p}
-                                    </li>
-                                ))}
-                            </ul>
-                        </section>
+                    {playing && !rated && evaluation && (
+                        <p className="mt-4 text-sm"><span className="rounded-lg bg-plum/5 px-3 py-1.5 font-bold tabular-nums">{evaluation}</span></p>
                     )}
 
                     {moveLog.length > 0 && (
                         <section className="mt-6" aria-labelledby="moves-heading">
                             <h3 id="moves-heading" className="text-sm font-bold text-plum/75">Moves</h3>
                             <ol className="mt-2 flex flex-wrap gap-x-3 gap-y-1.5 text-sm tabular-nums">
-                                {moveLog.map((m, i) => (
+                                {moveLog.map((m, i) => {
+                                    // Half-moves since White's first move, so "1." is White and "1..." is Black starting.
+                                    const ply = i + (position?.fen.split(' ')[1] === 'b' ? 1 : 0);
+                                    const number = Math.floor(ply / 2) + 1;
+                                    const prefix = ply % 2 === 0 ? `${number}.` : i === 0 ? `${number}...` : '';
+                                    return (
                                     <li key={i} className={m.byPlayer ? 'font-bold' : 'text-plum/70'}>
+                                        {prefix && <span className="mr-1 font-normal text-plum/60">{prefix}</span>}
                                         {m.san}
                                         {done && m.label && <span className="ml-1 text-rose-700 font-semibold">{m.label}</span>}
                                     </li>
-                                ))}
+                                    );
+                                })}
                             </ol>
                             {done && moveLog.some(m => m.label) && (
                                 <p className="mt-2 text-xs text-plum/70">M10 (M8): mate in 10 when mate in 8 was best. D: a draw. L: being mated.</p>
@@ -597,6 +576,19 @@ export default function EndgameTrainer() {
                                 {endgame.keyTip && (
                                     <p className="mt-4 rounded-xl bg-cream px-4 py-3 text-plum leading-relaxed"><span className="font-bold">Key idea: </span>{endgame.keyTip}</p>
                                 )}
+                            {PRINCIPLES[endgame.category] && (
+                                <section className="mt-5 rounded-xl bg-cream/70 px-5 py-4" aria-labelledby="principles-heading">
+                                    <h3 id="principles-heading" className="text-sm font-bold text-plum/80">{endgame.category}: what usually decides them</h3>
+                                    <ul className="mt-2 space-y-2 text-sm leading-relaxed text-plum/90">
+                                        {PRINCIPLES[endgame.category].map(p => (
+                                            <li key={p} className="flex gap-2.5">
+                                                <span className="mt-2 w-1.5 h-1.5 rotate-45 bg-berry shrink-0" aria-hidden="true" />
+                                                {p}
+                                            </li>
+                                        ))}
+                                    </ul>
+                                </section>
+                            )}
                                 <Link to={`/EndgameStrategy?endgame=${endgame.id}`} className={`mt-5 inline-flex items-center gap-2 font-bold text-berry hover:underline underline-offset-4 ${focusRing}`}>
                                     <BookOpen size={16} /> Study this endgame with diagrams
                                 </Link>

@@ -25,10 +25,12 @@ export async function onRequestPost(context: { request: Request; env: SupabaseEn
         const last = (recent?.[0] ?? null) as AttemptRow | null;
         const missed = last?.status === 'open' ? await closeAttempt(admin, last, false) : null;
 
-        const stats = await trainerStats(admin, user.id);
         // A failed endgame that is due for review comes first; otherwise one near the player's rating.
-        const endgames = await currentEndgames(admin);
-        const reviewId = await dueReview(admin, user.id, last?.endgame_id ?? null);
+        const [stats, endgames, reviewId] = await Promise.all([
+            trainerStats(admin, user.id),
+            currentEndgames(admin),
+            dueReview(admin, user.id, last?.endgame_id ?? null)
+        ]);
         const endgame = endgames.find(e => e.id === reviewId) ?? pickEndgame(endgames, stats.rating, last?.endgame_id ?? null);
         const variation = await makeVariation(endgame);
         const optimal = endgame.target === 'win' ? await fastestMate(variation.fen, variation.playerColor) : null;

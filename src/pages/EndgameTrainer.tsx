@@ -174,6 +174,10 @@ export default function EndgameTrainer() {
     const busy = useRef(false);
     // Bumped on every new position or retry so a reply still being computed for an old one is dropped.
     const run = useRef(0);
+    // The last result still being saved; "Next position" waits for it.
+    const savingResult = useRef<Promise<void>>(Promise.resolve());
+    // Stops a double click from asking for two positions (the second would score the first as a miss).
+    const loadingNext = useRef(false);
 
     useEffect(() => {
         if (user) getTrainerStats().then(setStats).catch((err: Error) => setError(err.message));
@@ -213,10 +217,14 @@ export default function EndgameTrainer() {
     };
 
     const loadNext = async () => {
+        if (loadingNext.current) return;
+        loadingNext.current = true;
         run.current++;
         setPhase('loading');
         setError('');
         try {
+            // The finished position's result must reach the server first, or it would be scored as an unfinished miss.
+            await savingResult.current;
             const next = await nextPosition();
             setPosition(next);
             setStats(next.stats);
@@ -226,6 +234,8 @@ export default function EndgameTrainer() {
         } catch (err) {
             setError((err as Error).message);
             setPhase(position ? 'failed' : 'idle');
+        } finally {
+            loadingNext.current = false;
         }
     };
 
@@ -243,18 +253,30 @@ export default function EndgameTrainer() {
         sound(solved ? 'win' : 'lose');
         if (!wasRated) return;
         setSession(s => [...s, solved]);
-        try {
-            const res = await sendResult(attemptId, solved ? 'solved' : 'failed', moves.current);
-            setResult(res);
-            setStats(res);
-            if (res.rejected) {
-                setPhase('failed');
-                setSession(s => [...s.slice(0, -1), false]);
+        const played = [...moves.current];
+        const save = async () => {
+            // One retry, so a dropped connection doesn't turn a finished position into a miss.
+            for (let attempt = 1; ; attempt++) {
+                try {
+                    const res = await sendResult(attemptId, solved ? 'solved' : 'failed', played);
+                    setResult(res);
+                    setStats(res);
+                    if (res.rejected) {
+                        setPhase('failed');
+                        setSession(s => [...s.slice(0, -1), false]);
+                    }
+                    void refreshUser();
+                    return;
+                } catch (err) {
+                    if (attempt >= 2) {
+                        setError((err as Error).message);
+                        return;
+                    }
+                }
             }
-            void refreshUser();
-        } catch (err) {
-            setError((err as Error).message);
-        }
+        };
+        savingResult.current = save();
+        await savingResult.current;
     }, [refreshUser, sound]);
 
     /** After the player's move: check it with the endgame database, then let Maia reply. */

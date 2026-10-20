@@ -111,11 +111,13 @@ export const matchesTarget = (outcome: TablebaseOutcome, target: 'win' | 'draw')
  */
 export async function makeVariation(endgame: TrainerEndgame): Promise<{ fen: string; playerColor: Colour }> {
     if (countPieces(endgame.fen) <= TABLEBASE_MAX_PIECES) {
-        for (let tries = 0; tries < 6; tries++) {
-            const v = transformPosition(endgame.fen, endgame.playerColor, randomTransform(endgame.fen, true));
-            if (!v) continue;
-            const outcome = await playerOutcome(v.fen, v.playerColor);
-            if (outcome && matchesTarget(outcome, endgame.target)) return v;
+        // Check a few candidates at once rather than one after another, so the next position loads quickly.
+        for (let round = 0; round < 2; round++) {
+            const candidates = Array.from({ length: 4 }, () => transformPosition(endgame.fen, endgame.playerColor, randomTransform(endgame.fen, true)))
+                .filter((v): v is { fen: string; playerColor: Colour } => v !== null);
+            const outcomes = await Promise.all(candidates.map(v => playerOutcome(v.fen, v.playerColor)));
+            const match = candidates.find((_, i) => outcomes[i] && matchesTarget(outcomes[i]!, endgame.target));
+            if (match) return match;
         }
     }
     for (let tries = 0; tries < 10; tries++) {
@@ -138,8 +140,8 @@ export interface AttemptResult extends TrainerStats {
  * already closed (a double submit), so it is never counted twice.
  */
 export async function closeAttempt(admin: SupabaseClient, attempt: AttemptRow, solved: boolean, score = solved ? 1 : 0): Promise<AttemptResult | null> {
-    const endgame = (await currentEndgames(admin)).find(e => e.id === attempt.endgame_id);
-    const stats = await trainerStats(admin, attempt.user_id);
+    const [endgames, stats] = await Promise.all([currentEndgames(admin), trainerStats(admin, attempt.user_id)]);
+    const endgame = endgames.find(e => e.id === attempt.endgame_id);
     const change = endgame ? ratingChange(stats.rating, endgame.rating, score, stats.played) : 0;
     const rating = Math.max(100, stats.rating + change);
 
@@ -154,30 +156,35 @@ export async function closeAttempt(admin: SupabaseClient, attempt: AttemptRow, s
 
     const best = Math.max(stats.best, rating);
     const played = stats.played + 1;
-    const { error } = await admin
-        .from('profiles')
-        .update({ endgame_rating: rating, endgame_best: best, endgame_played: played, updated_at: new Date().toISOString() })
-        .eq('id', attempt.user_id);
-    if (error) throw error;
-
+    // These don't depend on each other, so they run together to keep the result quick.
+    const updateProfile = async () => {
+        const { error } = await admin
+            .from('profiles')
+            .update({ endgame_rating: rating, endgame_best: best, endgame_played: played, updated_at: new Date().toISOString() })
+            .eq('id', attempt.user_id);
+        if (error) throw error;
+    };
     // The endgame moves the other way: up when failed, down when solved.
-    if (endgame) {
-        const start = TRAINER_ENDGAMES.find(e => e.id === endgame.id)!.rating;
-        const { error: adjustError } = await admin.rpc('adjust_endgame_rating', {
+    const adjustEndgame = async () => {
+        if (!endgame) return;
+        const { error } = await admin.rpc('adjust_endgame_rating', {
             p_endgame: endgame.id,
-            p_start: start,
+            p_start: TRAINER_ENDGAMES.find(e => e.id === endgame.id)!.rating,
             p_change: endgameRatingChange(endgame.rating, stats.rating, score)
         });
-        if (adjustError) throw adjustError;
-    }
-
-    await scheduleReview(admin, attempt.user_id, attempt.endgame_id, solved);
-
-    let pointsAwarded = 0;
-    for (const milestone of newMilestones(stats.best, best)) {
-        const { awarded } = await awardPoints(admin, attempt.user_id, 'endgame', `trainer-best-${milestone}`, BEST_RATING_POINTS, { milestone });
-        if (awarded) pointsAwarded += BEST_RATING_POINTS;
-    }
+        if (error) throw error;
+    };
+    const payMilestones = async () => {
+        const paid = await Promise.all(newMilestones(stats.best, best).map(milestone =>
+            awardPoints(admin, attempt.user_id, 'endgame', `trainer-best-${milestone}`, BEST_RATING_POINTS, { milestone })));
+        return paid.filter(p => p.awarded).length * BEST_RATING_POINTS;
+    };
+    const [, , , pointsAwarded] = await Promise.all([
+        updateProfile(),
+        adjustEndgame(),
+        scheduleReview(admin, attempt.user_id, attempt.endgame_id, solved),
+        payMilestones()
+    ]);
 
     return { rating, best, played, provisional: played < LEADERBOARD_MIN_PLAYED, change: rating - stats.rating, pointsAwarded, score };
 }

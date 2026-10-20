@@ -27,7 +27,7 @@ function passed(pawn, white, enemyPawns) {
 const KEYWORDS = [
     [/lucena/, 'lucena', 'rook'], [/philidor/, 'philidor', 'rook'], [/vancura/, 'vancura', 'rook'],
     [/short side|long side/, 'short-side', 'rook'], [/behind the (passed )?pawn|rook behind/, 'rook-behind', 'rook'],
-    [/r[eé]ti/, 'reti', 'pawn'], [/triangulat/, 'triangulation', 'pawn'], [/correspond/, 'corresponding-squares', 'pawn'],
+    [/shoulder/, 'shouldering', 'pawn'], [/r[eé]ti/, 'reti', 'pawn'], [/triangulat/, 'triangulation', 'pawn'], [/correspond/, 'corresponding-squares', 'pawn'],
     [/breakthrough/, 'breakthrough', 'pawn'], [/outside pass/, 'outside-passer', 'pawn'], [/protected pass/, 'protected-passer', 'pawn'],
     [/rule of the square|the square/, 'rule-of-square', 'pawn'], [/distant opposition|opposition/, 'distant-opposition', 'pawn'],
     [/fortress/, 'fortress', 'any'], [/wrong (colou?red )?bishop|wrong rook pawn/, 'wrong-bishop', 'minor']
@@ -63,7 +63,13 @@ function suggest(fen, target, text) {
         if (m === 'BN') return 'bishop-knight-mate';
         if (m.includes('R')) return 'rook-mate';
     }
-    if ((m === 'P' && t === '') || (m === '' && t === 'P')) return target === 'win' ? 'key-squares' : 'kp-defence';
+    if ((m === 'P' && t === '') || (m === '' && t === 'P')) {
+        if (target === 'draw') return 'kp-defence';
+        // A defending king beside or behind the pawn has to be shouldered away; one in front is a key squares fight.
+        const pawn = myPawns[0], defender = theirPieces.find(p => p.type === 'K');
+        const inFront = Math.abs(defender.file - pawn.file) <= 1 && relRank(defender.rank, white) > relRank(pawn.rank, white);
+        return inFront ? 'key-squares' : 'shouldering';
+    }
 
     if (fam === 'pawn') {
         if (target === 'draw') return m.length === 0 || t.length === 0 ? 'kp-defence' : 'distant-opposition';

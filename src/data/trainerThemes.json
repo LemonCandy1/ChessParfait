@@ -11,7 +11,7 @@
     "group": "Basic mates",
     "name": "Rook checkmate",
     "rating": 850,
-    "explanation": "The rook cuts the enemy king off along a rank or file, and your king does the pushing. When the kings stand facing each other with one square between them, a rook check drives the defender back a rank. When they don't, make a waiting move with the rook along its line, keeping it far from the enemy king so it can't be attacked."
+    "explanation": "Use the box method to slowly restrict the area for the opponent's king. Always work together with the king and rook, watching out for stalemate when the box is small!"
   },
   {
     "id": "two-rooks-mate",
@@ -31,19 +31,26 @@
     "id": "bishop-knight-mate",
     "group": "Basic mates",
     "name": "Bishop and knight checkmate",
-    "rating": 1900,
+    "rating": 1700,
     "explanation": "The hardest basic mate: it can only be forced in a corner of the same colour as your bishop. First drive the king to the edge, then walk it from the wrong corner to the right one, with the knight making a W-shaped tour and the bishop covering the escape squares. You have 50 moves, so work methodically and never let the king off the edge."
   },
   {
     "id": "key-squares",
-    "group": "Basic mates",
+    "group": "Pawn endings",
     "name": "King and pawn: key squares",
     "rating": 900,
     "explanation": "With king and pawn against king, the pawn queens if your king reaches a key square. For a pawn on its own half of the board, those are the three squares two ranks in front of it. Lead with the king, not the pawn: use the opposition to shoulder the defender aside, and only push the pawn once your king controls its path. Rook pawns are the exception, because a defender who reaches the corner draws."
   },
   {
+    "id": "shouldering",
+    "group": "Pawn endings",
+    "name": "Shouldering away",
+    "rating": 1000,
+    "explanation": "When the defending king is beside the pawn rather than in front of it, use your own king as a barrier. Step between the defending king and the pawn's path, so it can never get back in front, and let the pawn walk through behind your king. A diagonal king move often does two jobs at once: it gains ground towards the promotion square and pushes the enemy king further away."
+  },
+  {
     "id": "kp-defence",
-    "group": "Basic mates",
+    "group": "Pawn endings",
     "name": "King and pawn: holding the draw",
     "rating": 900,
     "explanation": "Against a lone pawn, the defending king belongs directly in front of it. When the attacking king comes forward, take the opposition, standing face to face with one square between, so it can't get past. If you have to give ground, step straight back down the pawn's file, so you can take the opposition again when the pawn reaches the sixth rank."

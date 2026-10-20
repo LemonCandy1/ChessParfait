@@ -7,9 +7,9 @@ import themes from './trainerThemes.json';
 describe('endgame library', () => {
     const themeIds = new Set(themes.map(t => t.id));
 
-    it('has 41 themes, each with an explanation and a sensible rating', () => {
-        expect(themes).toHaveLength(41);
-        expect(themeIds.size).toBe(41);
+    it('has 42 themes, each with an explanation and a sensible rating', () => {
+        expect(themes).toHaveLength(42);
+        expect(themeIds.size).toBe(42);
         for (const t of themes) {
             expect(t.explanation.length).toBeGreaterThan(80);
             expect(t.rating).toBeGreaterThanOrEqual(400);

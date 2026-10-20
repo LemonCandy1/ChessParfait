@@ -1,12 +1,31 @@
 import { getAdminClient, getSessionAuthUser, json, type SupabaseEnv } from '../../_lib/community';
 import { UNIQUE_VIOLATION } from '../../_lib/profiles';
 import { ATTEMPT_COLUMNS, closeAttempt, currentEndgames, dueReview, fastestMate, makeVariation, trainerStats, type AttemptRow } from '../../_lib/endgameTrainer';
-import { pickEndgame } from '../../../src/lib/endgameTrainer';
+import { pickEndgame, type TrainerEndgame } from '../../../src/lib/endgameTrainer';
+
+const positionPayload = (attempt: { id: string; fen: string; player_color: string; optimal_moves: number | null }, endgame: TrainerEndgame) => ({
+    attemptId: attempt.id,
+    fen: attempt.fen,
+    playerColor: attempt.player_color,
+    endgame: {
+        id: endgame.id,
+        title: endgame.title,
+        category: endgame.category,
+        target: endgame.target,
+        mateRequired: endgame.mateRequired,
+        rating: endgame.rating,
+        keyTip: endgame.keyTip ?? '',
+        description: endgame.description ?? '',
+        theoryNotes: endgame.theoryNotes ?? ''
+    },
+    fastestMate: attempt.optimal_moves
+});
 
 /**
- * POST /api/endgame-trainer/next
- * Serves the next position near the player's rating. A position still open (skipped, or left when the
- * tab closed) is first counted as a miss, so walking away from a hard position never saves rating.
+ * POST /api/endgame-trainer/next { skip?: boolean }
+ * Serves the next position near the player's rating. A position still open (the tab closed, or it was
+ * loaded in the background and never played) is handed back to be played again from the start, without
+ * penalty. Only an explicit skip counts it as a miss.
  */
 export async function onRequestPost(context: { request: Request; env: SupabaseEnv }) {
     const { request, env } = context;
@@ -14,6 +33,7 @@ export async function onRequestPost(context: { request: Request; env: SupabaseEn
         const user = await getSessionAuthUser(request, env);
         if (!user) return json({ message: 'Please sign in to use the endgame trainer.' }, 401);
         const admin = getAdminClient(env);
+        const { skip } = await request.json().catch(() => ({ skip: false }));
 
         const { data: recent, error: recentError } = await admin
             .from('endgame_attempts')
@@ -23,6 +43,12 @@ export async function onRequestPost(context: { request: Request; env: SupabaseEn
             .limit(1);
         if (recentError) throw recentError;
         const last = (recent?.[0] ?? null) as AttemptRow | null;
+
+        if (last?.status === 'open' && !skip) {
+            const [stats, endgames] = await Promise.all([trainerStats(admin, user.id), currentEndgames(admin)]);
+            const endgame = endgames.find(e => e.id === last.endgame_id);
+            if (endgame) return json({ ...positionPayload(last, endgame), stats, review: false, resumed: true, missed: null });
+        }
         const missed = last?.status === 'open' ? await closeAttempt(admin, last, false) : null;
 
         // A failed endgame that is due for review comes first; otherwise one near the player's rating.
@@ -47,23 +73,10 @@ export async function onRequestPost(context: { request: Request; env: SupabaseEn
         }
 
         return json({
-            attemptId: (attempt as { id: string }).id,
-            fen: variation.fen,
-            playerColor: variation.playerColor,
-            endgame: {
-                id: endgame.id,
-                title: endgame.title,
-                category: endgame.category,
-                target: endgame.target,
-                mateRequired: endgame.mateRequired,
-                rating: endgame.rating,
-                keyTip: endgame.keyTip ?? '',
-                description: endgame.description ?? '',
-                theoryNotes: endgame.theoryNotes ?? ''
-            },
+            ...positionPayload({ id: (attempt as { id: string }).id, fen: variation.fen, player_color: variation.playerColor, optimal_moves: optimal }, endgame),
             stats,
             review: reviewId === endgame.id,
-            fastestMate: optimal,
+            resumed: false,
             missed: missed ? { change: missed.change } : null
         });
     } catch (err) {

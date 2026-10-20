@@ -27,7 +27,9 @@ export interface TrainerPosition {
     review: boolean;
     /** Fastest mate in moves from this position, when known. */
     fastestMate: number | null;
-    /** Set when the previous position was left open and counted as a miss. */
+    /** True when this is an unfinished position handed back to play again. */
+    resumed: boolean;
+    /** Set when the previous position was skipped and counted as a miss. */
     missed: { change: number } | null;
 }
 
@@ -54,7 +56,8 @@ const post = (body: unknown): RequestInit => ({ method: 'POST', headers: { 'Cont
 
 export const getTrainerStats = () => request<TrainerStats>('/api/endgame-trainer');
 
-export const nextPosition = () => request<TrainerPosition>('/api/endgame-trainer/next', post({}));
+/** The next position; an unfinished one comes back first. `skip` gives up the open position as a miss instead. */
+export const nextPosition = (skip = false) => request<TrainerPosition>('/api/endgame-trainer/next', post({ skip }));
 
 export const sendResult = (attemptId: string, outcome: 'solved' | 'failed', moves: string[]) =>
     request<TrainerResult>('/api/endgame-trainer/result', post({ attemptId, outcome, moves }));

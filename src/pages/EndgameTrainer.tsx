@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Chess } from 'chess.js';
 import { ArrowRight, BookOpen, Check, RotateCcw, Volume2, VolumeX, X } from 'lucide-react';
@@ -17,7 +17,6 @@ import {
     countPieces,
     moveLabel,
     movesToMate,
-    ratingChange,
     solveState,
     type Colour,
     type MoveResult
@@ -141,7 +140,7 @@ function Rail({ stats, session }: { stats: TrainerStats | null; session: boolean
                     <li><span className="font-bold text-cream">One slip ends it.</span> A move that throws away the win (or loses the draw) fails the position.</li>
                     <li><span className="font-bold text-cream">Faster wins earn more.</span> Matching the quickest mate gains the most; a slow win still gains something.</li>
                     <li><span className="font-bold text-cream">Misses come back.</span> A failed endgame returns for review in 5 minutes, then at growing gaps.</li>
-                    <li><span className="font-bold text-cream">Skipping counts as a miss,</span> and so does leaving a position unfinished.</li>
+                    <li><span className="font-bold text-cream">Skipping counts as a miss.</span> Leave mid-position and it waits for you, ready to play again.</li>
                 </ul>
             </section>
         </aside>
@@ -175,12 +174,22 @@ export default function EndgameTrainer() {
     const run = useRef(0);
     // The last result still being saved; "Next position" waits for it.
     const savingResult = useRef<Promise<void>>(Promise.resolve());
-    // Stops a double click from asking for two positions (the second would score the first as a miss).
+    // Stops a double click from asking for two positions at once.
     const loadingNext = useRef(false);
+    // The next position, requested in the background so "Start" and "Next position" are instant.
+    // Safe because an unplayed position is never scored: it is simply handed back next time.
+    const prefetched = useRef<Promise<TrainerPosition> | null>(null);
+    const prefetch = useCallback(() => {
+        const request = nextPosition();
+        request.catch(() => undefined);
+        prefetched.current = request;
+    }, []);
 
     useEffect(() => {
-        if (user) getTrainerStats().then(setStats).catch((err: Error) => setError(err.message));
-    }, [user]);
+        if (!user) return;
+        getTrainerStats().then(setStats).catch((err: Error) => setError(err.message));
+        prefetch();
+    }, [user, prefetch]);
 
     const sound = useCallback((kind: 'move' | 'capture' | 'win' | 'lose') => {
         if (muted) return;
@@ -214,19 +223,26 @@ export default function EndgameTrainer() {
         setPhase('playing');
     };
 
-    const loadNext = async () => {
+    /** Shows the next position. `skip` gives up the one being played, which counts as a miss. */
+    const loadNext = async (skip = false) => {
         if (loadingNext.current) return;
         loadingNext.current = true;
         run.current++;
         setPhase('loading');
         setError('');
         try {
-            // The finished position's result must reach the server first, or it would be scored as an unfinished miss.
+            // The finished position's result must reach the server before the next position is asked for.
             await savingResult.current;
-            const next = await nextPosition();
+            const ready = skip ? null : prefetched.current;
+            prefetched.current = null;
+            let next = ready ? await ready.catch(() => null) : null;
+            // A background request that raced a result can hand back the position just played; ask again.
+            if (!next || next.attemptId === position?.attemptId) next = await nextPosition(skip);
             setPosition(next);
             setStats(next.stats);
-            setNote(next.missed ? `Your last position was left unfinished, so it counted as a miss (${signed(next.missed.change)}).` : '');
+            setNote(next.missed
+                ? `Skipped, so it counted as a miss (${signed(next.missed.change)}).`
+                : next.resumed ? 'This position was still waiting for you, so here it is from the start.' : '');
             if (next.missed) setSession(s => [...s, false]);
             startPosition(next, true);
         } catch (err) {
@@ -273,9 +289,12 @@ export default function EndgameTrainer() {
                 }
             }
         };
+        const thisRun = run.current;
         savingResult.current = save();
         await savingResult.current;
-    }, [refreshUser, sound]);
+        // Get the next position ready while the player reads the result (unless they've already moved on).
+        if (run.current === thisRun) prefetch();
+    }, [prefetch, refreshUser, sound]);
 
     /** After the player's move: check it with the endgame database, then let Maia reply. */
     const continueAfterMove = async (after: Chess, before: string, uci: string, san: string) => {
@@ -366,10 +385,6 @@ export default function EndgameTrainer() {
     const done = phase === 'solved' || phase === 'failed';
     const playing = phase === 'playing';
     const endgame = position?.endgame;
-    const stakes = useMemo(() => {
-        if (!stats || !endgame) return null;
-        return { gain: ratingChange(stats.rating, endgame.rating, 1, stats.played), loss: ratingChange(stats.rating, endgame.rating, 0, stats.played) };
-    }, [stats, endgame]);
     const arrows = feedback
         ? [feedback.played && arrowFor(feedback.played, '#e11d48'), feedback.best && arrowFor(feedback.best, '#059669')].filter((a): a is ReturnType<typeof arrowFor> => !!a)
         : undefined;
@@ -446,11 +461,16 @@ export default function EndgameTrainer() {
                             resetKey={boardKey}
                             arrows={arrows}
                         >
+                            {position && phase === 'loading' && (
+                                <div className="absolute inset-0 z-40 bg-plum/45 flex items-center justify-center" role="status">
+                                    <p className="rounded-xl bg-cream px-5 py-3 font-bold text-plum shadow-lg">Finding your next position…</p>
+                                </div>
+                            )}
                             {!position && (
                                 <div className="absolute inset-0 z-40 bg-plum/70 backdrop-blur-[1px] flex flex-col items-center justify-center text-center p-6">
                                     <p className="font-serif font-black text-3xl text-cream">Ready when you are</p>
-                                    <p className="mt-2 text-sm text-cream/85 max-w-xs">The first position is chosen near your rating. It counts once you start.</p>
-                                    <button type="button" onClick={loadNext} disabled={phase === 'loading' || !stats} className={`mt-5 inline-flex items-center gap-2 py-3 px-7 soft-button-berry text-sm ${focusRing} focus-visible:ring-offset-plum`}>
+                                    <p className="mt-2 text-sm text-cream/85 max-w-xs">The first position is chosen near your rating.</p>
+                                    <button type="button" onClick={() => loadNext()} disabled={phase === 'loading' || !stats} className={`mt-5 inline-flex items-center gap-2 py-3 px-7 soft-button-berry text-sm ${focusRing} focus-visible:ring-offset-plum`}>
                                         {phase === 'loading' ? 'Finding a position…' : <>Start training <ArrowRight size={16} /></>}
                                     </button>
                                 </div>
@@ -467,7 +487,7 @@ export default function EndgameTrainer() {
                         {playing && (
                             <button
                                 type="button"
-                                onClick={loadNext}
+                                onClick={() => loadNext(rated)}
                                 disabled={thinking}
                                 className={`ml-auto shrink-0 inline-flex items-center gap-1.5 text-sm font-bold text-plum/75 hover:text-berry disabled:opacity-40 ${focusRing}`}
                             >
@@ -500,12 +520,8 @@ export default function EndgameTrainer() {
                         </div>
                     )}
 
-                    {playing && stakes && rated && (
-                        <p className="mt-4 flex flex-wrap gap-x-5 gap-y-1 text-sm">
-                            <span><span className="font-bold text-emerald-700 tabular-nums">{signed(stakes.gain)}</span> for a solve</span>
-                            <span><span className="font-bold text-rose-700 tabular-nums">{signed(stakes.loss)}</span> for a miss</span>
-                            {position?.fastestMate && <span className="text-plum/75">Fastest mate: {position.fastestMate} moves</span>}
-                        </p>
+                    {playing && position?.fastestMate && (
+                        <p className="mt-4 text-sm text-plum/75">Fastest mate: {position.fastestMate} moves</p>
                     )}
 
                     {playing && !rated && evaluation && (
@@ -552,7 +568,7 @@ export default function EndgameTrainer() {
                             {result && result.pointsAwarded > 0 && <p className="mt-2 font-bold text-emerald-700">New best rating: +{result.pointsAwarded} points!</p>}
 
                             <div className="mt-5 flex flex-wrap gap-3">
-                                <button type="button" onClick={loadNext} className={`inline-flex items-center gap-2 py-2.5 px-6 soft-button-berry text-sm ${focusRing}`}>
+                                <button type="button" onClick={() => loadNext()} className={`inline-flex items-center gap-2 py-2.5 px-6 soft-button-berry text-sm ${focusRing}`}>
                                     Next position <ArrowRight size={16} />
                                 </button>
                                 {phase === 'failed' && (

@@ -21,7 +21,7 @@ import {
     type Colour,
     type MoveResult
 } from '../lib/endgameTrainer';
-import { getTrainerStats, nextPosition, sendResult, type TrainerPosition, type TrainerResult, type TrainerStats } from '../lib/endgameTrainerApi';
+import { getTrainerStats, nextPosition, preparePosition, sendResult, type TrainerPosition, type TrainerResult, type TrainerStats } from '../lib/endgameTrainerApi';
 import { focusRing } from '../lib/calendarFormat';
 
 // Every trainer position is defended by the strongest Maia bot, with the endgame database as its safety net.
@@ -55,36 +55,6 @@ function describeMove(m: TablebaseMove): { result: MoveResult; mateIn: number | 
     if (result === 'draw' || m.dtm === null) return { result, mateIn: null };
     return { result, mateIn: result === 'win' ? movesToMate(Math.abs(m.dtm) + 1) : movesToMate(m.dtm) };
 }
-
-/**
- * General principles for each kind of endgame, shown while playing. They teach without naming the
- * technique the position tests (that is revealed, with its diagrams, once the position is over).
- */
-const PRINCIPLES: Record<string, string[]> = {
-    'Pawn Endgames': [
-        'Your king is a fighting piece: bring it forward first.',
-        'Opposition decides king and pawn races. With the kings facing each other, the side not to move often wins the duel.',
-        "Count before you push: can the defending king still reach the pawn's square?"
-    ],
-    'Rook Endgames': [
-        'An active rook is worth more than a pawn. Avoid passive defence.',
-        'Cut the enemy king off along a rank or file before you advance.',
-        "Rooks belong behind passed pawns, yours or your opponent's."
-    ],
-    'Queen Endgames': [
-        'Look for forks: queen checks that also hit a loose piece.',
-        'Bring your king in. The queen alone rarely finishes the job.',
-        'Watch for stalemate tricks every time the defending king runs short of squares.'
-    ],
-    'Minor Piece Endgames': [
-        'Drive the bare king towards the edge, then to the right corner.',
-        'Keep your pieces close together so they cover each other.',
-        'Take squares away calmly rather than checking: checks often let the king escape.'
-    ]
-};
-
-/** Splits notes written as "1. ... 2. ..." into steps, so they read as a list. */
-const steps = (notes: string) => notes.split(/\s(?=\d+\.\s)/).map(t => t.replace(/^\d+\.\s/, ''));
 
 const colourName = (c: Colour) => (c === 'w' ? 'White' : 'Black');
 const uciOf = (m: { from: string; to: string; promotion?: string }) => `${m.from}${m.to}${m.promotion ?? ''}`;
@@ -221,6 +191,8 @@ export default function EndgameTrainer() {
         setRated(wasRated);
         setBoardKey(k => k + 1);
         setPhase('playing');
+        // Make the following position on the server while this one is played, so "Next" is instant.
+        if (wasRated) preparePosition().catch(() => undefined);
     };
 
     /** Shows the next position. `skip` gives up the one being played, which counts as a miss. */
@@ -449,7 +421,7 @@ export default function EndgameTrainer() {
                         </button>
                     </div>
 
-                    <div className={`${boardWidth} aspect-square`}>
+                    <div key={position?.attemptId ?? 'preview'} className={`${boardWidth} aspect-square ${position ? 'animate-board-deal' : ''}`}>
                         <EndgameBoard
                             game={game}
                             playerColor={playerColor}
@@ -497,8 +469,9 @@ export default function EndgameTrainer() {
                     </div>
                 </main>
 
-                {/* Study panel: the goal and stakes, the moves, then the result and the lesson */}
+                {/* Study panel: the goal, the moves, then the result and the theme */}
                 <section className="order-2 lg:order-none bg-white border-l-2 border-plum/10 px-6 py-7 lg:overflow-y-auto" aria-live="polite" aria-labelledby="goal-heading">
+                    <div key={position?.attemptId ?? 'preview'} className={position ? 'animate-board-deal-late' : ''}>
                     {endgame && (
                         <p className="text-sm font-bold text-berry">
                             {endgame.category} · rated {endgame.rating}
@@ -509,6 +482,7 @@ export default function EndgameTrainer() {
                     {position?.review && rated && playing && (
                         <p className="mt-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-sm px-4 py-2.5">You missed this endgame before. Here it is again in a new position.</p>
                     )}
+                    </div>
                     {error && <p className="mt-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-sm px-4 py-3" role="alert">{error}</p>}
                     {note && <p className="mt-4 text-sm text-plum/80" role="status">{note}</p>}
 
@@ -578,35 +552,11 @@ export default function EndgameTrainer() {
                                 )}
                             </div>
 
-                            {/* The lesson: what this position was teaching */}
-                            <article className="mt-8" aria-labelledby="lesson-heading">
-                                <h3 id="lesson-heading" className="text-xl font-serif font-black">{endgame.title}</h3>
-                                {endgame.description && <p className="mt-2 text-plum/85 leading-relaxed">{endgame.description}</p>}
-                                {endgame.theoryNotes && (steps(endgame.theoryNotes).length > 1 ? (
-                                    <ol className="mt-3 space-y-2 text-plum/85 leading-relaxed list-decimal pl-5 marker:font-bold marker:text-berry">
-                                        {steps(endgame.theoryNotes).map(step => <li key={step}>{step}</li>)}
-                                    </ol>
-                                ) : (
-                                    <p className="mt-3 text-plum/85 leading-relaxed">{endgame.theoryNotes}</p>
-                                ))}
-                                {endgame.keyTip && (
-                                    <p className="mt-4 rounded-xl bg-cream px-4 py-3 text-plum leading-relaxed"><span className="font-bold">Key idea: </span>{endgame.keyTip}</p>
-                                )}
-                            {PRINCIPLES[endgame.category] && (
-                                <section className="mt-5 rounded-xl bg-cream/70 px-5 py-4" aria-labelledby="principles-heading">
-                                    <h3 id="principles-heading" className="text-sm font-bold text-plum/80">{endgame.category}: what usually decides them</h3>
-                                    <ul className="mt-2 space-y-2 text-sm leading-relaxed text-plum/90">
-                                        {PRINCIPLES[endgame.category].map(p => (
-                                            <li key={p} className="flex gap-2.5">
-                                                <span className="mt-2 w-1.5 h-1.5 rotate-45 bg-berry shrink-0" aria-hidden="true" />
-                                                {p}
-                                            </li>
-                                        ))}
-                                    </ul>
-                                </section>
-                            )}
-                                <Link to={`/EndgameStrategy?endgame=${endgame.id}`} className={`mt-5 inline-flex items-center gap-2 font-bold text-berry hover:underline underline-offset-4 ${focusRing}`}>
-                                    <BookOpen size={16} /> Study this endgame with diagrams
+                            {/* The theme, with a link to its strategy diagrams */}
+                            <article className="mt-8 rounded-xl bg-cream px-5 py-4" aria-labelledby="theme-heading">
+                                <h3 id="theme-heading" className="text-xl font-serif font-black">{endgame.title}</h3>
+                                <Link to={`/EndgameStrategy?endgame=${endgame.id}`} className={`mt-2 inline-flex items-center gap-2 font-bold text-berry hover:underline underline-offset-4 ${focusRing}`}>
+                                    <BookOpen size={16} /> Learn more
                                 </Link>
                             </article>
                         </div>

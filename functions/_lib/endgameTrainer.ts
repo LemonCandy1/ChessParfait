@@ -8,6 +8,7 @@ import {
     endgameRatingChange,
     movesToMate,
     newMilestones,
+    pickEndgame,
     nextReviewGap,
     randomTransform,
     ratingChange,
@@ -187,4 +188,64 @@ export async function closeAttempt(admin: SupabaseClient, attempt: AttemptRow, s
     ]);
 
     return { rating, best, played, provisional: played < LEADERBOARD_MIN_PLAYED, change: rating - stats.rating, pointsAwarded, score };
+}
+
+/** The player's latest attempt that has been shown (open or finished), ignoring a prepared one. */
+export async function latestAttempt(admin: SupabaseClient, userId: string): Promise<AttemptRow | null> {
+    const { data, error } = await admin
+        .from('endgame_attempts')
+        .select(ATTEMPT_COLUMNS)
+        .eq('user_id', userId)
+        .neq('status', 'queued')
+        .order('created_at', { ascending: false })
+        .limit(1);
+    if (error) throw error;
+    return (data?.[0] ?? null) as AttemptRow | null;
+}
+
+export interface NewAttempt {
+    attempt: { id: string; fen: string; player_color: string; optimal_moves: number | null };
+    endgame: TrainerEndgame;
+    stats: TrainerStats;
+    review: boolean;
+}
+
+/**
+ * Picks the next endgame (a failed one due for review first, otherwise one near the player's rating, never
+ * `lastId` again), makes a checked variation and saves it as an attempt with `status`: 'open' to play now,
+ * or 'queued' to be prepared in the background. Returns null if one with that status already exists.
+ */
+export async function createAttempt(admin: SupabaseClient, userId: string, lastId: string | null, status: 'open' | 'queued'): Promise<NewAttempt | null> {
+    const [stats, endgames, reviewId] = await Promise.all([trainerStats(admin, userId), currentEndgames(admin), dueReview(admin, userId, lastId)]);
+    const endgame = endgames.find(e => e.id === reviewId) ?? pickEndgame(endgames, stats.rating, lastId);
+    const variation = await makeVariation(endgame);
+    const optimal = endgame.target === 'win' ? await fastestMate(variation.fen, variation.playerColor) : null;
+
+    const { data, error } = await admin
+        .from('endgame_attempts')
+        .insert({ user_id: userId, endgame_id: endgame.id, fen: variation.fen, player_color: variation.playerColor, rating_before: stats.rating, optimal_moves: optimal, status })
+        .select('id')
+        .single();
+    if (error) {
+        if ((error as { code?: string }).code === '23505') return null;
+        throw error;
+    }
+    return {
+        attempt: { id: (data as { id: string }).id, fen: variation.fen, player_color: variation.playerColor, optimal_moves: optimal },
+        endgame,
+        stats,
+        review: reviewId === endgame.id
+    };
+}
+
+/** Turns the player's prepared position into the one they are playing now, or null if none is ready. */
+export async function activateQueued(admin: SupabaseClient, userId: string, ratingNow: number): Promise<AttemptRow | null> {
+    const { data, error } = await admin
+        .from('endgame_attempts')
+        .update({ status: 'open', rating_before: ratingNow, created_at: new Date().toISOString() })
+        .eq('user_id', userId)
+        .eq('status', 'queued')
+        .select(ATTEMPT_COLUMNS);
+    if (error) throw error;
+    return (data?.[0] ?? null) as AttemptRow | null;
 }

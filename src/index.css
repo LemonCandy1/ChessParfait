@@ -192,3 +192,35 @@
 }
 
 
+
+/* Endgame Trainer: a new position settles onto the board ("dealt"), the panel follows a beat later. */
+@keyframes boardDeal {
+  from {
+    opacity: 0;
+    transform: scale(0.965) translateY(10px);
+    filter: blur(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+    filter: none;
+  }
+}
+
+.animate-board-deal {
+  animation: boardDeal 420ms var(--ease-out) both;
+}
+
+.animate-board-deal-late {
+  animation: boardDeal 420ms var(--ease-out) 90ms both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-board-deal,
+  .animate-board-deal-late {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+    filter: none !important;
+  }
+}

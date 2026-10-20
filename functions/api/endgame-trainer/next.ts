@@ -1,9 +1,17 @@
 import { getAdminClient, getSessionAuthUser, json, type SupabaseEnv } from '../../_lib/community';
-import { UNIQUE_VIOLATION } from '../../_lib/profiles';
-import { ATTEMPT_COLUMNS, closeAttempt, currentEndgames, dueReview, fastestMate, makeVariation, trainerStats, type AttemptRow } from '../../_lib/endgameTrainer';
-import { pickEndgame, type TrainerEndgame } from '../../../src/lib/endgameTrainer';
+import {
+    activateQueued,
+    closeAttempt,
+    createAttempt,
+    currentEndgames,
+    dueReview,
+    latestAttempt,
+    trainerStats,
+    type NewAttempt
+} from '../../_lib/endgameTrainer';
+import type { TrainerEndgame } from '../../../src/lib/endgameTrainer';
 
-const positionPayload = (attempt: { id: string; fen: string; player_color: string; optimal_moves: number | null }, endgame: TrainerEndgame) => ({
+const positionPayload = ({ attempt, endgame, stats, review }: NewAttempt, extra: { resumed: boolean; missed: { change: number } | null }) => ({
     attemptId: attempt.id,
     fen: attempt.fen,
     playerColor: attempt.player_color,
@@ -18,14 +26,17 @@ const positionPayload = (attempt: { id: string; fen: string; player_color: strin
         description: endgame.description ?? '',
         theoryNotes: endgame.theoryNotes ?? ''
     },
-    fastestMate: attempt.optimal_moves
+    fastestMate: attempt.optimal_moves,
+    stats,
+    review,
+    ...extra
 });
 
 /**
  * POST /api/endgame-trainer/next { skip?: boolean }
- * Serves the next position near the player's rating. A position still open (the tab closed, or it was
- * loaded in the background and never played) is handed back to be played again from the start, without
- * penalty. Only an explicit skip counts it as a miss.
+ * The position to play now. An unfinished one is handed back from the start without penalty; only an
+ * explicit skip counts it as a miss. Otherwise the position prepared in the background (see prepare.ts) is
+ * switched on, which is quick, or a new one is made if none is ready.
  */
 export async function onRequestPost(context: { request: Request; env: SupabaseEnv }) {
     const { request, env } = context;
@@ -35,50 +46,26 @@ export async function onRequestPost(context: { request: Request; env: SupabaseEn
         const admin = getAdminClient(env);
         const { skip } = await request.json().catch(() => ({ skip: false }));
 
-        const { data: recent, error: recentError } = await admin
-            .from('endgame_attempts')
-            .select(ATTEMPT_COLUMNS)
-            .eq('user_id', user.id)
-            .order('created_at', { ascending: false })
-            .limit(1);
-        if (recentError) throw recentError;
-        const last = (recent?.[0] ?? null) as AttemptRow | null;
+        const last = await latestAttempt(admin, user.id);
+        const lookup = async (endgameId: string): Promise<TrainerEndgame | undefined> => (await currentEndgames(admin)).find(e => e.id === endgameId);
 
         if (last?.status === 'open' && !skip) {
-            const [stats, endgames] = await Promise.all([trainerStats(admin, user.id), currentEndgames(admin)]);
-            const endgame = endgames.find(e => e.id === last.endgame_id);
-            if (endgame) return json({ ...positionPayload(last, endgame), stats, review: false, resumed: true, missed: null });
+            const [stats, endgame] = await Promise.all([trainerStats(admin, user.id), lookup(last.endgame_id)]);
+            if (endgame) return json(positionPayload({ attempt: last, endgame, stats, review: false }, { resumed: true, missed: null }));
         }
         const missed = last?.status === 'open' ? await closeAttempt(admin, last, false) : null;
+        const extra = { resumed: false, missed: missed ? { change: missed.change } : null };
 
-        // A failed endgame that is due for review comes first; otherwise one near the player's rating.
-        const [stats, endgames, reviewId] = await Promise.all([
-            trainerStats(admin, user.id),
-            currentEndgames(admin),
-            dueReview(admin, user.id, last?.endgame_id ?? null)
-        ]);
-        const endgame = endgames.find(e => e.id === reviewId) ?? pickEndgame(endgames, stats.rating, last?.endgame_id ?? null);
-        const variation = await makeVariation(endgame);
-        const optimal = endgame.target === 'win' ? await fastestMate(variation.fen, variation.playerColor) : null;
-
-        const { data: attempt, error } = await admin
-            .from('endgame_attempts')
-            .insert({ user_id: user.id, endgame_id: endgame.id, fen: variation.fen, player_color: variation.playerColor, rating_before: stats.rating, optimal_moves: optimal })
-            .select('id')
-            .single();
-        if (error) {
-            // Another tab opened a position at the same moment; only one may be open.
-            if ((error as { code?: string }).code === UNIQUE_VIOLATION) return json({ message: 'A position is already open in another tab.' }, 409);
-            throw error;
+        const stats = await trainerStats(admin, user.id);
+        const queued = await activateQueued(admin, user.id, stats.rating);
+        if (queued) {
+            const [endgame, reviewId] = await Promise.all([lookup(queued.endgame_id), dueReview(admin, user.id, last?.endgame_id ?? null)]);
+            if (endgame) return json(positionPayload({ attempt: queued, endgame, stats, review: reviewId === endgame.id }, extra));
         }
 
-        return json({
-            ...positionPayload({ id: (attempt as { id: string }).id, fen: variation.fen, player_color: variation.playerColor, optimal_moves: optimal }, endgame),
-            stats,
-            review: reviewId === endgame.id,
-            resumed: false,
-            missed: missed ? { change: missed.change } : null
-        });
+        const created = await createAttempt(admin, user.id, last?.endgame_id ?? null, 'open');
+        if (!created) return json({ message: 'A position is already open in another tab.' }, 409);
+        return json(positionPayload(created, extra));
     } catch (err) {
         console.error('Endgame trainer next error:', err);
         return json({ message: 'Could not load the next position.' }, 500);

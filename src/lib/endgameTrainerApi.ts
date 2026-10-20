@@ -59,5 +59,8 @@ export const getTrainerStats = () => request<TrainerStats>('/api/endgame-trainer
 /** The next position; an unfinished one comes back first. `skip` gives up the open position as a miss instead. */
 export const nextPosition = (skip = false) => request<TrainerPosition>('/api/endgame-trainer/next', post({ skip }));
 
+/** Asks the server to make the next position in the background while this one is played. */
+export const preparePosition = () => request<{ ready: boolean }>('/api/endgame-trainer/prepare', post({}));
+
 export const sendResult = (attemptId: string, outcome: 'solved' | 'failed', moves: string[]) =>
     request<TrainerResult>('/api/endgame-trainer/result', post({ attemptId, outcome, moves }));

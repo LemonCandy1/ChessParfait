@@ -28,7 +28,7 @@ const KEYWORDS = [
     [/lucena/, 'lucena', 'rook'], [/philidor/, 'philidor', 'rook'], [/vancura/, 'vancura', 'rook'],
     [/short side|long side/, 'short-side', 'rook'], [/behind the (passed )?pawn|rook behind/, 'rook-behind', 'rook'],
     [/shoulder/, 'shouldering', 'pawn'], [/r[eé]ti/, 'reti', 'pawn'], [/triangulat/, 'triangulation', 'pawn'], [/correspond/, 'corresponding-squares', 'pawn'],
-    [/breakthrough/, 'breakthrough', 'pawn'], [/outside pass/, 'outside-passer', 'pawn'], [/protected pass/, 'protected-passer', 'pawn'],
+    [/breakthrough/, 'breakthrough', 'pawn'], [/inva|penetrat|infiltrat|squares to attack/, 'king-invasion', 'pawn'], [/outside pass/, 'outside-passer', 'pawn'], [/protected pass/, 'protected-passer', 'pawn'],
     [/rule of the square|the square/, 'rule-of-square', 'pawn'], [/distant opposition|opposition/, 'distant-opposition', 'pawn'],
     [/fortress/, 'fortress', 'any'], [/wrong (colou?red )?bishop|wrong rook pawn/, 'wrong-bishop', 'minor']
 ];
@@ -78,7 +78,8 @@ function suggest(fen, target, text) {
         if (myPassers.length && theirPassers.length) return 'pawn-races';
         if (myPassers.some(p => myPawns.some(q => Math.abs(q.file - p.file) === 1 && relRank(q.rank, white) === relRank(p.rank, white) - 1))) return 'protected-passer';
         if (myPassers.length) return 'outside-passer';
-        return 'breakthrough';
+        // Blocked pawns and no passed pawn: the king walks in (a breakthrough is only taken from the book's own words).
+        return 'king-invasion';
     }
 
     if (fam === 'rook') {

@@ -11,7 +11,14 @@
     "group": "Basic mates",
     "name": "Rook checkmate",
     "rating": 850,
-    "explanation": "The rook cuts the enemy king off along a rank or file, and your king does the pushing. When the kings stand facing each other with one square between them, a rook check drives the defender back a rank. When they don't, make a waiting move with the rook along its line, keeping it far from the enemy king so it can't be attacked. With two rooks, let them take turns: one checks, the other cuts off the next rank."
+    "explanation": "The rook cuts the enemy king off along a rank or file, and your king does the pushing. When the kings stand facing each other with one square between them, a rook check drives the defender back a rank. When they don't, make a waiting move with the rook along its line, keeping it far from the enemy king so it can't be attacked."
+  },
+  {
+    "id": "two-rooks-mate",
+    "group": "Basic mates",
+    "name": "Two rooks checkmate",
+    "rating": 650,
+    "explanation": "Two rooks mate without any help from the king. Let them take turns, like rungs of a ladder: one rook checks along a rank while the other guards the next rank, then they swap roles, pushing the king one rank further each time. If the king attacks a rook, move it to the far side of the board on the same rank, out of reach, and carry on."
   },
   {
     "id": "two-bishops-mate",

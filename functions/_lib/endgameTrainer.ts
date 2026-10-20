@@ -26,7 +26,7 @@ import { awardPoints } from './profiles';
 interface LibraryTheme { id: string; group: string; name: string; rating: number; explanation: string }
 const THEMES = new Map((themes as LibraryTheme[]).map(t => [t.id, t]));
 // Basic mates against a bare king: reaching "a queen or rook against a bare king" is where they start, so they need mate.
-const MATE_THEMES = new Set(['queen-mate', 'rook-mate']);
+const MATE_THEMES = new Set(['queen-mate', 'rook-mate', 'two-rooks-mate']);
 
 /** The original 20 endgames, then the library built from the endgame books (scripts/endgames). */
 export const TRAINER_ENDGAMES: TrainerEndgame[] = [

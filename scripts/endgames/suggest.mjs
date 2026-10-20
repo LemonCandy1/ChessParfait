@@ -58,6 +58,7 @@ function suggest(fen, target, text) {
     // Basic mates: a bare king against pieces.
     if (t === '' && !m.includes('P')) {
         if (m.includes('Q')) return 'queen-mate';
+        if (m === 'RR') return 'two-rooks-mate';
         if (m === 'BB') return 'two-bishops-mate';
         if (m === 'BN') return 'bishop-knight-mate';
         if (m.includes('R')) return 'rook-mate';

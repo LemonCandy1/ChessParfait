@@ -45,7 +45,13 @@ const page = String.raw`<!doctype html>
   .filters { margin: 0 0 14px; display: flex; gap: 14px; align-items: center; font-size: 14px; }
   .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 14px; }
   .card { background: #fff; border-radius: 10px; padding: 10px; border: 2px solid transparent; }
-  .card.rejected { opacity: .5; border-color: var(--bad); }
+  .card.kept { border-color: var(--ok); }
+  .card.rejected { border-color: var(--bad); }
+  .card.rejected .board { opacity: .45; }
+  .status { font-size: 12.5px; font-weight: 700; margin-top: 6px; }
+  .card.kept .status { color: var(--ok); } .card.rejected .status { color: var(--bad); } .card.unreviewed .status { opacity: .6; }
+  #toast { position: fixed; right: 20px; bottom: 20px; padding: 10px 16px; border-radius: 10px; background: var(--plum); color: var(--cream); font-weight: 700; opacity: 0; transition: opacity .2s; pointer-events: none; }
+  #toast.show { opacity: 1; } #toast.error { background: var(--bad); }
   .board { position: relative; width: 100%; aspect-ratio: 1; }
   .board .cg-wrap { position: absolute; inset: 0; width: 100%; height: 100%; }
   /* Coordinates inside the edge squares, as on lichess.org (chessground's defaults sit outside a bare board). */
@@ -67,12 +73,30 @@ const page = String.raw`<!doctype html>
 <body>
 <nav id="nav"></nav>
 <main id="main"><p>Loading…</p></main>
+<div id="toast" role="status" aria-live="polite"></div>
 <script type="module">
 import { Chessground } from 'https://cdn.jsdelivr.net/npm/chessground@9.2.1/+esm';
-let data, review, current = null, showRejected = true, limit = 60;
+let data, review, current = null, showRejected = true, limit = 60, toastTimer;
 
+function toast(text, error = false) {
+  const el = document.getElementById('toast');
+  el.textContent = text;
+  el.className = 'show' + (error ? ' error' : '');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { el.className = error ? 'error' : ''; }, error ? 5000 : 1200);
+}
+
+/** Saves one change to review.json; returns false (and says so) if the review server isn't running. */
 async function save(body) {
-  await fetch('/save', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
+  try {
+    const res = await fetch('/save', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
+    if (!res.ok) throw new Error(res.status);
+    toast('Saved');
+    return true;
+  } catch {
+    toast('Not saved: is the review server running? (node scripts/endgames/review.mjs)', true);
+    return false;
+  }
 }
 
 // Lichess's own board (chessground), seen from the side to move. Filled in after each render.
@@ -87,6 +111,9 @@ function drawBoards() {
 const decision = c => review.positions[c.key] || {};
 const themeOf = c => decision(c).theme || c.theme;
 const kept = c => decision(c).keep !== false;
+// Not reviewed yet counts as kept when the library is built, but is shown as its own state.
+const stateOf = c => (decision(c).keep === true ? 'kept' : decision(c).keep === false ? 'rejected' : 'unreviewed');
+const STATUS = { kept: 'Kept ✓', rejected: 'Rejected ✗', unreviewed: 'Not reviewed' };
 const esc = s => String(s).replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[ch]);
 
 function renderNav() {
@@ -116,19 +143,20 @@ function render() {
     '<div class="row"><label>Starting rating <input id="trating" type="number" step="50" value="' + (edits.rating ?? theme.rating) + '"></label>' +
     '<button class="btn" id="tsave">Save explanation and rating</button><span id="tmsg" class="saved"></span>' +
     '<button class="btn primary" id="tdone" style="margin-left:auto">' + (review.checkedThemes.includes(theme.id) ? 'Checked ✓ (undo)' : 'Mark theme as checked') + '</button></div></section>' +
-    '<div class="filters"><span>' + list.filter(kept).length + ' kept, ' + list.filter(c => !kept(c)).length + ' rejected, easiest first</span>' +
+    '<div class="filters"><span>' + list.filter(c => stateOf(c) === 'kept').length + ' kept, ' + list.filter(c => stateOf(c) === 'rejected').length + ' rejected, ' + list.filter(c => stateOf(c) === 'unreviewed').length + ' not reviewed · easiest first</span>' +
     '<label><input type="checkbox" id="showrej" ' + (showRejected ? 'checked' : '') + '> Show rejected</label></div>' +
     '<div class="grid">' + list.slice(0, limit).map(c => {
       const side = c.fen.split(' ')[1] === 'w' ? 'White' : 'Black';
       const check = c.checkedBy === 'tablebase' ? 'Endgame database' + (c.mateIn ? ', mate in ' + c.mateIn : '') : 'Stockfish ' + (c.cp >= 0 ? '+' : '') + (c.cp / 100).toFixed(1);
       const refs = c.refs.map(r => esc(r.source.replace(/^.*\//, '')) + (r.chapter ? ': ' + esc(r.chapter) : '') + (r.title ? ' · ' + esc(r.title) : '')).join('<br>');
-      return '<div class="card ' + (kept(c) ? '' : 'rejected') + '" data-key="' + esc(c.key) + '">' + boardHtml(c.fen) +
+      return '<div class="card ' + stateOf(c) + '" data-key="' + esc(c.key) + '">' + boardHtml(c.fen) +
         '<div class="goal">' + side + ' to play and ' + c.target + '</div>' +
         '<div class="meta">' + c.material + ' · ' + check + ' · rating ' + c.rating + '</div>' +
         '<div class="refs">' + refs + '</div>' +
         '<select aria-label="Theme">' + options + '</select>' +
-        '<div class="actions"><button class="btn keep ' + (kept(c) ? 'on' : '') + '">Keep</button><button class="btn reject ' + (kept(c) ? '' : 'on') + '">Reject</button>' +
-        '<a href="https://lichess.org/analysis/standard/' + c.fen.replace(/ /g, '_') + '" target="_blank" rel="noopener">Analyse</a></div></div>';
+        '<div class="actions"><button class="btn keep ' + (stateOf(c) === 'kept' ? 'on' : '') + '">Keep</button><button class="btn reject ' + (stateOf(c) === 'rejected' ? 'on' : '') + '">Reject</button>' +
+        '<a href="https://lichess.org/analysis/standard/' + c.fen.replace(/ /g, '_') + '" target="_blank" rel="noopener">Analyse</a></div>' +
+        '<div class="status">' + STATUS[stateOf(c)] + '</div></div>';
     }).join('') + '</div>' +
     (list.length > limit ? '<button class="btn more" id="more">Show ' + Math.min(60, list.length - limit) + ' more of ' + (list.length - limit) + '</button>' : '');
 
@@ -137,26 +165,39 @@ function render() {
     const c = data.candidates.find(x => x.key === card.dataset.key);
     const sel = card.querySelector('select');
     sel.value = themeOf(c);
+    // Saved first, then shown, so the page never claims a decision the file doesn't have.
     const set = async change => {
-      review.positions[c.key] = { ...decision(c), ...change };
-      await save({ position: c.key, decision: review.positions[c.key] });
-      render();
+      const next = { ...decision(c), ...change };
+      if (!await save({ position: c.key, decision: next })) return false;
+      review.positions[c.key] = next;
+      return true;
     };
-    sel.onchange = () => set({ theme: sel.value });
-    card.querySelector('.keep').onclick = () => set({ keep: true });
-    card.querySelector('.reject').onclick = () => set({ keep: false });
+    sel.onchange = async () => { if (await set({ theme: sel.value })) render(); else sel.value = themeOf(c); };
+    const mark = async keep => {
+      if (!await set({ keep })) return;
+      // Update just this card, so the page doesn't redraw every board.
+      const state = stateOf(c);
+      card.className = 'card ' + state;
+      card.querySelector('.keep').classList.toggle('on', state === 'kept');
+      card.querySelector('.reject').classList.toggle('on', state === 'rejected');
+      card.querySelector('.status').textContent = STATUS[state];
+      renderNav();
+    };
+    card.querySelector('.keep').onclick = () => mark(true);
+    card.querySelector('.reject').onclick = () => mark(false);
   });
   document.getElementById('showrej').onchange = e => { showRejected = e.target.checked; render(); };
   document.getElementById('more')?.addEventListener('click', () => { limit += 60; render(); });
   document.getElementById('tsave').onclick = async () => {
-    review.themes[theme.id] = { explanation: document.getElementById('expl').value.trim(), rating: Number(document.getElementById('trating').value) };
-    await save({ theme: theme.id, edits: review.themes[theme.id] });
+    const edits = { explanation: document.getElementById('expl').value.trim(), rating: Number(document.getElementById('trating').value) };
+    if (!await save({ theme: theme.id, edits })) return;
+    review.themes[theme.id] = edits;
     document.getElementById('tmsg').textContent = 'Saved';
   };
   document.getElementById('tdone').onclick = async () => {
     const on = !review.checkedThemes.includes(theme.id);
+    if (!await save({ checked: theme.id, on })) return;
     review.checkedThemes = on ? [...review.checkedThemes, theme.id] : review.checkedThemes.filter(id => id !== theme.id);
-    await save({ checked: theme.id, on });
     render();
   };
 }

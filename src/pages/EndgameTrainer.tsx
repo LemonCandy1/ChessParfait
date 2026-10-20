@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Chess } from 'chess.js';
-import { ArrowRight, Check, RotateCcw, Volume2, VolumeX, X } from 'lucide-react';
-import { GraduationCap, SkipForward } from '@/lib/lucideOriginal';
+import { ArrowRight, Check, RotateCcw, X } from 'lucide-react';
+import { GraduationCap, SkipForward, Volume2, VolumeX } from '@/lib/lucideOriginal';
 import Navbar from '../components/Navbar/Navbar';
 import EndgameBoard from '../components/EndgameBoard';
 import { BotAvatar } from '../components/BotAvatars';

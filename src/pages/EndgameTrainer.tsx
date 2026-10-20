@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Chess } from 'chess.js';
-import { ArrowRight, BookOpen, Check, RotateCcw, Volume2, VolumeX, X } from 'lucide-react';
-import { SkipForward } from '@/lib/lucideOriginal';
+import { ArrowRight, Check, RotateCcw, Volume2, VolumeX, X } from 'lucide-react';
+import { GraduationCap, SkipForward } from '@/lib/lucideOriginal';
 import Navbar from '../components/Navbar/Navbar';
 import EndgameBoard from '../components/EndgameBoard';
 import { BotAvatar } from '../components/BotAvatars';
@@ -556,7 +556,7 @@ export default function EndgameTrainer() {
                             <article className="mt-8 rounded-xl bg-cream px-5 py-4" aria-labelledby="theme-heading">
                                 <h3 id="theme-heading" className="text-xl font-serif font-black">{endgame.title}</h3>
                                 <Link to={`/EndgameStrategy?endgame=${endgame.id}`} className={`mt-2 inline-flex items-center gap-2 font-bold text-berry hover:underline underline-offset-4 ${focusRing}`}>
-                                    <BookOpen size={16} /> Learn more
+                                    <GraduationCap size={18} /> Learn more
                                 </Link>
                             </article>
                         </div>

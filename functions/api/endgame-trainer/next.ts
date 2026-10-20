@@ -55,7 +55,9 @@ export async function onRequestPost(context: { request: Request; env: SupabaseEn
                 target: endgame.target,
                 mateRequired: endgame.mateRequired,
                 rating: endgame.rating,
-                keyTip: endgame.keyTip ?? ''
+                keyTip: endgame.keyTip ?? '',
+                description: endgame.description ?? '',
+                theoryNotes: endgame.theoryNotes ?? ''
             },
             stats,
             review: reviewId === endgame.id,

@@ -1,6 +1,5 @@
-import { useState, useCallback, useMemo, useRef, useEffect, type CSSProperties } from 'react';
+import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import { Chess } from 'chess.js';
-import { Chessboard, defaultArrowOptions, defaultPieces } from 'react-chessboard';
 import {
     RotateCcw,
     CheckCircle2,
@@ -25,6 +24,7 @@ import {
 } from '@/lib/lucideOriginal';
 import { useSearchParams, Link } from 'react-router-dom';
 import Navbar from '../components/Navbar/Navbar';
+import EndgameBoard from '../components/EndgameBoard';
 import { playMoveSound, playCaptureSound, playWinSound, playLoseSound } from '../lib/soundEffects';
 import { drawReason, drillGoalFor, goalAchievedBy } from '../lib/endgameGoals';
 import { pointsForDifficulty } from '../lib/endgameRewards';
@@ -33,18 +33,6 @@ import endgamesData from '../data/endgames.json';
 import { endgameEngine, OPPONENT_PRESETS, type PracticeOpponent } from '../lib/stockfishEngine';
 import { useAuth } from '../context/AuthContext';
 import { readLastAccessed, timeAgo, writeLastAccessed } from '../lib/lastAccessed';
-
-const customArrowOptions = {
-    ...defaultArrowOptions,
-    color: '#0284c7',
-    secondaryColor: '#ea580c',
-    tertiaryColor: '#059669',
-    opacity: 0.65,
-    activeOpacity: 0.55,
-};
-
-/** Piece animation length on the board; a queued move waits for the opponent's move to finish animating. */
-const BOARD_ANIMATION_MS = 180;
 
 export interface EndgamePosition {
     id: string;
@@ -100,22 +88,6 @@ function fenForPlayer(fen: string, color: 'w' | 'b'): string {
         return new Chess(candidate).fen();
     } catch {
         return fen;
-    }
-}
-
-function isPromotionMove(gameInstance: Chess, from: string, to: string): boolean {
-    try {
-        const piece = gameInstance.get(from as any);
-        if (!piece || piece.type !== 'p') return false;
-
-        const targetRank = to[1];
-        const isPromoRank = (piece.color === 'w' && targetRank === '8') || (piece.color === 'b' && targetRank === '1');
-        if (!isPromoRank) return false;
-
-        const legalMoves = gameInstance.moves({ square: from as any, verbose: true });
-        return legalMoves.some((m) => m.to === to && Boolean(m.promotion));
-    } catch {
-        return false;
     }
 }
 
@@ -285,9 +257,11 @@ export default function EndgamePractice() {
     const [showSolvedOverlay, setShowSolvedOverlay] = useState(false);
     // What the user achieved and the points result, shown on the success overlay
     const [completionInfo, setCompletionInfo] = useState<{ label: string; reward: string | null } | null>(null);
-    const [selectedSquare, setSelectedSquare] = useState<string | null>(null);
     const [lastMove, setLastMove] = useState<{ from: string; to: string } | null>(null);
-    const [circledSquares, setCircledSquares] = useState<string[]>([]);
+    // Bumped on every new position or reset so the board clears selections, circles and queued moves.
+    const [boardKey, setBoardKey] = useState(0);
+    // The opponent's last move, for the message when a queued move is no longer legal.
+    const lastOpponentMove = useRef<{ name: string; san: string } | null>(null);
 
     // Layout states
     const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
@@ -307,18 +281,12 @@ export default function EndgamePractice() {
     const aiTimerRef = useRef<number | null>(null);
     // Mirrors isAiThinking so callbacks never act on a stale value from an earlier render
     const aiThinkingRef = useRef(false);
-    const queuedMoveTimerRef = useRef<number | null>(null);
-    const [pendingPromotion, setPendingPromotion] = useState<{ from: string; to: string; color: 'w' | 'b' } | null>(null);
     const gameRef = useRef<Chess>(game);
-    const pendingMoveRef = useRef<{ from: string; to: string; promotion?: string } | null>(null);
-    const executeMoveRef = useRef<(sourceSquare: string, targetSquare: string, chosenPromotion?: string) => boolean>(() => false);
 
-    /** Stops a pending opponent reply and any queued move waiting to be played. */
+    /** Stops a pending opponent reply (the board drops any queued move when boardKey changes). */
     const cancelOpponentTimers = useCallback(() => {
         if (aiTimerRef.current) clearTimeout(aiTimerRef.current);
-        if (queuedMoveTimerRef.current) clearTimeout(queuedMoveTimerRef.current);
         aiTimerRef.current = null;
-        queuedMoveTimerRef.current = null;
         aiThinkingRef.current = false;
     }, []);
 
@@ -437,12 +405,9 @@ export default function EndgamePractice() {
         const newGame = new Chess(fenForPlayer(endgame.fen, endgame.playerColor));
         setGame(newGame);
         gameRef.current = newGame;
-        pendingMoveRef.current = null;
-        setPendingPromotion(null);
+        setBoardKey(k => k + 1);
         setMoveCount(0);
-        setSelectedSquare(null);
         setLastMove(null);
-        setCircledSquares([]);
         setIsSolved(false);
         setCompletionInfo(null);
         setIsFailed(false);
@@ -461,8 +426,6 @@ export default function EndgamePractice() {
     // Return to catalog
     const handleReturnToCatalog = () => {
         cancelOpponentTimers();
-        pendingMoveRef.current = null;
-        setPendingPromotion(null);
         setViewMode('catalog');
         setSearchParams({});
     };
@@ -474,12 +437,9 @@ export default function EndgamePractice() {
         const newGame = new Chess(fenForPlayer(activeEndgame.fen, color));
         setGame(newGame);
         gameRef.current = newGame;
-        pendingMoveRef.current = null;
-        setPendingPromotion(null);
+        setBoardKey(k => k + 1);
         setMoveCount(0);
-        setSelectedSquare(null);
         setLastMove(null);
-        setCircledSquares([]);
         setIsSolved(false);
         setIsFailed(false);
         setShowSolvedOverlay(false);
@@ -504,9 +464,7 @@ export default function EndgamePractice() {
     const handleToggleColor = () => {
         const nextColor = playerColor === 'w' ? 'b' : 'w';
         setPlayerColor(nextColor);
-        setSelectedSquare(null);
         setLastMove(null);
-        setCircledSquares([]);
         handleResetPosition(nextColor);
     };
 
@@ -714,47 +672,15 @@ export default function EndgamePractice() {
                         setLastMove({ from: move.from, to: move.to });
                         updateEvaluation(gameCopy.fen(), playerColor);
 
-                        // Preserve player's selected piece if it is still on the board and belongs to the player
-                        setSelectedSquare((prevSelected) => {
-                            if (!prevSelected) return null;
-                            const piece = gameCopy.get(prevSelected as any);
-                            return (piece && piece.color === playerColor) ? prevSelected : null;
-                        });
-
                         const gameOver = evaluateEndCondition(gameCopy);
                         if (!gameOver) {
                             const oppName = OPPONENT_PRESETS[selectedOpponent]?.name || 'Opponent';
                             const neuralTag = recommendation?.isNeural ? ' (Neural ONNX)' : '';
+                            lastOpponentMove.current = { name: oppName, san: move.san };
                             setStatusMessage({
                                 type: 'info',
                                 text: `${oppName}${neuralTag} played ${move.san}. Your turn!`
                             });
-
-                            // If the player queued a move while the opponent was calculating, play it
-                            // once the opponent's move has finished animating.
-                            if (pendingMoveRef.current) {
-                                queuedMoveTimerRef.current = window.setTimeout(() => {
-                                    queuedMoveTimerRef.current = null;
-                                    const pending = pendingMoveRef.current;
-                                    pendingMoveRef.current = null;
-                                    const latestGame = gameRef.current;
-                                    if (!pending || latestGame.turn() !== playerColor) return;
-
-                                    if (!pending.promotion && isPromotionMove(latestGame, pending.from, pending.to)) {
-                                        setPendingPromotion({
-                                            from: pending.from,
-                                            to: pending.to,
-                                            color: playerColor
-                                        });
-                                    } else if (!executeMoveRef.current(pending.from, pending.to, pending.promotion)) {
-                                        setSelectedSquare(null);
-                                        setStatusMessage({
-                                            type: 'info',
-                                            text: `${oppName} played ${move.san}. Your queued move is no longer legal. Your turn!`
-                                        });
-                                    }
-                                }, BOARD_ANIMATION_MS + 40);
-                            }
                         }
                     }
                 }
@@ -780,33 +706,6 @@ export default function EndgamePractice() {
 
         const currentGame = gameRef.current;
 
-        // If opponent is currently calculating or it's not the player's turn:
-        // Queue the move (premove) so it executes as soon as the opponent move lands!
-        if (aiThinkingRef.current || currentGame.turn() !== playerColor) {
-            const movingPiece = currentGame.get(sourceSquare as any);
-            if (movingPiece && movingPiece.color === playerColor) {
-                pendingMoveRef.current = { from: sourceSquare, to: targetSquare, promotion: chosenPromotion };
-                setSelectedSquare(sourceSquare);
-                setStatusMessage({
-                    type: 'info',
-                    text: 'Move queued. Executing as soon as opponent moves...'
-                });
-                return true;
-            }
-            return false;
-        }
-
-        // Check if this is a pawn promotion and user hasn't selected a piece yet
-        if (!chosenPromotion && isPromotionMove(currentGame, sourceSquare, targetSquare)) {
-            setPendingPromotion({
-                from: sourceSquare,
-                to: targetSquare,
-                color: playerColor
-            });
-            setSelectedSquare(sourceSquare);
-            return false;
-        }
-
         try {
             const gameCopy = cloneGame(currentGame);
             const move = gameCopy.move({
@@ -826,8 +725,6 @@ export default function EndgamePractice() {
             gameRef.current = gameCopy;
             setMoveCount((prev) => prev + 1);
             setLastMove({ from: move.from, to: move.to });
-            setSelectedSquare(null);
-            pendingMoveRef.current = null;
             updateEvaluation(gameCopy.fen(), playerColor);
 
             const isEnd = evaluateEndCondition(gameCopy);
@@ -845,185 +742,6 @@ export default function EndgamePractice() {
             return false;
         }
     }, [evaluateEndCondition, isFailed, isSolved, isSoundMuted, playerColor, selectedOpponent, triggerAiResponse, updateEvaluation]);
-
-    useEffect(() => {
-        executeMoveRef.current = executeMove;
-    }, [executeMove]);
-
-    // Promotion selection handlers
-    const handleSelectPromotion = useCallback((promoPiece: 'q' | 'r' | 'b' | 'n') => {
-        if (!pendingPromotion) return;
-        const { from, to } = pendingPromotion;
-        setPendingPromotion(null);
-        executeMove(from, to, promoPiece);
-    }, [executeMove, pendingPromotion]);
-
-    const handleCancelPromotion = useCallback(() => {
-        setPendingPromotion(null);
-        setSelectedSquare(null);
-    }, []);
-
-    // Keyboard shortcuts for promotion selection
-    useEffect(() => {
-        if (!pendingPromotion) return;
-
-        const handleKeyDown = (e: KeyboardEvent) => {
-            const key = e.key.toLowerCase();
-            if (key === 'q' || key === '1') {
-                e.preventDefault();
-                handleSelectPromotion('q');
-            } else if (key === 'r' || key === '2') {
-                e.preventDefault();
-                handleSelectPromotion('r');
-            } else if (key === 'b' || key === '3') {
-                e.preventDefault();
-                handleSelectPromotion('b');
-            } else if (key === 'n' || key === '4') {
-                e.preventDefault();
-                handleSelectPromotion('n');
-            } else if (key === 'escape') {
-                e.preventDefault();
-                handleCancelPromotion();
-            }
-        };
-
-        window.addEventListener('keydown', handleKeyDown);
-        return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [pendingPromotion, handleSelectPromotion, handleCancelPromotion]);
-
-    // Click handler for Click-to-Move (clicking piece then clicking target square)
-    const handleSquareOrPieceClick = useCallback((square: string) => {
-        // Left click removes all circled squares
-        setCircledSquares([]);
-        if (isSolved) return;
-
-        const currentGame = gameRef.current;
-
-        if (selectedSquare) {
-            // Clicking the same square toggles/deselects
-            if (square === selectedSquare) {
-                setSelectedSquare(null);
-                pendingMoveRef.current = null;
-                return;
-            }
-
-            // Clicking another friendly piece switches selection
-            const pieceOnSquare = currentGame.get(square as any);
-            if (pieceOnSquare && pieceOnSquare.color === playerColor) {
-                setSelectedSquare(square);
-                pendingMoveRef.current = null;
-                return;
-            }
-
-            // If opponent is calculating or not player's turn, queue move
-            if (aiThinkingRef.current || currentGame.turn() !== playerColor) {
-                executeMove(selectedSquare, square);
-                return;
-            }
-
-            // Check if the destination is a legal move
-            const legalMoves = currentGame.moves({ square: selectedSquare as any, verbose: true });
-            const isLegal = legalMoves.some((m) => m.to === square);
-
-            if (isLegal) {
-                executeMove(selectedSquare, square);
-            } else {
-                setSelectedSquare(null);
-            }
-            return;
-        }
-
-        // No piece selected: allow selecting if square contains the player's piece (even during opponent move!)
-        const pieceOnSquare = currentGame.get(square as any);
-        if (pieceOnSquare && pieceOnSquare.color === playerColor) {
-            setSelectedSquare(square);
-        }
-    }, [executeMove, isSolved, playerColor, selectedSquare]);
-
-    // Piece drag handler to immediately show legal moves while dragging
-    const onPieceDrag = useCallback(({ square }: { square: string | null; isSparePiece?: boolean; piece?: any }) => {
-        setCircledSquares([]);
-        if (!square || isSolved) return;
-        const currentGame = gameRef.current;
-        const pieceOnSquare = currentGame.get(square as any);
-        if (pieceOnSquare && pieceOnSquare.color === playerColor) {
-            setSelectedSquare(square);
-        }
-    }, [isSolved, playerColor]);
-
-    // Drop piece handler for Drag-and-Drop
-    const onPieceDrop = useCallback(({ sourceSquare, targetSquare }: { sourceSquare: string; targetSquare: string | null }): boolean => {
-        setCircledSquares([]);
-        if (!targetSquare || isSolved) {
-            setSelectedSquare(null);
-            return false;
-        }
-        const success = executeMove(sourceSquare, targetSquare);
-        if (!pendingMoveRef.current) {
-            setSelectedSquare(null);
-        }
-        return success;
-    }, [executeMove, isSolved]);
-
-    // Right-click square handler to toggle circle on/off
-    const handleSquareRightClick = useCallback((square: string) => {
-        setCircledSquares((prev) =>
-            prev.includes(square) ? prev.filter((s) => s !== square) : [...prev, square]
-        );
-    }, []);
-
-    // Dynamic square styles: Last move + Right-click circles + Selected piece + ONLY its current legal moves
-    const squareStyles = useMemo(() => {
-        const styles: Record<string, CSSProperties> = {};
-
-        // 1. Previous move highlight (lastMove from and to)
-        if (lastMove) {
-            styles[lastMove.from] = {
-                backgroundColor: 'rgba(205, 210, 106, 0.45)'
-            };
-            styles[lastMove.to] = {
-                backgroundColor: 'rgba(205, 210, 106, 0.45)'
-            };
-        }
-
-        // 2. Right-click circled squares (toggleable circles)
-        circledSquares.forEach((sq) => {
-            const existingBg = styles[sq]?.backgroundColor || 'transparent';
-            styles[sq] = {
-                ...styles[sq],
-                background: `radial-gradient(circle, transparent 58%, rgba(235, 87, 87, 0.85) 59%, rgba(235, 87, 87, 0.85) 78%, transparent 79%), ${existingBg}`
-            };
-        });
-
-        // 3. Currently selected piece and ONLY its current legal moves
-        if (selectedSquare) {
-            styles[selectedSquare] = {
-                backgroundColor: 'rgba(92, 140, 92, 0.6)'
-            };
-
-            try {
-                const legalMoves = game.moves({ square: selectedSquare as any, verbose: true });
-                legalMoves.forEach((move) => {
-                    const isCapture = move.captured || Boolean(game.get(move.to as any)) || move.flags.includes('e');
-                    if (isCapture) {
-                        styles[move.to] = {
-                            background: 'radial-gradient(circle, transparent 52%, rgba(82, 116, 68, 0.6) 53%, rgba(82, 116, 68, 0.6) 72%, transparent 73%)',
-                            cursor: 'pointer'
-                        };
-                    } else {
-                        styles[move.to] = {
-                            background: 'radial-gradient(circle, rgba(92, 126, 78, 0.65) 19%, transparent 20%)',
-                            cursor: 'pointer'
-                        };
-                    }
-                });
-            } catch (e) {
-                console.error('Error generating legal moves:', e);
-            }
-        }
-
-        return styles;
-    }, [game, selectedSquare, lastMove, circledSquares]);
 
     // Current endgame rating
     const currentRating = userRatings[activeEndgame.id] || 5;
@@ -1444,117 +1162,21 @@ export default function EndgamePractice() {
 
                         {/* Chessboard Container - fits completely on one screen */}
                         <div className="w-full max-w-[min(100%,calc(100dvh-300px),540px)] md:max-w-[min(calc(100vh-175px),calc(100vw-680px),540px)] aspect-square relative flex items-center justify-center">
-                            <div
-                                className="w-full h-full rounded-xl overflow-hidden shadow-xl border-2 border-slate-300/80 bg-white select-none touch-none relative"
-                                onContextMenu={(e) => e.preventDefault()}
-                                onClick={() => setCircledSquares([])}
+                            <EndgameBoard
+                                game={game}
+                                playerColor={playerColor}
+                                lastMove={lastMove}
+                                canMove={!isSolved && !isFailed}
+                                canSelect={!isSolved}
+                                opponentBusy={aiThinkingRef}
+                                onMove={executeMove}
+                                onMoveQueued={() => setStatusMessage({ type: 'info', text: 'Move queued. Executing as soon as opponent moves...' })}
+                                onQueuedMoveIllegal={() => {
+                                    const last = lastOpponentMove.current;
+                                    setStatusMessage({ type: 'info', text: `${last?.name ?? 'Opponent'} played ${last?.san ?? 'a move'}. Your queued move is no longer legal. Your turn!` });
+                                }}
+                                resetKey={boardKey}
                             >
-                                <Chessboard
-                                    options={{
-                                        position: game.fen(),
-                                        boardOrientation: playerColor === 'w' ? 'white' : 'black',
-                                        canDragPiece: ({ piece }: any) => {
-                                            if (isSolved || isFailed) return false;
-                                            const pieceColor = piece?.pieceType?.[0] || piece?.color;
-                                            return pieceColor === playerColor;
-                                        },
-                                        onPieceDrop: onPieceDrop,
-                                        onPieceDrag: onPieceDrag,
-                                        onPieceClick: ({ square }: any) => handleSquareOrPieceClick(square),
-                                        onSquareClick: ({ square }: any) => handleSquareOrPieceClick(square),
-                                        onSquareRightClick: ({ square }: any) => handleSquareRightClick(square),
-                                        squareStyles: squareStyles,
-                                        darkSquareStyle: { backgroundColor: '#b58863' },
-                                        lightSquareStyle: { backgroundColor: '#f0d9b5' },
-                                        allowDrawingArrows: true,
-                                        clearArrowsOnClick: true,
-                                        arrowOptions: customArrowOptions,
-                                        alphaNotationStyle: {
-                                            fontSize: '9.5px',
-                                            fontWeight: 'bold',
-                                            lineHeight: 1,
-                                            bottom: 2,
-                                            right: 3,
-                                            zIndex: 15,
-                                            pointerEvents: 'none',
-                                            userSelect: 'none'
-                                        },
-                                        numericNotationStyle: {
-                                            fontSize: '9.5px',
-                                            fontWeight: 'bold',
-                                            lineHeight: 1,
-                                            top: 2,
-                                            left: 3,
-                                            zIndex: 15,
-                                            pointerEvents: 'none',
-                                            userSelect: 'none'
-                                        },
-                                        animationDurationInMs: BOARD_ANIMATION_MS
-                                    }}
-                                />
-
-                                {/* Promotion Piece Selector Modal */}
-                                {pendingPromotion && (
-                                    <div className="absolute inset-0 bg-slate-900/65 backdrop-blur-[2px] z-50 flex items-center justify-center p-4 animate-in fade-in duration-150">
-                                        <div className="bg-[#FAF1DB] border-2 border-plum/20 rounded-2xl shadow-2xl p-5 max-w-xs sm:max-w-sm w-full mx-auto text-center space-y-3.5 animate-in zoom-in-95 duration-150">
-                                            <div>
-                                                <div className="text-[10px] font-black uppercase tracking-widest text-plum/60 font-mono">
-                                                    Pawn Promotion
-                                                </div>
-                                                <h3 className="font-serif font-black text-xl text-plum mt-0.5">
-                                                    Choose Promotion Piece
-                                                </h3>
-                                                <p className="text-xs text-plum/70 font-medium mt-0.5">
-                                                    Click piece or press <kbd className="font-mono bg-white/70 px-1 py-0.5 rounded border border-plum/20 text-[10px]">Q</kbd> <kbd className="font-mono bg-white/70 px-1 py-0.5 rounded border border-plum/20 text-[10px]">R</kbd> <kbd className="font-mono bg-white/70 px-1 py-0.5 rounded border border-plum/20 text-[10px]">B</kbd> <kbd className="font-mono bg-white/70 px-1 py-0.5 rounded border border-plum/20 text-[10px]">N</kbd>
-                                                </p>
-                                            </div>
-
-                                            <div className="grid grid-cols-4 gap-2 pt-1">
-                                                {[
-                                                    { type: 'q' as const, name: 'Queen', key: 'Q', score: 'Q' },
-                                                    { type: 'r' as const, name: 'Rook', key: 'R', score: 'R' },
-                                                    { type: 'b' as const, name: 'Bishop', key: 'B', score: 'B' },
-                                                    { type: 'n' as const, name: 'Knight', key: 'N', score: 'N' }
-                                                ].map((item) => {
-                                                    const pieceCode = `${pendingPromotion.color}${item.type.toUpperCase()}`;
-                                                    const PieceSvg = (defaultPieces as any)[pieceCode];
-
-                                                    return (
-                                                        <button
-                                                            key={item.type}
-                                                            onClick={() => handleSelectPromotion(item.type)}
-                                                            className="group flex flex-col items-center justify-center p-2 rounded-xl bg-white border-2 border-plum/15 hover:border-berry hover:bg-berry/5 hover:scale-105 active:scale-95 transition-all shadow-sm cursor-pointer"
-                                                        >
-                                                            <div className="w-11 h-11 flex items-center justify-center">
-                                                                {PieceSvg ? (
-                                                                    <PieceSvg svgStyle={{ width: 42, height: 42 }} />
-                                                                ) : (
-                                                                    <span className="text-3xl">{item.score}</span>
-                                                                )}
-                                                            </div>
-                                                            <span className="text-xs font-black text-plum group-hover:text-berry mt-1">
-                                                                {item.name}
-                                                            </span>
-                                                            <span className="text-[10px] font-mono text-slate-400 font-bold">
-                                                                [{item.key}]
-                                                            </span>
-                                                        </button>
-                                                    );
-                                                })}
-                                            </div>
-
-                                            <div className="pt-1 flex justify-center">
-                                                <button
-                                                    onClick={handleCancelPromotion}
-                                                    className="text-xs font-bold text-slate-500 hover:text-slate-800 transition-colors py-1.5 px-4 rounded-lg hover:bg-black/5 cursor-pointer"
-                                                >
-                                                    Cancel Move
-                                                </button>
-                                            </div>
-                                        </div>
-                                    </div>
-                                )}
-
                                 {/* Solved Celebration Overlay */}
                                 {showSolvedOverlay && (
                                     <div className="absolute inset-0 bg-emerald-950/85 backdrop-blur-[2px] z-40 flex flex-col items-center justify-center p-6 text-center animate-in fade-in duration-200">
@@ -1585,7 +1207,7 @@ export default function EndgamePractice() {
                                         </div>
                                     </div>
                                 )}
-                            </div>
+                            </EndgameBoard>
                         </div>
 
                         {/* Bottom Status Bar Under Board */}

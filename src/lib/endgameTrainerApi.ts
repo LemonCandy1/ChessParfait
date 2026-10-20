@@ -19,6 +19,8 @@ export interface TrainerPosition {
         mateRequired: boolean;
         rating: number;
         keyTip: string;
+        description: string;
+        theoryNotes: string;
     };
     stats: TrainerStats;
     /** True when this endgame is back because the player failed it before. */

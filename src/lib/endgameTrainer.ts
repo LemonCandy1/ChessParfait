@@ -28,6 +28,8 @@ export interface TrainerEndgame {
     rating: number;
     mateRequired: boolean;
     keyTip?: string;
+    description?: string;
+    theoryNotes?: string;
 }
 
 /** Swing on a player's first position: about +-100 against an evenly rated endgame. */

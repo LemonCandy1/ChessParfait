@@ -67,7 +67,10 @@ export default function EndgameBoard({
     const pendingMoveRef = useRef<{ from: string; to: string; promotion?: string } | null>(null);
     const queuedMoveTimerRef = useRef<number | null>(null);
     const gameRef = useRef(game);
-    useEffect(() => { gameRef.current = game; }, [game]);
+    // react-chessboard keeps the drop handler from when a drag began, so a piece held through the opponent's
+    // move must still reach the page's latest onMove (which reads the new position).
+    const onMoveRef = useRef(onMove);
+    useEffect(() => { gameRef.current = game; onMoveRef.current = onMove; }, [game, onMove]);
 
     // A new position or reset clears everything the player had in progress on the board.
     useEffect(() => {
@@ -106,11 +109,11 @@ export default function EndgameBoard({
             return false;
         }
 
-        if (!onMove(sourceSquare, targetSquare, chosenPromotion)) return false;
+        if (!onMoveRef.current(sourceSquare, targetSquare, chosenPromotion)) return false;
         setSelectedSquare(null);
         pendingMoveRef.current = null;
         return true;
-    }, [canMove, onMove, onMoveQueued, opponentBusy, playerColor]);
+    }, [canMove, onMoveQueued, opponentBusy, playerColor]);
 
     // When the opponent's move lands, keep the player's selection if it is still their piece, and play
     // a queued move once the opponent's move has finished animating.

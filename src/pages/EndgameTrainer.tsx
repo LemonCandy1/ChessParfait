@@ -17,6 +17,8 @@ import {
     countPieces,
     moveLabel,
     movesToMate,
+    ratingChange,
+    solveScore,
     solveState,
     type Colour,
     type MoveResult
@@ -57,12 +59,14 @@ function describeMove(m: TablebaseMove): { result: MoveResult; mateIn: number | 
 }
 
 const colourName = (c: Colour) => (c === 'w' ? 'White' : 'Black');
+// A copy that keeps the move history, so threefold repetition is noticed (a FEN alone forgets it).
+const withHistory = (g: Chess) => { const copy = new Chess(); copy.loadPgn(g.pgn()); return copy; };
 const uciOf = (m: { from: string; to: string; promotion?: string }) => `${m.from}${m.to}${m.promotion ?? ''}`;
 const arrowFor = (uci: string, color: string) => ({ startSquare: uci.slice(0, 2), endSquare: uci.slice(2, 4), color });
 const signed = (n: number) => `${n >= 0 ? '+' : '−'}${Math.abs(n)}`;
 
 /** The plum rail: rating, this session, and how positions are scored. */
-function Rail({ stats, session }: { stats: TrainerStats | null; session: boolean[] }) {
+function Rail({ stats, delta, session }: { stats: TrainerStats | null; delta: number | null; session: boolean[] }) {
     const solved = session.filter(Boolean).length;
     return (
         <aside className="order-3 lg:order-none bg-plum text-cream px-6 py-8 lg:overflow-y-auto" aria-label="Your endgame rating">
@@ -71,6 +75,9 @@ function Rail({ stats, session }: { stats: TrainerStats | null; session: boolean
                 <p className="mt-1 font-serif font-black leading-none tabular-nums">
                     <span className="text-6xl">{stats.rating}</span>
                     {stats.provisional && <span className="text-3xl text-[#F5B7C6]" title="Provisional">?</span>}
+                    {delta !== null && (
+                        <span className={`ml-3 text-3xl ${delta >= 0 ? 'text-emerald-300' : 'text-rose-300'}`}>{signed(delta)}</span>
+                    )}
                 </p>
             ) : (
                 <div className="mt-2 h-14 w-36 rounded-lg bg-cream/10 animate-pulse" />
@@ -128,6 +135,8 @@ export default function EndgameTrainer() {
     const [rated, setRated] = useState(true);
     const [feedback, setFeedback] = useState<Feedback | null>(null);
     const [result, setResult] = useState<TrainerResult | null>(null);
+    // The last rating change, shown beside the rating until the next result (as on Lichess puzzles).
+    const [delta, setDelta] = useState<number | null>(null);
     const [moveLog, setMoveLog] = useState<LoggedMove[]>([]);
     const [session, setSession] = useState<boolean[]>([]);
     const [boardKey, setBoardKey] = useState(0);
@@ -212,6 +221,7 @@ export default function EndgameTrainer() {
             if (!next || next.attemptId === position?.attemptId) next = await nextPosition(skip);
             setPosition(next);
             setStats(next.stats);
+            if (next.missed) setDelta(next.missed.change);
             setNote(next.missed
                 ? `You gave up, so it counted as a miss (${signed(next.missed.change)}).`
                 : next.resumed ? 'This position was still waiting for you, so here it is from the start.' : '');
@@ -231,7 +241,8 @@ export default function EndgameTrainer() {
         startPosition(position, false);
     };
 
-    const finish = useCallback(async (solved: boolean, fb: Feedback | null, wasRated: boolean, attemptId: string) => {
+    const finish = useCallback(async (solved: boolean, fb: Feedback | null, wasRated: boolean, pos: TrainerPosition) => {
+        const { attemptId } = pos;
         busy.current = false;
         setThinking(false);
         setPhase(solved ? 'solved' : 'failed');
@@ -239,6 +250,13 @@ export default function EndgameTrainer() {
         sound(solved ? 'win' : 'lose');
         if (!wasRated) return;
         setSession(s => [...s, solved]);
+        // Show the rating change straight away with the server's own formula; its reply then confirms it.
+        if (stats) {
+            const change = ratingChange(stats.rating, pos.endgame.rating, solved ? solveScore(playerMoves.current, pos.fastestMate) : 0, stats.played);
+            const rating = Math.max(100, stats.rating + change);
+            setDelta(rating - stats.rating);
+            setStats({ rating, best: Math.max(stats.best, rating), played: stats.played + 1, provisional: stats.played + 1 < LEADERBOARD_MIN_PLAYED });
+        }
         const played = [...moves.current];
         const save = async () => {
             // One retry, so a dropped connection doesn't turn a finished position into a miss.
@@ -247,6 +265,7 @@ export default function EndgameTrainer() {
                     const res = await sendResult(attemptId, solved ? 'solved' : 'failed', played);
                     setResult(res);
                     setStats(res);
+                    setDelta(res.change);
                     if (res.rejected) {
                         setPhase('failed');
                         setSession(s => [...s.slice(0, -1), false]);
@@ -256,6 +275,9 @@ export default function EndgameTrainer() {
                 } catch (err) {
                     if (attempt >= 2) {
                         setError((err as Error).message);
+                        // Not saved, so drop the estimate and show what the server has.
+                        setDelta(null);
+                        getTrainerStats().then(setStats).catch(() => undefined);
                         return;
                     }
                 }
@@ -266,13 +288,13 @@ export default function EndgameTrainer() {
         await savingResult.current;
         // Get the next position ready while the player reads the result (unless they've already moved on).
         if (run.current === thisRun) prefetch();
-    }, [prefetch, refreshUser, sound]);
+    }, [prefetch, refreshUser, sound, stats]);
 
     /** After the player's move: check it with the endgame database, then let Maia reply. */
     const continueAfterMove = async (after: Chess, before: string, uci: string, san: string) => {
         if (!position) return;
         const thisRun = run.current;
-        const { attemptId, endgame, playerColor } = position;
+        const { endgame, playerColor } = position;
         const wasRated = rated;
 
         // Did that move throw the result away?
@@ -286,7 +308,7 @@ export default function EndgameTrainer() {
             setMoveLog(log => [...log, { san, byPlayer: true, label }]);
             if (tb && played && !moveKeepsResult(played, tb.category)) {
                 const reason = endgame.target === 'win' ? 'That move lets the win slip away.' : 'That move loses the draw.';
-                return finish(false, { reason, played: uci, best: tb.bestMove?.uci }, wasRated, attemptId);
+                return finish(false, { reason, played: uci, best: tb.bestMove?.uci }, wasRated, position);
             }
         }
 
@@ -301,20 +323,20 @@ export default function EndgameTrainer() {
             return endgame.target === 'win' ? outcome === 'win' : outcome !== 'win' && outcome !== 'loss';
         };
 
-        if (await checkSolved(after)) return finish(true, null, wasRated, attemptId);
+        if (await checkSolved(after)) return finish(true, null, wasRated, position);
         if (thisRun !== run.current) return;
-        if (after.isGameOver()) return finish(false, { reason: 'The game ended without reaching the goal.' }, wasRated, attemptId);
+        if (after.isGameOver()) return finish(false, { reason: 'The game ended without reaching the goal.' }, wasRated, position);
 
         const reply = await engine.getBestMove(after.fen());
         if (thisRun !== run.current) return;
-        const afterReply = new Chess(after.fen());
+        const afterReply = withHistory(after);
         let move = null;
         try {
             move = reply ? afterReply.move({ from: reply.from, to: reply.to, promotion: reply.promotion }) : null;
         } catch {
             move = null;
         }
-        if (!move) return finish(false, { reason: 'The game ended without reaching the goal.' }, wasRated, attemptId);
+        if (!move) return finish(false, { reason: 'The game ended without reaching the goal.' }, wasRated, position);
         const replySan = move.san;
         moves.current.push(uciOf(move));
         setMoveLog(log => [...log, { san: replySan, byPlayer: false, label: null }]);
@@ -324,11 +346,11 @@ export default function EndgameTrainer() {
         setLastMove({ from: move.from, to: move.to });
         setGame(afterReply);
 
-        if (await checkSolved(afterReply)) return finish(true, null, wasRated, attemptId);
+        if (await checkSolved(afterReply)) return finish(true, null, wasRated, position);
         if (thisRun !== run.current) return;
         if (afterReply.isGameOver()) {
             const reason = afterReply.isCheckmate() ? 'You were checkmated.' : 'The game ended in a draw without reaching the goal.';
-            return finish(false, { reason }, wasRated, attemptId);
+            return finish(false, { reason }, wasRated, position);
         }
     };
 
@@ -336,7 +358,7 @@ export default function EndgameTrainer() {
     const onMove = (from: string, to: string, promotion?: string): boolean => {
         if (!position || phase !== 'playing' || busy.current) return false;
         const before = game.fen();
-        const next = new Chess(before);
+        const next = withHistory(game);
         let move;
         try {
             move = next.move({ from, to, promotion: promotion || 'q' });
@@ -400,7 +422,7 @@ export default function EndgameTrainer() {
             <h1 className="sr-only">Endgame Trainer</h1>
 
             <div className="flex-1 min-h-0 flex flex-col lg:grid lg:grid-cols-[280px_minmax(0,1fr)_380px]">
-                <Rail stats={stats} session={session} />
+                <Rail stats={stats} delta={delta} session={session} />
 
                 {/* The board, framed like a game: the opponent above, you below */}
                 <main className="order-1 lg:order-none min-h-0 flex flex-col items-center justify-center gap-3 px-3 sm:px-6 py-5 bg-[#f6ecd2]">
@@ -530,7 +552,7 @@ export default function EndgameTrainer() {
                         <div className="mt-6 pt-6 border-t border-plum/12">
                             <p className={`text-2xl font-serif font-black ${phase === 'solved' ? 'text-emerald-700' : 'text-plum'}`}>
                                 {phase === 'solved' ? 'Solved' : result?.rejected ? 'That result couldn\'t be confirmed' : 'Not this time'}
-                                {result && <span className={`ml-2 tabular-nums ${result.change >= 0 ? 'text-emerald-700' : 'text-rose-700'}`}>{signed(result.change)}</span>}
+                                {rated && delta !== null && <span className={`ml-2 tabular-nums ${delta >= 0 ? 'text-emerald-700' : 'text-rose-700'}`}>{signed(delta)}</span>}
                             </p>
                             {feedback?.reason && <p className="mt-1 text-plum/85">{feedback.reason}</p>}
                             {feedback?.best && <p className="mt-1 text-sm text-plum/75">Red arrow: your move. Green arrow: the move that kept the result.</p>}

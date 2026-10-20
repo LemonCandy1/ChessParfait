@@ -18,8 +18,11 @@ const page = String.raw`<!doctype html>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Endgame library review</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/chessground@9.2.1/assets/chessground.base.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/chessground@9.2.1/assets/chessground.brown.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/chessground@9.2.1/assets/chessground.cburnett.css">
 <style>
-  :root { --plum: #3b1f3a; --cream: #faf1db; --berry: #b5245c; --light: #f0d9b5; --dark: #b58863; --ok: #047857; --bad: #be123c; }
+  :root { --plum: #3b1f3a; --cream: #faf1db; --berry: #b5245c; --ok: #047857; --bad: #be123c; }
   * { box-sizing: border-box; }
   body { margin: 0; font: 15px/1.45 system-ui, sans-serif; color: var(--plum); background: var(--cream); display: grid; grid-template-columns: 290px 1fr; height: 100vh; }
   nav { overflow-y: auto; background: var(--plum); color: var(--cream); padding: 16px 12px; }
@@ -43,10 +46,13 @@ const page = String.raw`<!doctype html>
   .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 14px; }
   .card { background: #fff; border-radius: 10px; padding: 10px; border: 2px solid transparent; }
   .card.rejected { opacity: .5; border-color: var(--bad); }
-  .board { display: grid; grid-template-columns: repeat(8, 1fr); aspect-ratio: 1; border-radius: 4px; overflow: hidden; }
-  .board span { display: flex; align-items: center; justify-content: center; font-size: 25px; line-height: 1; }
-  .board .l { background: var(--light); } .board .d { background: var(--dark); }
-  .board .w { color: #fff; text-shadow: 0 0 2px #000, 0 0 1px #000; } .board .b { color: #111; }
+  .board { position: relative; width: 100%; aspect-ratio: 1; }
+  .board .cg-wrap { position: absolute; inset: 0; width: 100%; height: 100%; }
+  /* Coordinates inside the edge squares, as on lichess.org (chessground's defaults sit outside a bare board). */
+  .board coords.files { left: 0; bottom: 0; width: 100%; text-align: right; }
+  .board coords.files coord { padding-right: 3px; }
+  .board coords.ranks { left: 2px; top: 0; height: 100%; }
+  .board coords.ranks coord { transform: none; padding-top: 1px; }
   .goal { font-weight: 700; margin: 8px 0 2px; }
   .meta { font-size: 12.5px; opacity: .8; }
   .refs { font-size: 12px; margin: 4px 0 6px; max-height: 64px; overflow-y: auto; opacity: .85; }
@@ -61,25 +67,21 @@ const page = String.raw`<!doctype html>
 <body>
 <nav id="nav"></nav>
 <main id="main"><p>Loading…</p></main>
-<script>
-const GLYPH = { K: '♚', Q: '♛', R: '♜', B: '♝', N: '♞', P: '♟' };
+<script type="module">
+import { Chessground } from 'https://cdn.jsdelivr.net/npm/chessground@9.2.1/+esm';
 let data, review, current = null, showRejected = true, limit = 60;
 
 async function save(body) {
   await fetch('/save', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
 }
 
-function boardHtml(fen) {
-  const rows = fen.split(' ')[0].split('/');
-  let squares = [];
-  rows.forEach(r => { for (const ch of r) { if (/\d/.test(ch)) for (let i = 0; i < +ch; i++) squares.push(''); else squares.push(ch); } });
-  const black = fen.split(' ')[1] === 'b';
-  if (black) squares = squares.reverse();
-  return '<div class="board">' + squares.map((p, i) => {
-    const r = Math.floor(i / 8), f = i % 8;
-    const cls = (r + f) % 2 === 0 ? 'l' : 'd';
-    return '<span class="' + cls + '">' + (p ? '<b class="' + (p === p.toUpperCase() ? 'w' : 'b') + '">' + GLYPH[p.toUpperCase()] + '</b>' : '') + '</span>';
-  }).join('') + '</div>';
+// Lichess's own board (chessground), seen from the side to move. Filled in after each render.
+const boardHtml = fen => '<div class="board" data-fen="' + fen + '"><div></div></div>';
+function drawBoards() {
+  document.querySelectorAll('.board[data-fen]').forEach(el => {
+    const fen = el.dataset.fen;
+    Chessground(el.firstElementChild, { fen, orientation: fen.split(' ')[1] === 'b' ? 'black' : 'white', viewOnly: true, coordinates: true, animation: { enabled: false } });
+  });
 }
 
 const decision = c => review.positions[c.key] || {};
@@ -130,6 +132,7 @@ function render() {
     }).join('') + '</div>' +
     (list.length > limit ? '<button class="btn more" id="more">Show ' + Math.min(60, list.length - limit) + ' more of ' + (list.length - limit) + '</button>' : '');
 
+  drawBoards();
   main.querySelectorAll('.card').forEach(card => {
     const c = data.candidates.find(x => x.key === card.dataset.key);
     const sel = card.querySelector('select');

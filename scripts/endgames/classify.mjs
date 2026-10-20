@@ -1,5 +1,6 @@
 // Checks every extracted position and decides whether it is a real training task for the side to move:
-//  - up to 7 pieces: the Lichess endgame database. A win to convert, or a draw that some move would lose.
+//  - up to 7 pieces: the Lichess endgame database. A win to convert, or a draw for the side with no more material
+//    that some move would lose.
 //  - 8 to 12 pieces: Stockfish. A clear win (+3 or more), or a level position for the side with less material.
 // Results are cached in resources/endgames/out, so it can be stopped and run again.
 // Usage: node scripts/endgames/classify.mjs <path to stockfish.exe>
@@ -86,6 +87,8 @@ for (const p of extracted) {
         } else if (tb.category === 'draw') {
             const losing = tb.moves.filter(m => m.category === 'win').length;
             if (losing === 0) v.reason = 'a draw no move can spoil';
+            // Holding a draw is the defender's task; the stronger side can always spoil one by giving material away.
+            else if (materialValue(mine) > materialValue(theirs)) v.reason = 'a draw for the side with more material';
             else Object.assign(v, { verdict: 'keep', target: 'draw', drawingMoves: tb.moves.filter(m => ['draw', 'cursed-win', 'blessed-loss'].includes(m.category)).length, legalMoves: tb.moves.length });
         } else v.reason = tb.category === 'loss' ? 'the side to move loses' : `${tb.category} (decided by the 50-move rule)`;
     } else if (p.pieces > MAX_PIECES) {

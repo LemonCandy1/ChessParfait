@@ -63,9 +63,6 @@ export default function EndgameBoard({
 }: EndgameBoardProps) {
     const [selectedSquare, setSelectedSquare] = useState<string | null>(null);
     const [circledSquares, setCircledSquares] = useState<string[]>([]);
-    // While the player holds a piece, the board keeps showing the position they picked it up in. Redrawing
-    // for the opponent's reply mid-drag would drop the piece; the move is played on the latest position on release.
-    const [heldFen, setHeldFen] = useState<string | null>(null);
     const [pendingPromotion, setPendingPromotion] = useState<{ from: string; to: string; color: 'w' | 'b' } | null>(null);
     const pendingMoveRef = useRef<{ from: string; to: string; promotion?: string } | null>(null);
     const queuedMoveTimerRef = useRef<number | null>(null);
@@ -211,25 +208,9 @@ export default function EndgameBoard({
         if (pieceOnSquare && pieceOnSquare.color === playerColor) setSelectedSquare(square);
     }, [canSelect, executeMove, opponentBusy, playerColor, selectedSquare]);
 
-    // A drag that ends without a drop (released off the board, cancelled) must still unfreeze the board.
-    useEffect(() => {
-        if (heldFen === null) return;
-        const release = () => window.setTimeout(() => setHeldFen(null), 0);
-        const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') release(); };
-        window.addEventListener('pointerup', release);
-        window.addEventListener('pointercancel', release);
-        window.addEventListener('keydown', onKey);
-        return () => {
-            window.removeEventListener('pointerup', release);
-            window.removeEventListener('pointercancel', release);
-            window.removeEventListener('keydown', onKey);
-        };
-    }, [heldFen]);
-
     // Show legal moves as soon as a piece is picked up
     const onPieceDrag = useCallback(({ square }: { square: string | null }) => {
         setCircledSquares([]);
-        setHeldFen(gameRef.current.fen());
         if (!square || !canSelect) return;
         const pieceOnSquare = gameRef.current.get(square as never);
         if (pieceOnSquare && pieceOnSquare.color === playerColor) setSelectedSquare(square);
@@ -237,7 +218,6 @@ export default function EndgameBoard({
 
     const onPieceDrop = useCallback(({ sourceSquare, targetSquare }: { sourceSquare: string; targetSquare: string | null }): boolean => {
         setCircledSquares([]);
-        setHeldFen(null);
         if (!targetSquare || !canSelect) {
             setSelectedSquare(null);
             return false;
@@ -289,7 +269,7 @@ export default function EndgameBoard({
         >
             <Chessboard
                 options={{
-                    position: heldFen ?? game.fen(),
+                    position: game.fen(),
                     boardOrientation: playerColor === 'w' ? 'white' : 'black',
                     canDragPiece: ({ piece }: { piece: { pieceType?: string; color?: string } }) => {
                         if (!canMove) return false;

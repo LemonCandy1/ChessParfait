@@ -110,7 +110,7 @@ function Rail({ stats, session }: { stats: TrainerStats | null; session: boolean
                     <li><span className="font-bold text-cream">One slip ends it.</span> A move that throws away the win (or loses the draw) fails the position.</li>
                     <li><span className="font-bold text-cream">Faster wins earn more.</span> Matching the quickest mate gains the most; a slow win still gains something.</li>
                     <li><span className="font-bold text-cream">Misses come back.</span> A failed endgame returns for review in 5 minutes, then at growing gaps.</li>
-                    <li><span className="font-bold text-cream">Skipping counts as a miss.</span> Leave mid-position and it waits for you, ready to play again.</li>
+                    <li><span className="font-bold text-cream">Giving up counts as a miss.</span> Leave mid-position and it waits for you, ready to play again.</li>
                 </ul>
             </section>
         </aside>
@@ -195,7 +195,7 @@ export default function EndgameTrainer() {
         if (wasRated) preparePosition().catch(() => undefined);
     };
 
-    /** Shows the next position. `skip` gives up the one being played, which counts as a miss. */
+    /** Shows the next position. `skip` gives up the one being played ("Give up"), which counts as a miss. */
     const loadNext = async (skip = false) => {
         if (loadingNext.current) return;
         loadingNext.current = true;
@@ -213,7 +213,7 @@ export default function EndgameTrainer() {
             setPosition(next);
             setStats(next.stats);
             setNote(next.missed
-                ? `Skipped, so it counted as a miss (${signed(next.missed.change)}).`
+                ? `You gave up, so it counted as a miss (${signed(next.missed.change)}).`
                 : next.resumed ? 'This position was still waiting for you, so here it is from the start.' : '');
             if (next.missed) setSession(s => [...s, false]);
             startPosition(next, true);
@@ -463,7 +463,7 @@ export default function EndgameTrainer() {
                                 disabled={thinking}
                                 className={`ml-auto shrink-0 inline-flex items-center gap-1.5 text-sm font-bold text-plum/75 hover:text-berry disabled:opacity-40 ${focusRing}`}
                             >
-                                <SkipForward size={16} /> {rated ? 'Skip (a miss)' : 'Next position'}
+                                <SkipForward size={16} /> {rated ? 'Give up' : 'Next position'}
                             </button>
                         )}
                     </div>

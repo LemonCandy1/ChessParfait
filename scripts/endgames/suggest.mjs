@@ -144,7 +144,8 @@ const candidates = classified.filter(v => v.verdict === 'keep').map(v => {
     const text = p.refs.map(r => `${r.chapter} ${r.title}`).join(' ').toLowerCase();
     const theme = suggest(p.fen, v.target, text);
     return {
-        key: p.key, fen: p.fen, target: v.target, theme, rating: startRating(theme, v), pieces: p.pieces, material: p.material,
+        // base: the theme rating the start rating was worked out from, so a theme rating edit can shift it later.
+        key: p.key, fen: p.fen, target: v.target, theme, rating: startRating(theme, v), base: themeRating[theme], pieces: p.pieces, material: p.material,
         checkedBy: p.pieces <= 7 ? 'tablebase' : 'stockfish', ...(v.cp !== undefined ? { cp: v.cp } : {}), ...(v.dtm ? { mateIn: Math.ceil(Math.abs(v.dtm) / 2) } : {}),
         refs: p.refs.map(r => ({ source: r.source, chapter: r.chapter, title: r.title }))
     };

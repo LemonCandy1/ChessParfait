@@ -58,18 +58,53 @@ if (typeof window !== 'undefined') {
     });
 }
 
+/** Volume and cut-off for the piece sounds: both files end in a noisy tail that is cut off abruptly. */
+interface SoundShape {
+    volume: number;
+    /** Seconds into the file to start fading out: just after the piece lands. */
+    fadeFrom: number;
+    /** Seconds into the file where it has faded to silence and stops, before the static. */
+    end: number;
+}
+
+const PIECE_VOLUME = 0.75;
+const MOVE_SHAPE: SoundShape = { volume: PIECE_VOLUME, fadeFrom: 0.1, end: 0.17 };
+const CAPTURE_SHAPE: SoundShape = { volume: PIECE_VOLUME, fadeFrom: 0.165, end: 0.23 };
+
 /**
- * Plays a pre-decoded AudioBuffer.
+ * Plays a pre-decoded AudioBuffer, optionally quieter and faded out early.
  */
-function playBuffer(buffer: AudioBuffer) {
+function playBuffer(buffer: AudioBuffer, shape?: SoundShape) {
     try {
         const ctx = getAudioContext();
         const source = ctx.createBufferSource();
         source.buffer = buffer;
-        source.connect(ctx.destination);
-        source.start(0);
+        if (!shape) {
+            source.connect(ctx.destination);
+            source.start(0);
+            return;
+        }
+        const gain = ctx.createGain();
+        const t = ctx.currentTime;
+        gain.gain.setValueAtTime(shape.volume, t);
+        gain.gain.setValueAtTime(shape.volume, t + shape.fadeFrom);
+        gain.gain.exponentialRampToValueAtTime(0.0001, t + shape.end);
+        source.connect(gain).connect(ctx.destination);
+        source.start(t);
+        source.stop(t + shape.end);
     } catch (e) {
         console.warn("Failed to play audio buffer:", e);
+    }
+}
+
+/** Fallback before the sound has been decoded: an HTML audio element at the piece volume. */
+function playElement(url: string) {
+    try {
+        const audio = new Audio(url);
+        audio.volume = PIECE_VOLUME;
+        audio.play().catch(() => undefined);
+    } catch {
+        // Audio can be unavailable (e.g. blocked before any user interaction); a silent move is fine.
     }
 }
 
@@ -77,26 +112,16 @@ function playBuffer(buffer: AudioBuffer) {
  * Plays the piece movement sound.
  */
 export function playMoveSound() {
-    if (buffers.move) {
-        playBuffer(buffers.move);
-    } else {
-        try {
-            new Audio('/piece movement 1s.mp3').play().catch(() => {});
-        } catch (e) {}
-    }
+    if (buffers.move) playBuffer(buffers.move, MOVE_SHAPE);
+    else playElement('/piece movement 1s.mp3');
 }
 
 /**
  * Plays the piece capture sound.
  */
 export function playCaptureSound() {
-    if (buffers.capture) {
-        playBuffer(buffers.capture);
-    } else {
-        try {
-            new Audio('/piece capture 1s.mp3').play().catch(() => {});
-        } catch (e) {}
-    }
+    if (buffers.capture) playBuffer(buffers.capture, CAPTURE_SHAPE);
+    else playElement('/piece capture 1s.mp3');
 }
 
 /**

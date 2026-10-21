@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { Chess } from 'chess.js';
 import { ArrowRight, Check, RotateCcw, X } from 'lucide-react';
+import { ChevronDown, Lightbulb } from '@/lib/lucideOriginal';
 import { GraduationCap, SkipForward, Volume2, VolumeX } from '@/lib/lucideOriginal';
 import Navbar from '../components/Navbar/Navbar';
 import EndgameBoard from '../components/EndgameBoard';
@@ -25,6 +26,7 @@ import {
 } from '../lib/endgameTrainer';
 import { getTrainerStats, nextPosition, preparePosition, sendResult, type TrainerPosition, type TrainerResult, type TrainerStats } from '../lib/endgameTrainerApi';
 import { focusRing } from '../lib/calendarFormat';
+import themesData from '../data/trainerThemes.json';
 
 // Every trainer position is defended by the strongest Maia bot, with the endgame database as its safety net.
 const OPPONENT = 'maia_1900' as const;
@@ -65,9 +67,142 @@ const uciOf = (m: { from: string; to: string; promotion?: string }) => `${m.from
 const arrowFor = (uci: string, color: string) => ({ startSquare: uci.slice(0, 2), endSquare: uci.slice(2, 4), color });
 const signed = (n: number) => `${n >= 0 ? '+' : '−'}${Math.abs(n)}`;
 
-/** The plum rail: rating, this session, and how positions are scored. */
-function Rail({ stats, delta, session }: { stats: TrainerStats | null; delta: number | null; session: boolean[] }) {
-    const solved = session.filter(Boolean).length;
+// A full-strength engine for hints: the endgame database's best move, or Stockfish for bigger positions.
+const hintEngine = new EndgameEngine();
+
+const THEMES = themesData as { id: string; group: string; name: string }[];
+const GROUPS = [...new Set(THEMES.map(t => t.group))];
+
+/** What to play: the rated stream of all types, or unrated practice of chosen themes. Remembered on this device. */
+interface Choice { mode: 'rated' | 'practice'; themes: string[] }
+const CHOICE_KEY = 'endgameTrainer.choice';
+function loadChoice(): Choice {
+    try {
+        const stored = JSON.parse(localStorage.getItem(CHOICE_KEY) ?? 'null');
+        if (stored && (stored.mode === 'rated' || stored.mode === 'practice') && Array.isArray(stored.themes)) {
+            return { mode: stored.mode, themes: stored.themes.filter((t: unknown): t is string => typeof t === 'string' && THEMES.some(x => x.id === t)) };
+        }
+    } catch {
+        // No usable stored choice: start with the rated stream.
+    }
+    return { mode: 'rated', themes: [] };
+}
+function saveChoice(choice: Choice) {
+    try {
+        localStorage.setItem(CHOICE_KEY, JSON.stringify(choice));
+    } catch {
+        // Storage can be unavailable (private windows); the choice then lasts for this visit only.
+    }
+}
+
+/** A short name for the chosen themes: whole groups by name, otherwise theme names, or a count if many. */
+function choiceLabel(themes: string[], counts: Record<string, number>): string {
+    const parts: string[] = [];
+    for (const group of GROUPS) {
+        const available = THEMES.filter(t => t.group === group && counts[t.id]);
+        const chosen = available.filter(t => themes.includes(t.id));
+        if (!chosen.length) continue;
+        if (chosen.length === available.length) parts.push(group);
+        else parts.push(...chosen.map(t => t.name));
+    }
+    return parts.length > 2 ? `${parts.length} types` : parts.join(' and ');
+}
+
+/** One result in the session strip. */
+interface SessionResult { solved: boolean; practice: boolean; helped: boolean }
+
+/** Rated play or practice, and for practice which groups and themes; counts come from the server. */
+function TypePicker({ choice, counts, onMode, onThemes }: {
+    choice: Choice;
+    counts: Record<string, number>;
+    onMode: (mode: Choice['mode']) => void;
+    onThemes: (themes: string[]) => void;
+}) {
+    const [open, setOpen] = useState<string | null>(null);
+    const practice = choice.mode === 'practice';
+    const toggle = (ids: string[], on: boolean) => onThemes(on ? [...new Set([...choice.themes, ...ids])] : choice.themes.filter(t => !ids.includes(t)));
+    const option = (mode: Choice['mode'], title: string, detail: string) => (
+        <button
+            type="button"
+            role="radio"
+            aria-checked={choice.mode === mode}
+            onClick={() => onMode(mode)}
+            className={`w-full text-left rounded-xl px-3.5 py-2.5 border-2 ${choice.mode === mode ? 'border-[#F5B7C6] bg-cream/10' : 'border-cream/15 hover:border-cream/35'} ${focusRing} focus-visible:ring-offset-plum`}
+        >
+            <span className="block font-bold text-cream">{title}</span>
+            <span className="block text-xs text-cream/75">{detail}</span>
+        </button>
+    );
+    return (
+        <section className="mt-8 pt-6 border-t border-cream/20" aria-labelledby="play-heading">
+            <h3 id="play-heading" className="text-sm font-bold text-cream/80">What to play</h3>
+            <div role="radiogroup" aria-labelledby="play-heading" className="mt-3 grid gap-2">
+                {option('rated', 'Rated', 'All types, matched to your rating')}
+                {option('practice', 'Practice', 'Choose types · unrated')}
+            </div>
+            {practice && (
+                <div className="mt-4 space-y-1.5">
+                    {GROUPS.map(group => {
+                        const themes = THEMES.filter(t => t.group === group && counts[t.id]);
+                        if (!themes.length) return null;
+                        const ids = themes.map(t => t.id);
+                        const chosen = ids.filter(id => choice.themes.includes(id)).length;
+                        const total = themes.reduce((sum, t) => sum + counts[t.id], 0);
+                        const groupId = `group-${group.replace(/\W+/g, '-').toLowerCase()}`;
+                        return (
+                            <div key={group}>
+                                <div className="flex items-center gap-2.5">
+                                    <input
+                                        id={groupId}
+                                        type="checkbox"
+                                        checked={chosen === ids.length}
+                                        ref={el => { if (el) el.indeterminate = chosen > 0 && chosen < ids.length; }}
+                                        onChange={e => toggle(ids, e.target.checked)}
+                                        className="w-4 h-4 accent-[#F5B7C6] shrink-0"
+                                    />
+                                    <label htmlFor={groupId} className="font-bold text-sm text-cream cursor-pointer">{group}</label>
+                                    <span className="text-xs text-cream/60 tabular-nums">{total}</span>
+                                    <button
+                                        type="button"
+                                        onClick={() => setOpen(o => (o === group ? null : group))}
+                                        aria-expanded={open === group}
+                                        aria-label={`${open === group ? 'Hide' : 'Show'} ${group} themes`}
+                                        className={`ml-auto p-1 rounded text-cream/70 hover:text-cream ${focusRing} focus-visible:ring-offset-plum`}
+                                    >
+                                        <ChevronDown size={16} className={open === group ? 'rotate-180' : ''} />
+                                    </button>
+                                </div>
+                                {open === group && (
+                                    <ul className="ml-6 mt-1 mb-2 space-y-1">
+                                        {themes.map(t => (
+                                            <li key={t.id} className="flex items-center gap-2.5">
+                                                <input
+                                                    id={`theme-${t.id}`}
+                                                    type="checkbox"
+                                                    checked={choice.themes.includes(t.id)}
+                                                    onChange={e => toggle([t.id], e.target.checked)}
+                                                    className="w-4 h-4 accent-[#F5B7C6] shrink-0"
+                                                />
+                                                <label htmlFor={`theme-${t.id}`} className="text-sm text-cream/90 cursor-pointer">{t.name}</label>
+                                                <span className="ml-auto text-xs text-cream/60 tabular-nums">{counts[t.id]}</span>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                )}
+                            </div>
+                        );
+                    })}
+                    {choice.themes.length === 0 && <p className="text-sm text-[#F5B7C6]" role="status">Tick at least one type to practise.</p>}
+                </div>
+            )}
+        </section>
+    );
+}
+
+/** The plum rail: rating, what to play, this session, and how positions are scored. */
+function Rail({ stats, delta, session, picker }: { stats: TrainerStats | null; delta: number | null; session: SessionResult[]; picker: ReactNode }) {
+    const solved = session.filter(r => r.solved && !r.helped).length;
+    const helped = session.filter(r => r.solved && r.helped).length;
     return (
         <aside className="order-3 lg:order-none bg-plum text-cream px-6 py-8 lg:overflow-y-auto" aria-label="Your endgame rating">
             <h2 className="text-sm font-bold text-cream/80">Your endgame rating</h2>
@@ -89,24 +224,29 @@ function Rail({ stats, delta, session }: { stats: TrainerStats | null; delta: nu
                 </p>
             )}
 
+            {picker}
+
             <section className="mt-8 pt-6 border-t border-cream/20" aria-labelledby="session-heading">
                 <h3 id="session-heading" className="text-sm font-bold text-cream/80">This session</h3>
                 {session.length === 0 ? (
                     <p className="mt-2 text-sm text-cream/75">Nothing played yet. Each result lands here.</p>
                 ) : (
                     <>
-                        <p className="mt-1 text-lg font-bold">{solved} solved, {session.length - solved} missed</p>
+                        <p className="mt-1 text-lg font-bold">
+                            {solved} solved{helped ? `, ${helped} with a hint` : ''}, {session.length - solved - helped} missed
+                        </p>
                         <ol className="mt-3 flex flex-wrap gap-1.5" aria-label="Results this session, oldest first">
-                            {session.map((ok, i) => (
+                            {session.map((r, i) => (
                                 <li
                                     key={i}
-                                    className={`w-7 h-7 rounded-md flex items-center justify-center ${ok ? 'bg-emerald-500 text-white' : 'bg-cream/15 text-[#F5B7C6]'}`}
-                                    aria-label={ok ? 'Solved' : 'Missed'}
+                                    className={`w-7 h-7 rounded-md flex items-center justify-center ${r.solved ? (r.helped ? 'bg-amber-400 text-plum' : 'bg-emerald-500 text-white') : 'bg-cream/15 text-[#F5B7C6]'} ${r.practice ? 'ring-2 ring-inset ring-cream/50' : ''}`}
+                                    aria-label={`${r.solved ? (r.helped ? 'Solved with a hint' : 'Solved') : 'Missed'}${r.practice ? ', practice' : ''}`}
                                 >
-                                    {ok ? <Check size={15} strokeWidth={3} /> : <X size={15} strokeWidth={3} />}
+                                    {r.solved ? (r.helped ? <Lightbulb size={15} strokeWidth={2.5} /> : <Check size={15} strokeWidth={3} />) : <X size={15} strokeWidth={3} />}
                                 </li>
                             ))}
                         </ol>
+                        {session.some(r => r.practice) && <p className="mt-2 text-xs text-cream/70">Outlined: practice, unrated.</p>}
                     </>
                 )}
             </section>
@@ -118,6 +258,7 @@ function Rail({ stats, delta, session }: { stats: TrainerStats | null; delta: nu
                     <li><span className="font-bold text-cream">Faster wins earn more.</span> Matching the quickest mate gains the most; a slow win still gains something.</li>
                     <li><span className="font-bold text-cream">Misses come back.</span> A failed endgame returns for review in 5 minutes, then at growing gaps.</li>
                     <li><span className="font-bold text-cream">Giving up counts as a miss.</span> Leave mid-position and it waits for you, ready to play again.</li>
+                    <li><span className="font-bold text-cream">Practice is unrated.</span> It never moves your rating, but misses still come back for review. A solve with a hint counts as a miss.</li>
                 </ul>
             </section>
         </aside>
@@ -138,7 +279,15 @@ export default function EndgameTrainer() {
     // The last rating change, shown beside the rating until the next result (as on Lichess puzzles).
     const [delta, setDelta] = useState<number | null>(null);
     const [moveLog, setMoveLog] = useState<LoggedMove[]>([]);
-    const [session, setSession] = useState<boolean[]>([]);
+    const [session, setSession] = useState<SessionResult[]>([]);
+    const [choice, setChoice] = useState<Choice>({ mode: 'rated', themes: [] });
+    const choiceRef = useRef(choice);
+    const [themeCounts, setThemeCounts] = useState<Record<string, number>>({});
+    // A hint for the move to play: step 1 points at the piece, step 2 shows the move.
+    const [hint, setHint] = useState<{ step: 1 | 2; move: string } | null>(null);
+    const [hintLoading, setHintLoading] = useState(false);
+    // True once a hint was used on the recorded attempt; a solve with help counts as a miss.
+    const helped = useRef(false);
     const [boardKey, setBoardKey] = useState(0);
     const [muted, setMuted] = useState(false);
     const [evaluation, setEvaluation] = useState('');
@@ -158,15 +307,31 @@ export default function EndgameTrainer() {
     // The next position, requested in the background so "Start" and "Next position" are instant.
     // Safe because an unplayed position is never scored: it is simply handed back next time.
     const prefetched = useRef<Promise<TrainerPosition> | null>(null);
+    /** The next position in the current choice: rated, or practice of the chosen themes. */
+    const requestNext = (skip = false) => {
+        const c = choiceRef.current;
+        return nextPosition(skip, c.mode === 'practice' ? c.themes : undefined);
+    };
     const prefetch = useCallback(() => {
-        const request = nextPosition();
+        if (choiceRef.current.mode === 'practice' && !choiceRef.current.themes.length) return;
+        const c = choiceRef.current;
+        const request = nextPosition(false, c.mode === 'practice' ? c.themes : undefined);
         request.catch(() => undefined);
         prefetched.current = request;
     }, []);
 
+    // The choice is read after mounting, as storage isn't available while the page is prerendered.
+    useEffect(() => {
+        const stored = loadChoice();
+        choiceRef.current = stored;
+        setChoice(stored);
+    }, []);
+
     useEffect(() => {
         if (!user) return;
-        getTrainerStats().then(setStats).catch((err: Error) => setError(err.message));
+        getTrainerStats()
+            .then(res => { setStats(res); setThemeCounts(res.themeCounts); })
+            .catch((err: Error) => setError(err.message));
         prefetch();
     }, [user, prefetch]);
 
@@ -198,15 +363,23 @@ export default function EndgameTrainer() {
         setEvaluation('');
         setThinking(false);
         setRated(wasRated);
+        setHint(null);
+        helped.current = false;
         setBoardKey(k => k + 1);
         setPhase('playing');
-        // Make the following position on the server while this one is played, so "Next" is instant.
-        if (wasRated) preparePosition().catch(() => undefined);
+        // Make the following rated position on the server while this one is played, so "Next" is instant.
+        if (wasRated && !next.practice) preparePosition().catch(() => undefined);
     };
 
     /** Shows the next position. `skip` gives up the one being played ("Give up"), which counts as a miss. */
     const loadNext = async (skip = false) => {
         if (loadingNext.current) return;
+        const c = choiceRef.current;
+        const practice = c.mode === 'practice';
+        if (practice && !c.themes.length) {
+            setError('Tick at least one type to practise.');
+            return;
+        }
         loadingNext.current = true;
         run.current++;
         setPhase('loading');
@@ -217,15 +390,17 @@ export default function EndgameTrainer() {
             const ready = skip ? null : prefetched.current;
             prefetched.current = null;
             let next = ready ? await ready.catch(() => null) : null;
-            // A background request that raced a result can hand back the position just played; ask again.
-            if (!next || next.attemptId === position?.attemptId) next = await nextPosition(skip);
+            const fitsChoice = (p: TrainerPosition) => p.practice === practice && (!practice || (!!p.endgame.theme && c.themes.includes(p.endgame.theme)));
+            // A background request that raced a result can hand back the position just played, or one from an
+            // earlier choice of types; ask again.
+            if (!next || next.attemptId === position?.attemptId || !fitsChoice(next)) next = await requestNext(skip);
             setPosition(next);
             setStats(next.stats);
-            if (next.missed) setDelta(next.missed.change);
+            if (next.missed && !next.practice) setDelta(next.missed.change);
             setNote(next.missed
-                ? `You gave up, so it counted as a miss (${signed(next.missed.change)}).`
+                ? next.practice ? 'You gave up, so it counts as a miss and will come back for review.' : `You gave up, so it counted as a miss (${signed(next.missed.change)}).`
                 : next.resumed ? 'This position was still waiting for you, so here it is from the start.' : '');
-            if (next.missed) setSession(s => [...s, false]);
+            if (next.missed) setSession(s => [...s, { solved: false, practice: next.practice, helped: false }]);
             startPosition(next, true);
         } catch (err) {
             setError((err as Error).message);
@@ -242,16 +417,18 @@ export default function EndgameTrainer() {
     };
 
     const finish = useCallback(async (solved: boolean, fb: Feedback | null, wasRated: boolean, pos: TrainerPosition) => {
-        const { attemptId } = pos;
+        const { attemptId, practice } = pos;
+        const usedHint = helped.current;
         busy.current = false;
         setThinking(false);
+        setHint(null);
         setPhase(solved ? 'solved' : 'failed');
         setFeedback(fb);
         sound(solved ? 'win' : 'lose');
         if (!wasRated) return;
-        setSession(s => [...s, solved]);
+        setSession(s => [...s, { solved, practice, helped: usedHint }]);
         // Show the rating change straight away with the server's own formula; its reply then confirms it.
-        if (stats) {
+        if (stats && !practice) {
             const change = ratingChange(stats.rating, pos.endgame.rating, solved ? solveScore(playerMoves.current, pos.fastestMate) : 0, stats.played);
             const rating = Math.max(100, stats.rating + change);
             setDelta(rating - stats.rating);
@@ -262,13 +439,15 @@ export default function EndgameTrainer() {
             // One retry, so a dropped connection doesn't turn a finished position into a miss.
             for (let attempt = 1; ; attempt++) {
                 try {
-                    const res = await sendResult(attemptId, solved ? 'solved' : 'failed', played);
+                    const res = await sendResult(attemptId, solved ? 'solved' : 'failed', played, practice && usedHint);
                     setResult(res);
-                    setStats(res);
-                    setDelta(res.change);
+                    if (!practice) {
+                        setStats(res);
+                        setDelta(res.change);
+                    }
                     if (res.rejected) {
                         setPhase('failed');
-                        setSession(s => [...s.slice(0, -1), false]);
+                        setSession(s => [...s.slice(0, -1), { solved: false, practice, helped: usedHint }]);
                     }
                     void refreshUser();
                     return;
@@ -276,8 +455,10 @@ export default function EndgameTrainer() {
                     if (attempt >= 2) {
                         setError((err as Error).message);
                         // Not saved, so drop the estimate and show what the server has.
-                        setDelta(null);
-                        getTrainerStats().then(setStats).catch(() => undefined);
+                        if (!practice) {
+                            setDelta(null);
+                            getTrainerStats().then(setStats).catch(() => undefined);
+                        }
                         return;
                     }
                 }
@@ -367,6 +548,7 @@ export default function EndgameTrainer() {
         }
         moves.current.push(uciOf(move));
         playerMoves.current++;
+        setHint(null);
         busy.current = true;
         setThinking(true);
         sound(move.captured ? 'capture' : 'move');
@@ -376,12 +558,57 @@ export default function EndgameTrainer() {
         return true;
     };
 
+    /** First press points at the piece to move, the second shows the move. Using it marks the attempt as helped. */
+    const showHint = async () => {
+        if (!position || phase !== 'playing' || busy.current || game.turn() !== position.playerColor) return;
+        if (hint) {
+            setHint({ ...hint, step: 2 });
+            return;
+        }
+        const thisRun = run.current, movesBefore = playerMoves.current;
+        setHintLoading(true);
+        const best = await hintEngine.getBestMove(game.fen()).catch(() => null);
+        setHintLoading(false);
+        if (!best || thisRun !== run.current || movesBefore !== playerMoves.current) return;
+        if (rated) helped.current = true;
+        setHint({ step: 1, move: best.from + best.to });
+    };
+
+    /** Switches between rated play and practice, and plays a position in the new mode straight away. */
+    const chooseMode = (mode: Choice['mode']) => {
+        if (mode === choiceRef.current.mode) return;
+        let themes = choiceRef.current.themes;
+        if (mode === 'practice' && !themes.length) {
+            // Start with the group of the position on the board, or pawn endings.
+            const group = THEMES.find(t => t.id === position?.endgame.theme)?.group ?? 'Pawn endings';
+            themes = THEMES.filter(t => t.group === group && themeCounts[t.id]).map(t => t.id);
+        }
+        const next = { mode, themes };
+        choiceRef.current = next;
+        setChoice(next);
+        saveChoice(next);
+        prefetched.current = null;
+        // A rated position left unfinished waits on the server, ready when the player switches back.
+        if (position) void loadNext();
+    };
+
+    /** Changes the practice types; it applies from the next position. */
+    const chooseThemes = (themes: string[]) => {
+        const next = { ...choiceRef.current, themes };
+        choiceRef.current = next;
+        setChoice(next);
+        saveChoice(next);
+        prefetched.current = null;
+    };
+
     const done = phase === 'solved' || phase === 'failed';
     const playing = phase === 'playing';
     const endgame = position?.endgame;
     const arrows = feedback
         ? [feedback.played && arrowFor(feedback.played, '#e11d48'), feedback.best && arrowFor(feedback.best, '#059669')].filter((a): a is ReturnType<typeof arrowFor> => !!a)
-        : undefined;
+        : hint?.step === 2 ? [arrowFor(hint.move, '#f59e0b')] : undefined;
+    const practicing = position ? position.practice : choice.mode === 'practice';
+    const modeLabel = practicing ? `Practice · ${choiceLabel(choice.themes, themeCounts) || 'choose types'} · unrated` : 'Rated';
     const playerColor = position?.playerColor ?? 'w';
     const goal = endgame ? `${colourName(playerColor)} to play and ${endgame.target}` : 'Endless endgames at your level';
     const objective = endgame
@@ -422,7 +649,12 @@ export default function EndgameTrainer() {
             <h1 className="sr-only">Endgame Trainer</h1>
 
             <div className="flex-1 min-h-0 flex flex-col lg:grid lg:grid-cols-[280px_minmax(0,1fr)_380px]">
-                <Rail stats={stats} delta={delta} session={session} />
+                <Rail
+                    stats={stats}
+                    delta={delta}
+                    session={session}
+                    picker={<TypePicker choice={choice} counts={themeCounts} onMode={chooseMode} onThemes={chooseThemes} />}
+                />
 
                 {/* The board, framed like a game: the opponent above, you below */}
                 <main className="order-1 lg:order-none min-h-0 flex flex-col items-center justify-center gap-3 px-3 sm:px-6 py-5 bg-[#f6ecd2]">
@@ -432,10 +664,13 @@ export default function EndgameTrainer() {
                             <span className="block font-bold leading-tight">{opponentName}</span>
                             <span className="block text-xs text-plum/75">{thinking ? 'Thinking…' : `Maia ${OPPONENT_PRESETS[OPPONENT].elo}, backed by the endgame database`}</span>
                         </p>
+                        <span className={`ml-auto min-w-0 truncate rounded-full px-3 py-1 text-xs font-bold ${practicing ? 'bg-amber-100 text-amber-900' : 'bg-plum/10 text-plum'}`} title={modeLabel}>
+                            {modeLabel}
+                        </span>
                         <button
                             type="button"
                             onClick={() => setMuted(m => !m)}
-                            className={`ml-auto p-2 rounded-lg text-plum/75 hover:text-berry hover:bg-plum/5 ${focusRing}`}
+                            className={`shrink-0 p-2 rounded-lg text-plum/75 hover:text-berry hover:bg-plum/5 ${focusRing}`}
                             aria-label={muted ? 'Turn sound on' : 'Mute sound'}
                             aria-pressed={muted}
                         >
@@ -454,6 +689,7 @@ export default function EndgameTrainer() {
                             onMove={onMove}
                             resetKey={boardKey}
                             arrows={arrows}
+                            highlightSquare={hint?.step === 1 ? hint.move.slice(0, 2) : null}
                         >
                             {position && phase === 'loading' && (
                                 <div className="absolute inset-0 z-40 bg-plum/45 flex items-center justify-center" role="status">
@@ -464,8 +700,8 @@ export default function EndgameTrainer() {
                                 <div className="absolute inset-0 z-40 bg-plum/70 backdrop-blur-[1px] flex flex-col items-center justify-center text-center p-6">
                                     <p className="font-serif font-black text-3xl text-cream">Ready when you are</p>
                                     <p className="mt-2 text-sm text-cream/85 max-w-xs">The first position is chosen near your rating.</p>
-                                    <button type="button" onClick={() => loadNext()} disabled={phase === 'loading' || !stats} className={`mt-5 inline-flex items-center gap-2 py-3 px-7 soft-button-berry text-sm ${focusRing} focus-visible:ring-offset-plum`}>
-                                        {phase === 'loading' ? 'Finding a position…' : <>Start training <ArrowRight size={16} /></>}
+                                    <button type="button" onClick={() => loadNext()} disabled={phase === 'loading' || !stats || (choice.mode === 'practice' && !choice.themes.length)} className={`mt-5 inline-flex items-center gap-2 py-3 px-7 soft-button-berry text-sm ${focusRing} focus-visible:ring-offset-plum`}>
+                                        {phase === 'loading' ? 'Finding a position…' : <>{choice.mode === 'practice' ? 'Start practice' : 'Start training'} <ArrowRight size={16} /></>}
                                     </button>
                                 </div>
                             )}
@@ -478,12 +714,22 @@ export default function EndgameTrainer() {
                             <span className="block font-bold leading-tight">{user?.username ?? 'You'}{position ? `, ${colourName(playerColor).toLowerCase()}` : ''}</span>
                             <span className="block text-xs text-plum/75">{position ? objective : 'Press start for your first position.'}</span>
                         </p>
+                        {playing && position?.practice && (
+                            <button
+                                type="button"
+                                onClick={showHint}
+                                disabled={thinking || hintLoading || hint?.step === 2}
+                                className={`ml-auto shrink-0 inline-flex items-center gap-1.5 text-sm font-bold text-amber-800 hover:text-amber-950 disabled:opacity-40 ${focusRing}`}
+                            >
+                                <Lightbulb size={16} /> {hint?.step === 1 ? 'Show move' : 'Hint'}
+                            </button>
+                        )}
                         {playing && (
                             <button
                                 type="button"
                                 onClick={() => loadNext(rated)}
                                 disabled={thinking}
-                                className={`ml-auto shrink-0 inline-flex items-center gap-1.5 text-sm font-bold text-plum/75 hover:text-berry disabled:opacity-40 ${focusRing}`}
+                                className={`${position?.practice ? '' : 'ml-auto'} shrink-0 inline-flex items-center gap-1.5 text-sm font-bold text-plum/75 hover:text-berry disabled:opacity-40 ${focusRing}`}
                             >
                                 <SkipForward size={16} /> {rated ? 'Give up' : 'Next position'}
                             </button>
@@ -496,8 +742,8 @@ export default function EndgameTrainer() {
                     <div key={position?.attemptId ?? 'preview'} className={position ? 'animate-board-deal-late' : ''}>
                     {endgame && (
                         <p className="text-sm font-bold text-berry">
-                            {endgame.category} · rated {endgame.rating}
-                            {!rated && <span className="text-plum/70"> · practice, unrated</span>}
+                            {position?.practice ? <>{endgame.title} · practice</> : <>{endgame.category} · rated {endgame.rating}</>}
+                            {!rated && <span className="text-plum/70"> · retry, unrated</span>}
                         </p>
                     )}
                     <h2 id="goal-heading" className="mt-1 text-3xl font-serif font-black leading-tight">{goal}</h2>
@@ -552,11 +798,18 @@ export default function EndgameTrainer() {
                         <div className="mt-6 pt-6 border-t border-plum/12">
                             <p className={`text-2xl font-serif font-black ${phase === 'solved' ? 'text-emerald-700' : 'text-plum'}`}>
                                 {phase === 'solved' ? 'Solved' : result?.rejected ? 'That result couldn\'t be confirmed' : 'Not this time'}
-                                {rated && delta !== null && <span className={`ml-2 tabular-nums ${delta >= 0 ? 'text-emerald-700' : 'text-rose-700'}`}>{signed(delta)}</span>}
+                                {rated && !position?.practice && delta !== null && <span className={`ml-2 tabular-nums ${delta >= 0 ? 'text-emerald-700' : 'text-rose-700'}`}>{signed(delta)}</span>}
                             </p>
+                            {rated && position?.practice && (
+                                <p className="mt-1 text-sm text-plum/80">
+                                    {phase === 'solved'
+                                        ? session.at(-1)?.helped ? 'Solved with a hint, so it counts as a miss and will come back for review.' : 'Practice: no rating change.'
+                                        : 'Practice: no rating change. This one will come back for review.'}
+                                </p>
+                            )}
                             {feedback?.reason && <p className="mt-1 text-plum/85">{feedback.reason}</p>}
                             {feedback?.best && <p className="mt-1 text-sm text-plum/75">Red arrow: your move. Green arrow: the move that kept the result.</p>}
-                            {phase === 'solved' && result?.movesTaken && result.fastestMate && (
+                            {phase === 'solved' && !position?.practice && result?.movesTaken && result.fastestMate && (
                                 <p className="mt-1 text-sm text-plum/85">
                                     {result.movesTaken} moves (fastest mate {result.fastestMate}) · {Math.round(result.score * 100)}% of the full gain{result.score < 1 ? ': a faster win earns more' : ''}
                                 </p>

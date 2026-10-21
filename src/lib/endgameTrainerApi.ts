@@ -15,6 +15,8 @@ export interface TrainerPosition {
         id: string;
         title: string;
         category: string;
+        /** The theme (src/data/trainerThemes.json) this position belongs to. */
+        theme: string | null;
         target: 'win' | 'draw';
         mateRequired: boolean;
         rating: number;
@@ -31,6 +33,8 @@ export interface TrainerPosition {
     resumed: boolean;
     /** Set when the previous position was skipped and counted as a miss. */
     missed: { change: number } | null;
+    /** True for an unrated practice position from chosen types. */
+    practice: boolean;
 }
 
 export interface TrainerResult extends TrainerStats {
@@ -54,13 +58,18 @@ async function request<T>(url: string, init?: RequestInit): Promise<T> {
 
 const post = (body: unknown): RequestInit => ({ method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
 
-export const getTrainerStats = () => request<TrainerStats>('/api/endgame-trainer');
+/** The player's stats, plus how many positions each theme has (for choosing types to practise). */
+export const getTrainerStats = () => request<TrainerStats & { themeCounts: Record<string, number> }>('/api/endgame-trainer');
 
-/** The next position; an unfinished one comes back first. `skip` gives up the open position as a miss instead. */
-export const nextPosition = (skip = false) => request<TrainerPosition>('/api/endgame-trainer/next', post({ skip }));
+/**
+ * The next position; an unfinished one comes back first. `skip` gives up the open position as a miss instead.
+ * With `practice` (theme ids), an unrated practice position from those themes; the rated one keeps waiting.
+ */
+export const nextPosition = (skip = false, practice?: string[]) => request<TrainerPosition>('/api/endgame-trainer/next', post({ skip, practice }));
 
 /** Asks the server to make the next position in the background while this one is played. */
 export const preparePosition = () => request<{ ready: boolean }>('/api/endgame-trainer/prepare', post({}));
 
-export const sendResult = (attemptId: string, outcome: 'solved' | 'failed', moves: string[]) =>
-    request<TrainerResult>('/api/endgame-trainer/result', post({ attemptId, outcome, moves }));
+/** `helped`: a practice solve that used a hint, which counts as a miss for mastery and reviews. */
+export const sendResult = (attemptId: string, outcome: 'solved' | 'failed', moves: string[], helped = false) =>
+    request<TrainerResult>('/api/endgame-trainer/result', post({ attemptId, outcome, moves, helped }));

@@ -52,6 +52,8 @@ export interface EndgameBoardProps {
     onQueuedMoveIllegal?: () => void;
     /** Change this to clear selections, circles, queued moves and the promotion picker (new position or reset). */
     resetKey?: unknown;
+    /** A square to point out, e.g. the piece a hint says to move. */
+    highlightSquare?: string | null;
     /** Fixed arrows to show, e.g. the right move after a mistake. Leave out to let the player draw their own. */
     arrows?: { startSquare: string; endSquare: string; color: string }[];
     /** Overlays drawn on top of the board (e.g. a "solved" celebration). */
@@ -59,7 +61,7 @@ export interface EndgameBoardProps {
 }
 
 export default function EndgameBoard({
-    game, playerColor, lastMove, canMove, canSelect = true, opponentBusy, onMove, onMoveQueued, onQueuedMoveIllegal, resetKey, arrows, children
+    game, playerColor, lastMove, canMove, canSelect = true, opponentBusy, onMove, onMoveQueued, onQueuedMoveIllegal, resetKey, highlightSquare, arrows, children
 }: EndgameBoardProps) {
     const [selectedSquare, setSelectedSquare] = useState<string | null>(null);
     const [circledSquares, setCircledSquares] = useState<string[]>([]);
@@ -261,8 +263,9 @@ export default function EndgameBoard({
                 console.error('Error generating legal moves:', e);
             }
         }
+        if (highlightSquare) styles[highlightSquare] = { ...styles[highlightSquare], boxShadow: 'inset 0 0 0 4px rgba(245, 158, 11, 0.95)' };
         return styles;
-    }, [game, selectedSquare, lastMove, circledSquares]);
+    }, [game, selectedSquare, lastMove, circledSquares, highlightSquare]);
 
     return (
         <div

@@ -1,6 +1,6 @@
 import { Chess } from 'chess.js';
 import { getAdminClient, getSessionAuthUser, isUuid, json, type SupabaseEnv } from '../../_lib/community';
-import { ATTEMPT_COLUMNS, TRAINER_ENDGAMES, closeAttempt, matchesTarget, playerOutcome, type AttemptRow } from '../../_lib/endgameTrainer';
+import { ATTEMPT_COLUMNS, TRAINER_ENDGAMES, closeAttempt, closePracticeAttempt, matchesTarget, playerOutcome, type AttemptRow } from '../../_lib/endgameTrainer';
 import { TABLEBASE_MAX_PIECES, countPieces, solveScore, solveState } from '../../../src/lib/endgameTrainer';
 
 /** Replays `moves` (UCI, both sides) from the served position; returns the player's move count if it is really solved, else null. */
@@ -31,8 +31,9 @@ async function verifySolve(attempt: AttemptRow, moves: unknown): Promise<number 
 }
 
 /**
- * POST /api/endgame-trainer/result { attemptId, outcome: 'solved' | 'failed', moves: string[] }
- * Closes the open position and moves the rating. A "solved" is only accepted if the moves replay legally
+ * POST /api/endgame-trainer/result { attemptId, outcome: 'solved' | 'failed', moves: string[], helped?: boolean }
+ * Closes the open position and moves the rating (a practice position only counts for mastery and reviews;
+ * `helped` marks a practice solve that used a hint). A "solved" is only accepted if the moves replay legally
  * from the served position to the goal; otherwise it counts as a miss.
  */
 export async function onRequestPost(context: { request: Request; env: SupabaseEnv }) {
@@ -41,7 +42,7 @@ export async function onRequestPost(context: { request: Request; env: SupabaseEn
         const user = await getSessionAuthUser(request, env);
         if (!user) return json({ message: 'Please sign in to use the endgame trainer.' }, 401);
 
-        const { attemptId, outcome, moves } = await request.json();
+        const { attemptId, outcome, moves, helped } = await request.json();
         if (!isUuid(attemptId) || (outcome !== 'solved' && outcome !== 'failed')) return json({ message: 'Invalid result.' }, 400);
 
         const admin = getAdminClient(env);
@@ -57,7 +58,9 @@ export async function onRequestPost(context: { request: Request; env: SupabaseEn
 
         const movesTaken = outcome === 'solved' ? await verifySolve(attempt, moves) : null;
         const solved = movesTaken !== null;
-        const result = await closeAttempt(admin, attempt, solved, solved ? solveScore(movesTaken, attempt.optimal_moves) : 0);
+        const result = attempt.practice
+            ? await closePracticeAttempt(admin, attempt, solved, helped === true)
+            : await closeAttempt(admin, attempt, solved, solved ? solveScore(movesTaken, attempt.optimal_moves) : 0);
         if (!result) return json({ message: 'This position has already been scored.' }, 409);
 
         return json({ ...result, solved, rejected: outcome === 'solved' && !solved, movesTaken, fastestMate: attempt.optimal_moves });

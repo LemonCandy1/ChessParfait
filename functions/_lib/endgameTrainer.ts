@@ -28,9 +28,20 @@ const THEMES = new Map((themes as LibraryTheme[]).map(t => [t.id, t]));
 // Basic mates against a bare king: reaching "a queen or rook against a bare king" is where they start, so they need mate.
 const MATE_THEMES = new Set(['queen-mate', 'rook-mate', 'two-rooks-mate']);
 
+/** The theme each of the original 20 endgames belongs to, so they can be practised by type too. */
+const ORIGINAL_THEMES: Record<string, string> = {
+    'pawn-rule-of-square': 'rule-of-square', 'pawn-6th-rank': 'key-squares', 'pawn-key-squares': 'key-squares',
+    'pawn-key-squares-4th': 'key-squares', 'pawn-distant-opposition': 'distant-opposition', 'pawn-rook-corner': 'kp-defence',
+    'pawn-trebuchet': 'corresponding-squares', 'pawn-reti-maneuver': 'reti', 'pawn-triangulation': 'triangulation',
+    'pawn-outside-passed': 'outside-passer', 'pawn-breakthrough': 'breakthrough', 'rook-7th-passive': 'vancura',
+    'lucena-position': 'lucena', 'philidor-defense': 'philidor', 'practical-rook-endings': 'rook-practical',
+    'queen-vs-rook-philidor': 'queen-vs-rook', 'queen-vs-rook-solitary-13-3': 'queen-vs-rook',
+    'bishop-knight-mate': 'bishop-knight-mate', 'two-bishops-mate': 'two-bishops-mate', 'rook-vs-bishop-safe-corner': 'rook-vs-minor'
+};
+
 /** The original 20 endgames, then the library built from the endgame books (scripts/endgames). */
 export const TRAINER_ENDGAMES: TrainerEndgame[] = [
-    ...(endgames as TrainerEndgame[]),
+    ...(endgames as TrainerEndgame[]).map(e => ({ ...e, theme: ORIGINAL_THEMES[e.id] })),
     ...(library as { id: string; theme: string; fen: string; target: 'win' | 'draw'; rating: number }[]).map(p => {
         const theme = THEMES.get(p.theme)!;
         return {
@@ -47,6 +58,10 @@ export const TRAINER_ENDGAMES: TrainerEndgame[] = [
         };
     })
 ];
+
+/** How many positions each theme has, for the practice picker. */
+export const THEME_COUNTS: Record<string, number> = {};
+for (const e of TRAINER_ENDGAMES) if (e.theme) THEME_COUNTS[e.theme] = (THEME_COUNTS[e.theme] ?? 0) + 1;
 
 /** Rating row for a whole theme, which learns from every position in it. */
 const themeKey = (theme: string) => `theme:${theme}`;
@@ -66,7 +81,8 @@ export async function currentEndgames(admin: SupabaseClient): Promise<TrainerEnd
     }
     return TRAINER_ENDGAMES.map(e => {
         const own = live.get(e.id);
-        if (own !== undefined || !e.theme) return { ...e, rating: own ?? e.rating };
+        // The original endgames keep their own starting ratings; only library positions start from their theme's.
+        if (own !== undefined || !e.theme || !e.id.startsWith('lib-')) return { ...e, rating: own ?? e.rating };
         const themeLive = live.get(themeKey(e.theme));
         return { ...e, rating: themeLive === undefined ? e.rating : themeLive + (e.rating - THEMES.get(e.theme)!.rating) };
     });
@@ -80,9 +96,11 @@ export interface AttemptRow {
     player_color: Colour;
     status: 'open' | 'solved' | 'failed';
     optimal_moves: number | null;
+    /** Unrated practice of chosen types: counts for mastery and reviews, never for ratings. */
+    practice: boolean;
 }
 
-export const ATTEMPT_COLUMNS = 'id, user_id, endgame_id, fen, player_color, status, optimal_moves';
+export const ATTEMPT_COLUMNS = 'id, user_id, endgame_id, fen, player_color, status, optimal_moves, practice';
 
 /** The fastest mate in moves for the player to move in `fen`, if the endgame database knows it (not for 7 pieces or draws). */
 export async function fastestMate(fen: string, playerColor: Colour): Promise<number | null> {
@@ -91,17 +109,17 @@ export async function fastestMate(fen: string, playerColor: Colour): Promise<num
     return result?.dtm && result.dtm > 0 ? movesToMate(result.dtm) : null;
 }
 
-/** A failed endgame now due for review (oldest first), skipping the one just played. */
-export async function dueReview(admin: SupabaseClient, userId: string, lastId: string | null): Promise<string | null> {
+/** A failed endgame now due for review (oldest first), skipping the one just played and any not `allowed`. */
+export async function dueReview(admin: SupabaseClient, userId: string, lastId: string | null, allowed?: (id: string) => boolean): Promise<string | null> {
     const { data, error } = await admin
         .from('endgame_reviews')
         .select('endgame_id')
         .eq('user_id', userId)
         .lte('due_at', new Date().toISOString())
         .order('due_at')
-        .limit(3);
+        .limit(allowed ? 100 : 3);
     if (error) throw error;
-    return ((data ?? []) as { endgame_id: string }[]).map(r => r.endgame_id).find(id => id !== lastId) ?? null;
+    return ((data ?? []) as { endgame_id: string }[]).map(r => r.endgame_id).find(id => id !== lastId && (!allowed || allowed(id))) ?? null;
 }
 
 /** Moves the endgame's review date: back in 5 minutes after a fail, further away after each solve. */
@@ -235,12 +253,13 @@ export async function closeAttempt(admin: SupabaseClient, attempt: AttemptRow, s
     return { rating, best, played, provisional: played < LEADERBOARD_MIN_PLAYED, change: rating - stats.rating, pointsAwarded, score };
 }
 
-/** The player's latest attempt that has been shown (open or finished), ignoring a prepared one. */
-export async function latestAttempt(admin: SupabaseClient, userId: string): Promise<AttemptRow | null> {
+/** The player's latest attempt in a mode that has been shown (open or finished), ignoring a prepared one. */
+export async function latestAttempt(admin: SupabaseClient, userId: string, practice = false): Promise<AttemptRow | null> {
     const { data, error } = await admin
         .from('endgame_attempts')
         .select(ATTEMPT_COLUMNS)
         .eq('user_id', userId)
+        .eq('practice', practice)
         .neq('status', 'queued')
         .order('created_at', { ascending: false })
         .limit(1);
@@ -258,20 +277,26 @@ export interface NewAttempt {
 /**
  * Picks the next endgame (a failed one due for review first, otherwise one near the player's rating, never
  * `lastId` again), makes a checked variation and saves it as an attempt with `status`: 'open' to play now,
- * or 'queued' to be prepared in the background. Returns null if one with that status already exists.
+ * or 'queued' to be prepared in the background. With `practiceThemes`, it is an unrated practice position
+ * from those themes only. Returns null if one with that status already exists.
  */
-export async function createAttempt(admin: SupabaseClient, userId: string, lastId: string | null, status: 'open' | 'queued'): Promise<NewAttempt | null> {
-    const [stats, endgames, reviewId] = await Promise.all([trainerStats(admin, userId), currentEndgames(admin), dueReview(admin, userId, lastId)]);
-    // Never the same theme twice in a row, so a run of positions feels varied.
+export async function createAttempt(admin: SupabaseClient, userId: string, lastId: string | null, status: 'open' | 'queued', practiceThemes: Set<string> | null = null): Promise<NewAttempt | null> {
+    const inPractice = (e: TrainerEndgame | undefined) => !practiceThemes || (!!e?.theme && practiceThemes.has(e.theme));
+    const [stats, everything] = await Promise.all([trainerStats(admin, userId), currentEndgames(admin)]);
+    const endgames = everything.filter(inPractice);
+    if (!endgames.length) throw new Error('No positions in the chosen types.');
+    const reviewId = await dueReview(admin, userId, lastId, practiceThemes ? id => inPractice(everything.find(e => e.id === id)) : undefined);
+    // Never the same theme twice in a row (unless only one theme is chosen), so a run of positions feels varied.
     const lastTheme = endgames.find(e => e.id === lastId)?.theme;
-    const fresh = lastTheme ? endgames.filter(e => e.theme !== lastTheme) : endgames;
+    const varied = lastTheme ? endgames.filter(e => e.theme !== lastTheme) : endgames;
+    const fresh = varied.length ? varied : endgames;
     const endgame = endgames.find(e => e.id === reviewId) ?? pickEndgame(fresh, stats.rating, lastId);
     const variation = await makeVariation(endgame);
     const optimal = endgame.target === 'win' ? await fastestMate(variation.fen, variation.playerColor) : null;
 
     const { data, error } = await admin
         .from('endgame_attempts')
-        .insert({ user_id: userId, endgame_id: endgame.id, fen: variation.fen, player_color: variation.playerColor, rating_before: stats.rating, optimal_moves: optimal, status })
+        .insert({ user_id: userId, endgame_id: endgame.id, fen: variation.fen, player_color: variation.playerColor, rating_before: stats.rating, optimal_moves: optimal, status, practice: !!practiceThemes })
         .select('id')
         .single();
     if (error) {
@@ -286,6 +311,24 @@ export async function createAttempt(admin: SupabaseClient, userId: string, lastI
     };
 }
 
+/**
+ * Closes an open practice attempt: it counts for theme mastery and the review queue (a solve with a hint
+ * counts as a miss there), never for ratings. Returns null if it was already closed.
+ */
+export async function closePracticeAttempt(admin: SupabaseClient, attempt: AttemptRow, solved: boolean, helped: boolean): Promise<AttemptResult | null> {
+    const stats = await trainerStats(admin, attempt.user_id);
+    const { data: claimed, error } = await admin
+        .from('endgame_attempts')
+        .update({ status: solved ? 'solved' : 'failed', helped, rating_after: stats.rating, finished_at: new Date().toISOString() })
+        .eq('id', attempt.id)
+        .eq('status', 'open')
+        .select('id');
+    if (error) throw error;
+    if (!claimed?.length) return null;
+    await scheduleReview(admin, attempt.user_id, attempt.endgame_id, solved && !helped);
+    return { ...stats, change: 0, pointsAwarded: 0, score: solved && !helped ? 1 : 0 };
+}
+
 /** Turns the player's prepared position into the one they are playing now, or null if none is ready. */
 export async function activateQueued(admin: SupabaseClient, userId: string, ratingNow: number): Promise<AttemptRow | null> {
     const { data, error } = await admin
@@ -293,6 +336,7 @@ export async function activateQueued(admin: SupabaseClient, userId: string, rati
         .update({ status: 'open', rating_before: ratingNow, created_at: new Date().toISOString() })
         .eq('user_id', userId)
         .eq('status', 'queued')
+        .eq('practice', false)
         .select(ATTEMPT_COLUMNS);
     if (error) throw error;
     return (data?.[0] ?? null) as AttemptRow | null;

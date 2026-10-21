@@ -660,13 +660,22 @@ export default function EndgameTrainer() {
                 <main className="order-1 lg:order-none min-h-0 flex flex-col items-center justify-center gap-3 px-3 sm:px-6 py-5 bg-[#f6ecd2]">
                     <div className={`${boardWidth} flex items-center gap-3`}>
                         <BotAvatar opponent={OPPONENT} size={40} />
-                        <p className="min-w-0">
-                            <span className="block font-bold leading-tight">{opponentName}</span>
-                            <span className="block text-xs text-plum/75">{thinking ? 'Thinking…' : `Maia ${OPPONENT_PRESETS[OPPONENT].elo}, backed by the endgame database`}</span>
+                        <p className="min-w-0 flex-1">
+                            <span className="block font-bold leading-tight truncate">{opponentName}</span>
+                            <span className="block text-xs text-plum/75 truncate">
+                                {thinking ? 'Thinking…' : <>Maia {OPPONENT_PRESETS[OPPONENT].elo}<span className="hidden sm:inline">, backed by the endgame database</span></>}
+                            </span>
                         </p>
-                        <span className={`ml-auto min-w-0 truncate rounded-full px-3 py-1 text-xs font-bold ${practicing ? 'bg-amber-100 text-amber-900' : 'bg-plum/10 text-plum'}`} title={modeLabel}>
+                        {/* The mode; on phones the picker is further down the page, so this jumps to it */}
+                        <button
+                            type="button"
+                            onClick={() => document.getElementById('play-heading')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
+                            className={`shrink min-w-0 max-w-[60%] truncate rounded-full px-3 py-1 text-xs font-bold ${practicing ? 'bg-amber-100 text-amber-900 hover:bg-amber-200' : 'bg-plum/10 text-plum hover:bg-plum/15'} ${focusRing}`}
+                            title={`${modeLabel}: change what to play`}
+                            aria-label={`${modeLabel}. Change what to play`}
+                        >
                             {modeLabel}
-                        </span>
+                        </button>
                         <button
                             type="button"
                             onClick={() => setMuted(m => !m)}

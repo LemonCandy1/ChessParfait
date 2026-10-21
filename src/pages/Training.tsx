@@ -45,7 +45,7 @@ function writeStored(key: string, value: unknown) {
 
 /** One row of the open chapter's "Work through" list. */
 function ResourceRow({ resource }: { resource: TrainingResource }) {
-    const row = `flex items-center justify-between gap-4 py-3 border-b border-plum/12 font-semibold ${focusRing} focus-visible:ring-offset-cream`;
+    const row = `flex items-center justify-between gap-4 py-2.5 lg:py-3 border-b border-plum/12 font-semibold ${focusRing} focus-visible:ring-offset-cream`;
     const hint = (text: string) => <span className="shrink-0 text-xs font-bold text-plum/70">{text}</span>;
     if (resource.kind === 'book' || !resource.url) {
         return (
@@ -320,7 +320,7 @@ export default function Training() {
             {loaded && planId && !choosingPlan && (
                 <div className="flex-1 flex flex-col lg:grid lg:grid-cols-[300px_minmax(0,1fr)_300px]">
                     {/* Chapter rail */}
-                    <nav className="order-2 lg:order-none bg-plum text-cream px-5 py-7 lg:py-9" aria-label="Today's activities">
+                    <nav className="order-1 lg:order-none bg-plum text-cream px-5 py-5 lg:py-9" aria-label="Today's activities">
                         <h2 className="px-2 text-2xl font-serif font-black leading-tight">
                             {formatDay(today, { weekday: 'long', day: 'numeric', month: 'long' })}
                         </h2>
@@ -328,7 +328,7 @@ export default function Training() {
                             {plan.name} plan · {requiredDone} of {requiredItems.length} done
                         </p>
 
-                        <ol className="mt-5 space-y-1">
+                        <ol className="mt-3 lg:mt-5 space-y-1">
                             {plan.items.map((item, index) => {
                                 const done = ticked.includes(item.id);
                                 const isOpen = item.id === open.id;
@@ -370,19 +370,20 @@ export default function Training() {
                             })}
                         </ol>
 
-                        <p className={`px-2 mt-6 text-sm ${dayFinished ? 'text-emerald-300 font-bold' : 'text-cream/80'}`} aria-live="polite">{pointsLine}</p>
+                        <p className={`px-2 mt-4 lg:mt-6 text-sm ${dayFinished ? 'text-emerald-300 font-bold' : 'text-cream/80'}`} aria-live="polite">{pointsLine}</p>
                         <button
                             type="button"
                             onClick={() => setChoosingPlan(true)}
-                            className={`mx-2 mt-4 text-sm font-bold text-[#F5B7C6] hover:text-white underline-offset-4 hover:underline ${focusRing} focus-visible:ring-offset-plum`}
+                            className={`mx-2 mt-2 lg:mt-4 text-sm font-bold text-[#F5B7C6] hover:text-white underline-offset-4 hover:underline ${focusRing} focus-visible:ring-offset-plum`}
                         >
                             Change plan
                         </button>
                     </nav>
 
                     {/* Goals and the open chapter */}
-                    <main className="order-1 lg:order-none px-5 sm:px-8 lg:px-12 py-8 lg:py-9">
-                        <section className="rounded-2xl bg-white px-6 py-5 shadow-[0_6px_20px_-14px_rgb(74,21,75,0.45)]" aria-labelledby="goals-heading">
+                    <main className="order-2 lg:order-none flex flex-col lg:block px-5 sm:px-8 lg:px-12 pb-8 lg:py-9">
+                        {/* On phones the plan summary follows the activity, so the activity and its button come first */}
+                        <section className="order-last lg:order-none mt-8 lg:mt-0 rounded-2xl bg-white px-6 py-5 shadow-[0_6px_20px_-14px_rgb(74,21,75,0.45)]" aria-labelledby="goals-heading">
                             <h2 id="goals-heading" className="text-lg font-serif font-black">What this plan builds</h2>
                             <ul className="mt-2 grid sm:grid-cols-2 gap-x-8 gap-y-1.5 text-plum/85">
                                 {plan.goals.map(goal => (
@@ -425,18 +426,18 @@ export default function Training() {
 
                         <article
                             key={open.id}
-                            className="mt-9 animate-fade-up"
+                            className="mt-4 lg:mt-9 animate-fade-up"
                             aria-labelledby="chapter-heading"
                         >
-                            <h2 id="chapter-heading" className="text-4xl md:text-5xl font-serif font-black tracking-tight leading-[1.05]">{open.activity}</h2>
+                            <h2 id="chapter-heading" className="text-3xl md:text-5xl font-serif font-black tracking-tight leading-[1.05]">{open.activity}</h2>
                             <p className="mt-2 text-sm font-bold text-berry">
                                 Chapter {openIndex + 1} of {plan.items.length} · {formatMinutes(open.minutes)}{open.required ? '' : ' · optional'}
                             </p>
-                            <p className="mt-5 text-lg font-bold max-w-prose">{open.focus}</p>
+                            <p className="mt-3 lg:mt-5 text-lg font-bold max-w-prose">{open.focus}</p>
                             <p className="mt-2 text-plum/80 leading-relaxed max-w-prose">{open.notes}</p>
 
                             {open.resources.length > 0 && (
-                                <section className="mt-7 max-w-2xl" aria-labelledby="resources-heading">
+                                <section className="mt-5 lg:mt-7 max-w-2xl" aria-labelledby="resources-heading">
                                     <h3 id="resources-heading" className="text-sm font-bold text-plum/75">Work through</h3>
                                     <ul className="mt-1 border-t border-plum/12">
                                         {open.resources.map(r => <ResourceRow key={r.label} resource={r} />)}

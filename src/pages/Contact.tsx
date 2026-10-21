@@ -43,18 +43,18 @@ export default function Contact() {
                 <Navbar />
             </div>
 
-            <main className="flex-1 max-w-6xl mx-auto w-full px-4 sm:px-6 py-12 md:py-20 relative z-10">
-                <div className="grid lg:grid-cols-[1fr_1.2fr] gap-10 lg:gap-16 items-start animate-fade-up">
+            <main className="flex-1 max-w-6xl mx-auto w-full px-4 sm:px-6 py-6 md:py-20 relative z-10">
+                <div className="grid lg:grid-cols-[1fr_1.2fr] gap-6 lg:gap-16 items-start animate-fade-up">
                     {/* Intro and contact details */}
                     <section className="lg:pt-6">
-                        <h1 className="text-4xl md:text-5xl font-black mb-5 leading-tight tracking-tight">
+                        <h1 className="text-3xl md:text-5xl font-black mb-3 md:mb-5 leading-tight tracking-tight">
                             Get in touch
                         </h1>
-                        <p className="text-base md:text-lg text-plum/75 leading-relaxed mb-10 max-w-md">
+                        <p className="text-base md:text-lg text-plum/75 leading-relaxed mb-5 md:mb-10 max-w-md">
                             Whether you're looking to book coaching sessions or just have a question, send a message and I'll get back to you by email.
                         </p>
 
-                        <ul className="space-y-4">
+                        <ul className="space-y-3 md:space-y-4">
                             <ContactDetail icon={<Mail size={20} />} label="Email">
                                 <a href="mailto:luischanchess@gmail.com" className="hover:text-berry transition-colors break-all">
                                     luischanchess@gmail.com
@@ -67,7 +67,7 @@ export default function Contact() {
                     </section>
 
                     {/* Form card */}
-                    <section className="glass rounded-[2rem] p-6 sm:p-8 md:p-10 shadow-xl shadow-plum/5">
+                    <section className="glass rounded-[2rem] p-5 sm:p-8 md:p-10 shadow-xl shadow-plum/5">
                         {status === 'success' ? (
                             <div className="text-center py-10 animate-fade-up" role="status" aria-live="polite">
                                 <div className="mx-auto mb-6 w-16 h-16 rounded-full bg-emerald-50 border border-emerald-200 flex items-center justify-center">
@@ -87,8 +87,8 @@ export default function Contact() {
                             </div>
                         ) : (
                             <>
-                                <div className="mb-8">
-                                    <h2 className="text-2xl md:text-3xl font-bold mb-2">Send a message</h2>
+                                <div className="mb-5 md:mb-8">
+                                    <h2 className="text-2xl md:text-3xl font-bold mb-1 md:mb-2">Send a message</h2>
                                     <p className="text-sm text-plum/65">All fields are required.</p>
                                 </div>
 
@@ -102,8 +102,8 @@ export default function Contact() {
                                     </div>
                                 )}
 
-                                <form onSubmit={handleSubmit} className="space-y-5">
-                                    <div className="grid sm:grid-cols-2 gap-5">
+                                <form onSubmit={handleSubmit} className="space-y-4 md:space-y-5">
+                                    <div className="grid sm:grid-cols-2 gap-4 md:gap-5">
                                         <Field id="name" label="Name" icon={<User size={18} />}>
                                             <input
                                                 id="name"
@@ -146,7 +146,7 @@ export default function Contact() {
                                             value={question}
                                             onChange={(e) => setQuestion(e.target.value)}
                                             rows={6}
-                                            className={`${inputClass} resize-none leading-relaxed`}
+                                            className={`${inputClass} resize-none leading-relaxed h-28 md:h-auto`}
                                             placeholder="Tell me about your goals, current rating, or what you'd like to ask..."
                                         />
                                     </Field>

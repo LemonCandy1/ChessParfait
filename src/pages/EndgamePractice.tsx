@@ -764,23 +764,23 @@ export default function EndgamePractice() {
                 VIEW 1: HOME CATALOG SELECTION VIEW (Matching reference image)
                ══════════════════════════════════════════════════════════════ */}
             {viewMode === 'catalog' ? (
-                <div className="flex-1 overflow-y-auto px-4 py-6 md:px-8 bg-[#FAF1DB]">
-                    <div className="max-w-5xl mx-auto space-y-6">
+                <div className="flex-1 overflow-y-auto px-4 py-4 md:py-6 md:px-8 bg-[#FAF1DB]">
+                    <div className="max-w-5xl mx-auto space-y-4 md:space-y-6">
 
                         {/* Top Hero / Search Banner */}
-                        <div className="bg-white/80 backdrop-blur-md rounded-3xl p-6 md:p-8 border-2 border-plum/15 shadow-sm space-y-5">
-                            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                        <div className="bg-white/80 backdrop-blur-md rounded-3xl p-4 md:p-8 border-2 border-plum/15 shadow-sm space-y-3 md:space-y-5">
+                            <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 md:gap-4">
                                 <div>
-                                    <h1 className="text-2xl md:text-3xl font-serif font-black text-plum">
+                                    <h1 className="text-xl md:text-3xl font-serif font-black text-plum">
                                         Select an Endgame to Practice
                                     </h1>
-                                    <p className="text-xs md:text-sm text-plum/70 font-medium mt-1">
+                                    <p className="hidden md:block text-sm text-plum/70 font-medium mt-1">
                                         Train theoretical positions against tablebase precision. Progress is automatically saved to your account.
                                     </p>
                                 </div>
 
                                 {/* User Progress Summary Badge */}
-                                <div className="bg-[#FAF1DB] border-2 border-plum/15 rounded-2xl p-3.5 min-w-[220px] text-right">
+                                <div className="bg-[#FAF1DB] border-2 border-plum/15 rounded-2xl px-3.5 py-2.5 md:p-3.5 md:min-w-[220px] text-right">
                                     <div className="text-[10px] font-black uppercase tracking-wider text-plum/60 flex items-center justify-end gap-1.5">
                                         <CheckCircle2 size={13} className="text-emerald-600" />
                                         <span>{user?.username ? `@${user.username}` : 'Local Account'}</span>
@@ -805,7 +805,7 @@ export default function EndgamePractice() {
                                     value={searchQuery}
                                     onChange={(e) => setSearchQuery(e.target.value)}
                                     placeholder="Search endgames (e.g. Key Squares, Opposition, 7th-Rank, Lucena, Philidor, Herding...)"
-                                    className="w-full pl-11 pr-10 py-3.5 rounded-2xl bg-white border-2 border-plum/20 focus:border-berry focus:ring-2 focus:ring-berry/20 outline-none text-plum font-medium text-sm transition-all shadow-xs placeholder:text-plum/40"
+                                    className="w-full pl-11 pr-10 py-3 md:py-3.5 rounded-2xl bg-white border-2 border-plum/20 focus:border-berry focus:ring-2 focus:ring-berry/20 outline-none text-plum font-medium text-sm transition-all shadow-xs placeholder:text-plum/40"
                                 />
                                 {searchQuery && (
                                     <button
@@ -819,15 +819,15 @@ export default function EndgamePractice() {
                             </div>
 
                             {/* Category Filter Pills */}
-                            <div className="flex flex-wrap items-center gap-2 pt-1">
-                                <span className="text-[11px] font-black uppercase tracking-wider text-plum/50 mr-1">
+                            <div className="flex md:flex-wrap items-center gap-2 pt-1 -mx-4 px-4 md:mx-0 md:px-0 overflow-x-auto md:overflow-visible">
+                                <span className="hidden md:inline text-[11px] font-black uppercase tracking-wider text-plum/50 mr-1">
                                     Filter:
                                 </span>
                                 {['All', 'Pawn Endgames', 'Rook Endgames', 'Queen Endgames', 'Minor Piece Endgames'].map((cat) => (
                                     <button
                                         key={cat}
                                         onClick={() => setCategoryFilter(cat)}
-                                        className={`px-3.5 py-1.5 rounded-xl text-xs font-serif font-black transition-all ${
+                                        className={`shrink-0 whitespace-nowrap px-3.5 py-1.5 rounded-xl text-xs font-serif font-black transition-all ${
                                             categoryFilter === cat
                                                 ? 'bg-berry text-white shadow-xs'
                                                 : 'bg-white hover:bg-berry/5 text-plum/80 border-2 border-plum/15'

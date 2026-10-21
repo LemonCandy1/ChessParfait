@@ -707,15 +707,15 @@ export default function TrainingPuzzles() {
                 {!selectedDifficulty ? (
                     <>
                         {/* Landing View Header */}
-                        <header className="text-center mb-12 max-w-3xl mx-auto">
-                            <div className="inline-flex items-center gap-2 px-4 py-1.5 mb-6 text-xs font-bold tracking-widest text-berry uppercase bg-berry/10 rounded-full">
+                        <header className="text-center mb-6 md:mb-12 max-w-3xl mx-auto">
+                            <div className="inline-flex items-center gap-2 px-4 py-1.5 mb-3 md:mb-6 text-xs font-bold tracking-widest text-berry uppercase bg-berry/10 rounded-full">
                                 Puzzle Week {puzzleInfo.weekNumber}
                             </div>
-                            <h1 className="text-5xl md:text-6xl font-black text-plum mb-6 tracking-tight leading-tight">
+                            <h1 className="text-4xl md:text-6xl font-black text-plum mb-3 md:mb-6 tracking-tight leading-tight">
                                 Training <span className="text-berry italic">Puzzles</span>
                             </h1>
-                            <div className="space-y-4">
-                                <p className="text-xl text-plum/60 leading-relaxed">
+                            <div className="space-y-2 md:space-y-4">
+                                <p className="text-base md:text-xl text-plum/60 leading-relaxed">
                                     Select the difficulty to begin this week's chess puzzle and earn points!
                                 </p>
                                 <div className="flex items-center justify-center gap-2 text-plum/40 text-sm font-bold uppercase tracking-widest">
@@ -726,7 +726,7 @@ export default function TrainingPuzzles() {
                         </header>
 
                         {/* Difficulty Selection View */}
-                        <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto w-full pb-12">
+                        <div className="grid md:grid-cols-3 gap-3 md:gap-8 max-w-5xl mx-auto w-full pb-6 md:pb-12">
                             {(['Piece of Cake', 'Hard Tart', 'Cherry Bomb'] as Difficulty[]).map((level) => {
                                 const isSolved = user?.solvedPuzzles?.some(
                                     (p) => p.week === puzzleInfo.weekNumber && (p.difficulty === level || (level === 'Cherry Bomb' && p.difficulty === 'Challenge'))
@@ -737,10 +737,10 @@ export default function TrainingPuzzles() {
                                     <button
                                         key={level}
                                         onClick={() => setSelectedDifficulty(level)}
-                                        className="soft-card soft-card-hover rounded-[3rem] p-12 flex flex-col items-center gap-6 group relative overflow-hidden text-left"
+                                        className="soft-card soft-card-hover rounded-3xl md:rounded-[3rem] px-4 py-3.5 md:p-12 flex md:flex-col items-center gap-4 md:gap-6 group relative overflow-hidden text-left"
                                     >
-                                        {/* Status / Points Pill */}
-                                        <div className="flex items-center gap-1.5">
+                                        {/* Status / Points Pill: after the name on phones, above the icon on larger screens */}
+                                        <div className="flex items-center gap-1.5 order-last md:order-none ml-auto md:ml-0 shrink-0">
                                             {isSolved ? (
                                                 <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-black uppercase tracking-wider shadow-sm">
                                                     <CheckCircle2 size={12} className="text-emerald-600" />
@@ -754,11 +754,11 @@ export default function TrainingPuzzles() {
                                             )}
                                         </div>
 
-                                        <div className={`p-5 rounded-[2.5rem] bg-white shadow-sm group-hover:scale-115 transition-transform duration-500 ${themes[level].text} w-fit`}>
+                                        <div className={`p-3 md:p-5 rounded-2xl md:rounded-[2.5rem] bg-white shadow-sm group-hover:scale-115 transition-transform duration-500 ${themes[level].text} w-fit shrink-0 [&_svg]:w-7 [&_svg]:h-7 md:[&_svg]:w-12 md:[&_svg]:h-12`}>
                                             {themes[level].icon(48)}
                                         </div>
-                                        <div className="text-center w-full">
-                                            <h3 className="text-3xl font-serif font-black tracking-tight mb-2">{level}</h3>
+                                        <div className="text-left md:text-center min-w-0 md:w-full">
+                                            <h3 className="text-xl md:text-3xl font-serif font-black tracking-tight md:mb-2 whitespace-nowrap">{level}</h3>
                                             <span className="font-black uppercase tracking-[0.2em] text-[10px] text-plum/30">Difficulty</span>
                                         </div>
                                     </button>

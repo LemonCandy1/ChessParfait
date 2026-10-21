@@ -68,8 +68,9 @@ interface SoundShape {
 }
 
 const PIECE_VOLUME = 0.75;
-const MOVE_SHAPE: SoundShape = { volume: PIECE_VOLUME, fadeFrom: 0.1, end: 0.17 };
-const CAPTURE_SHAPE: SoundShape = { volume: PIECE_VOLUME, fadeFrom: 0.165, end: 0.23 };
+// A long, gentle fade keeps the natural ring of the piece while pushing the hiss below hearing.
+const MOVE_SHAPE: SoundShape = { volume: PIECE_VOLUME, fadeFrom: 0.12, end: 0.3 };
+const CAPTURE_SHAPE: SoundShape = { volume: PIECE_VOLUME, fadeFrom: 0.18, end: 0.31 };
 
 /**
  * Plays a pre-decoded AudioBuffer, optionally quieter and faded out early.
